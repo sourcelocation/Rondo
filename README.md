@@ -148,6 +148,8 @@ cd site && pnpm dev:docs
 
 Issues and pull requests are welcome. For anything bigger than a fix, please open an issue first so we can agree on the approach. Changes to cards, sync or search start in the [spec](server/spec), and the conformance fixtures keep the Go and Kotlin implementations in step.
 
+Contributions are accepted under the [Contributor License Agreement](CONTRIBUTOR_LICENSE_AGREEMENT.md), which lets the project be relicensed later (for example to offer commercial licenses). Questions: support@matthewsource.com.
+
 ## License
 
 Rondo is free software under the [GNU Affero General Public License v3.0](LICENSE). The Rondo name, mark and logo are trademarks and are not covered by the license. Forks need their own name and mark; see [`brand/artwork`](brand/artwork/README.md).
