@@ -4,5 +4,5 @@
 
 ## Checklist
 
-- [ ] I have read and agree to the [Contributor License Agreement](../CONTRIBUTOR_LICENSE_AGREEMENT.md).
+- [ ] I have read and agree to the [Contributor License Agreement](https://github.com/sourcelocation/Rondo/blob/main/CONTRIBUTOR_LICENSE_AGREEMENT.md).
 - [ ] Tests pass locally for the parts I changed.
