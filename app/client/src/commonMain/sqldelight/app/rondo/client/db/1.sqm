@@ -1,0 +1,2 @@
+-- Notes lost their tags.
+ALTER TABLE notes DROP COLUMN tags;

@@ -1,0 +1,71 @@
+{
+  "$description": "Raw palette. Never referenced directly by product code — only by semantic tokens.",
+  "palette": {
+    "$type": "color",
+    "ink": {
+      "1000": { "$value": "#000000" },
+      "950": { "$value": "#0D0D0C" },
+      "900": { "$value": "#141413" },
+      "850": { "$value": "#1B1B19" },
+      "800": { "$value": "#22221F" },
+      "750": { "$value": "#2A2926" },
+      "700": { "$value": "#33322E" },
+      "600": { "$value": "#4A4944" },
+      "500": { "$value": "#6B6A63" },
+      "400": { "$value": "#8E8C84" },
+      "300": { "$value": "#B3B1A8" },
+      "200": { "$value": "#D4D1C7" },
+      "150": { "$value": "#E2DFD5" },
+      "100": { "$value": "#EAE7DE" },
+      "50": { "$value": "#F2EFE7" },
+      "25": { "$value": "#F8F6F1" },
+      "0": { "$value": "#FFFFFF" }
+    },
+    "blue": {
+      "800": { "$value": "#161C8F" },
+      "700": { "$value": "#1F27B8" },
+      "600": { "$value": "#2530E0" },
+      "500": { "$value": "#2F3BFF" },
+      "400": { "$value": "#5B66FF" },
+      "300": { "$value": "#6E78FF" },
+      "200": { "$value": "#A9AFFF" },
+      "100": { "$value": "#DCDEFF" },
+      "50": { "$value": "#EEEFFF" },
+      "950": { "$value": "#14163D" },
+      "900": { "$value": "#1C1F57" }
+    },
+    "red": {
+      "700": { "$value": "#A8281C" },
+      "600": { "$value": "#C93323" },
+      "500": { "$value": "#E04A38" },
+      "300": { "$value": "#FF7A6B" },
+      "100": { "$value": "#FBDCD7" },
+      "900": { "$value": "#3D1712" }
+    },
+    "amber": {
+      "700": { "$value": "#8F5B10" },
+      "600": { "$value": "#A86C16" },
+      "500": { "$value": "#C98A24" },
+      "300": { "$value": "#F2B652" },
+      "100": { "$value": "#F7E6C8" },
+      "900": { "$value": "#382910" }
+    },
+    "green": {
+      "700": { "$value": "#1E6B43" },
+      "600": { "$value": "#257D50" },
+      "500": { "$value": "#2E9460" },
+      "300": { "$value": "#62CD92" },
+      "100": { "$value": "#D3EEDD" },
+      "900": { "$value": "#123323" }
+    },
+    "flag": {
+      "red": { "$value": "#E04A38" },
+      "orange": { "$value": "#EA7A2B" },
+      "green": { "$value": "#2E9460" },
+      "blue": { "$value": "#2F3BFF" },
+      "pink": { "$value": "#D9529B" },
+      "turquoise": { "$value": "#1F9E9A" },
+      "purple": { "$value": "#7D4CDB" }
+    }
+  }
+}

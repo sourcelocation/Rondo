@@ -1,0 +1,7 @@
+# Written by tools.
+pnpm-lock.yaml
+dist/
+# The brand's source files are edited by design tools (Sketch, Tokens Studio).
+tokens/
+artwork/
+fonts/

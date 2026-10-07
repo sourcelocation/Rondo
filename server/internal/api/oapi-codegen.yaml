@@ -1,0 +1,11 @@
+# Types and the strict Echo v5 server for the Go operations (tag `api`). Regenerate: go generate ./...
+# Webhooks (tag `webhooks`) are mounted straight from dawl, outside the strict interface.
+package: api
+output: api.gen.go
+generate:
+  models: true
+  echo5-server: true
+  strict-server: true
+output-options:
+  include-tags: [api]
+  skip-prune: true

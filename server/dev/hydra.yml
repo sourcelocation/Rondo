@@ -1,0 +1,23 @@
+# Ory Hydra for local development: the OAuth server agents (MCP clients) sign in through. Rondo's
+# web app handles its login step (for whoever is signed in there) and shows the consent page. As in
+# production, Hydra is on the app's origin: the web dev server proxies its paths (/oauth2, /userinfo,
+# its /.well-known documents) to port 23906.
+serve:
+  public: { cors: { enabled: true, allowed_origins: ["*"] } }
+urls:
+  self: { issuer: http://localhost:23900/ }
+  login: http://localhost:23900/app/sign-in
+  consent: http://localhost:23900/app/oauth/consent
+  error: http://localhost:23900/app/oauth/consent
+oidc:
+  dynamic_client_registration:
+    enabled: true
+    default_scope: [openid, offline_access, rondo]
+strategies:
+  access_token: opaque
+ttl:
+  access_token: 1h
+  refresh_token: 2160h
+secrets:
+  system: [dev-hydra-system-secret-not-for-prod]
+log: { level: info }

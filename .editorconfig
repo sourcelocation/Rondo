@@ -1,0 +1,38 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+max_line_length = 120
+
+[*.go]
+indent_style = tab
+indent_size = 4
+
+[{Makefile,*.mk}]
+indent_style = tab
+
+[*.{kt,kts}]
+indent_size = 4
+# ktlint (app: ./gradlew spotlessApply) formats the way IntelliJ IDEA and Android Studio do.
+ktlint_code_style = intellij_idea
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+ij_kotlin_imports_layout = *
+ij_kotlin_packages_to_use_import_on_demand = unset
+# Composables are named like the things they show.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+
+[*.swift]
+indent_size = 4
+
+[*.{sql}]
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off

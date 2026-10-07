@@ -1,0 +1,11 @@
+**/node_modules
+**/build
+**/.gradle
+**/.kotlin
+**/dist
+!brand/dist
+app/platforms/web/src/kotlin
+.git
+**/.next
+**/.astro
+site/docs/out

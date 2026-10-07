@@ -1,0 +1,43 @@
+---
+title: Troubleshooting
+icon: LifeBuoy
+description: Fix missing changes or media, cards that don't show up, imports, and assistants.
+---
+
+<Accordions>
+<Accordion title="Changes haven't reached another device" id="missing-changes">
+
+Check that both devices are signed in to the same account and online, then choose **Sync now**. A device that was offline sends its changes when it reconnects. In the browser, Rondo runs in one tab at a time. If **Sync issues** shows up in the sidebar, the server couldn't take some changes: see [sync issues](/sync#sync-issues).
+
+</Accordion>
+<Accordion title="Pictures or sounds are missing" id="missing-media">
+
+They come from the device that added them, once it has synced. If your storage is full, new ones stay on that device: see [Free and Pro](/plans). If the import said files were missing, export the Anki package again with media.
+
+</Accordion>
+<Accordion title="A card isn't showing up in study" id="missing-card">
+
+Find its note in [Browse](/search). It may be suspended, or hidden until tomorrow. New cards come only from open [levels](/organizing#levels), and each deck has daily limits for new cards and reviews (its settings). A card may simply be due later.
+
+</Accordion>
+<Accordion title="I chose the wrong answer" id="wrong-answer">
+
+Choose **Undo**, or press <kbd>Z</kbd>.
+
+</Accordion>
+<Accordion title="An import left notes out, or I can't edit imported cards" id="import-result">
+
+Notes that don't fit (a field over 64 KB, for instance) are left out and counted in the import's message. Cards imported with **Make it editable** off keep Anki's own HTML and can't be edited: open the deck and choose **Convert to Rondo format**. See [Import from Anki](/importing).
+
+</Accordion>
+<Accordion title="An assistant can't connect or reach my decks" id="assistant-access">
+
+Connecting through Rondo's server needs Pro; `rondo-mcp` works on any plan. In **Profile › Agents**, revoke the assistant and connect it again. See [AI assistants](/agents).
+
+</Accordion>
+<Accordion title="I can't edit a shared deck" id="shared-editing">
+
+You may only be able to study it: ask its owner to let you edit, which needs their Pro. If its author removed it, it can't change any more; **Copy** it to keep editing your own.
+
+</Accordion>
+</Accordions>

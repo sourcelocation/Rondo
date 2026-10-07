@@ -1,0 +1,79 @@
+{
+  "$description": "Semantic colors for the dark theme. Must define exactly the same keys as color.light.json (enforced by the token build).",
+  "color": {
+    "$type": "color",
+    "bg": {
+      "canvas": { "$value": "{palette.ink.950}" },
+      "surface": { "$value": "{palette.ink.900}" },
+      "raised": { "$value": "{palette.ink.850}" },
+      "sunken": { "$value": "{palette.ink.800}" },
+      "inverse": { "$value": "{palette.ink.50}" },
+      "accent": { "$value": "{palette.blue.400}" },
+      "accent-subtle": { "$value": "{palette.blue.950}" },
+      "danger-subtle": { "$value": "{palette.red.900}" },
+      "warning-subtle": { "$value": "{palette.amber.900}" },
+      "success-subtle": { "$value": "{palette.green.900}" },
+      "scrim": { "$value": "#000000A3" }
+    },
+    "text": {
+      "primary": { "$value": "{palette.ink.50}" },
+      "secondary": { "$value": "{palette.ink.300}" },
+      "tertiary": { "$value": "{palette.ink.400}" },
+      "disabled": { "$value": "{palette.ink.600}" },
+      "inverse": { "$value": "{palette.ink.900}" },
+      "accent": { "$value": "{palette.blue.300}" },
+      "on-accent": { "$value": "{palette.ink.0}" },
+      "danger": { "$value": "{palette.red.300}" },
+      "warning": { "$value": "{palette.amber.300}" },
+      "success": { "$value": "{palette.green.300}" },
+      "link": { "$value": "{palette.blue.300}" }
+    },
+    "border": {
+      "subtle": { "$value": "{palette.ink.800}" },
+      "default": { "$value": "{palette.ink.750}" },
+      "strong": { "$value": "{palette.ink.500}" },
+      "focus": { "$value": "{palette.blue.300}" },
+      "danger": { "$value": "{palette.red.300}" }
+    },
+    "brand": {
+      "$description": "The brand artwork: the mark and logo in pure ink, the app icon's paper.",
+      "ink": { "$value": "{palette.ink.0}" },
+      "paper": { "$value": "{palette.ink.950}" },
+      "accent": { "$value": "{palette.blue.300}" }
+    },
+    "grade": {
+      "again": { "$value": "{palette.red.300}" },
+      "hard": { "$value": "{palette.amber.300}" },
+      "good": { "$value": "{palette.green.300}" },
+      "easy": { "$value": "{palette.blue.300}" }
+    },
+    "state": {
+      "new": { "$value": "{palette.blue.300}" },
+      "learning": { "$value": "{palette.amber.300}" },
+      "review": { "$value": "{palette.green.300}" },
+      "paused": { "$value": "{palette.ink.500}" }
+    },
+    "flag": {
+      "red": { "$value": "{palette.red.300}" },
+      "orange": { "$value": "#F59A57" },
+      "green": { "$value": "{palette.green.300}" },
+      "blue": { "$value": "{palette.blue.300}" },
+      "pink": { "$value": "#EB7DB8" },
+      "turquoise": { "$value": "#4CC4BF" },
+      "purple": { "$value": "#A585F0" }
+    },
+    "content": {
+      "highlight": { "$value": "#F2B65240" },
+      "cloze": { "$value": "{palette.blue.300}" },
+      "cloze-bg": { "$value": "{palette.blue.950}" },
+      "code-bg": { "$value": "{palette.ink.800}" },
+      "red": { "$value": "{palette.red.300}" },
+      "orange": { "$value": "#F59A57" },
+      "yellow": { "$value": "{palette.amber.300}" },
+      "green": { "$value": "{palette.green.300}" },
+      "blue": { "$value": "{palette.blue.300}" },
+      "purple": { "$value": "#A585F0" },
+      "gray": { "$value": "{palette.ink.400}" }
+    }
+  }
+}

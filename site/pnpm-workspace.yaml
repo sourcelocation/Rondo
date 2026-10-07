@@ -1,0 +1,10 @@
+packages:
+  - landing
+  - docs
+
+# Dependencies' install scripts stay off; esbuild finds its binary in its platform package.
+allowBuilds:
+  esbuild: false
+
+# Exact versions keep every package on one dependency graph.
+savePrefix: ""

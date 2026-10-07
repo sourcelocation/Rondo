@@ -1,0 +1,27 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "P534J9B7CK.com.matthewsource.rondo"
+        ],
+        "components": [
+          {
+            "/": "/d/*"
+          },
+          {
+            "/": "/i/*"
+          },
+          {
+            "/": "/u/*"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "P534J9B7CK.com.matthewsource.rondo"
+    ]
+  }
+}

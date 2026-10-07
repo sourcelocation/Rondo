@@ -1,0 +1,7 @@
+# Written by tools.
+pnpm-lock.yaml
+**/dist/
+**/.astro/
+**/.next/
+docs/out/
+docs/next-env.d.ts

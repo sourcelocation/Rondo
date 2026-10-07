@@ -1,0 +1,1241 @@
+{
+ "description": "FSRS-6 reference outputs generated with py-fsrs (enable_fuzzing=False). Ratings: 1 Again, 2 Hard, 3 Good, 4 Easy. Elapsed days are floor((t - last_review) / 24h). Rounding is half-to-even.",
+ "generator": "py-fsrs 6",
+ "default_parameters": [
+  0.212,
+  1.2931,
+  2.3065,
+  8.2956,
+  6.4133,
+  0.8334,
+  3.0194,
+  0.001,
+  1.8722,
+  0.1666,
+  0.796,
+  1.4835,
+  0.0614,
+  0.2629,
+  1.6483,
+  0.6014,
+  1.8729,
+  0.5425,
+  0.0912,
+  0.0658,
+  0.1542
+ ],
+ "scenarios": [
+  {
+   "name": "new card, good through learning steps then reviews",
+   "config": {
+    "desired_retention": 0.9,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "learning",
+     "step": 1,
+     "stability": 2.3065,
+     "difficulty": 2.1181039705,
+     "due": "2026-01-05T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:01:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2.3065,
+     "difficulty": 2.1112142358,
+     "due": "2026-01-07T09:01:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-07T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 7.3191860978,
+     "difficulty": 2.1043313908,
+     "due": "2026-01-14T09:00:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-19T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 42.4333508238,
+     "difficulty": 2.0974554288,
+     "due": "2026-03-02T09:00:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-03-06T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 157.847843666,
+     "difficulty": 2.0905863426,
+     "due": "2026-08-11T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "name": "new card, easy immediately graduates",
+   "config": {
+    "desired_retention": 0.9,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 4,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "due": "2026-01-13T09:00:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-13T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 38.9051499823,
+     "difficulty": 1.0,
+     "due": "2026-02-21T09:00:00Z"
+    },
+    {
+     "rating": 4,
+     "at": "2026-02-14T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 223.8424156861,
+     "difficulty": 1.0,
+     "due": "2026-09-26T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "name": "new card, again then recovers",
+   "config": {
+    "desired_retention": 0.9,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 1,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "learning",
+     "step": 0,
+     "stability": 0.212,
+     "difficulty": 6.4133,
+     "due": "2026-01-05T09:01:00Z"
+    },
+    {
+     "rating": 1,
+     "at": "2026-01-05T09:01:00Z",
+     "state": "learning",
+     "step": 0,
+     "stability": 0.0833567171,
+     "difficulty": 8.8063044689,
+     "due": "2026-01-05T09:02:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:02:00Z",
+     "state": "learning",
+     "step": 1,
+     "stability": 0.1031406501,
+     "difficulty": 8.7927265337,
+     "due": "2026-01-05T09:12:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:12:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 0.1258442373,
+     "difficulty": 8.7791621764,
+     "due": "2026-01-06T09:12:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-08T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 0.9544609973,
+     "difficulty": 8.7656113836,
+     "due": "2026-01-09T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "name": "hard on first step uses average of first two steps",
+   "config": {
+    "desired_retention": 0.9,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 2,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "learning",
+     "step": 0,
+     "stability": 1.2931,
+     "difficulty": 5.1121707056,
+     "due": "2026-01-05T09:05:30Z"
+    },
+    {
+     "rating": 2,
+     "at": "2026-01-05T09:06:00Z",
+     "state": "learning",
+     "step": 0,
+     "stability": 1.2931,
+     "difficulty": 6.7404595108,
+     "due": "2026-01-05T09:11:30Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:16:00Z",
+     "state": "learning",
+     "step": 1,
+     "stability": 1.3358997622,
+     "difficulty": 6.7289474206,
+     "due": "2026-01-05T09:26:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:30:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 1.3771622372,
+     "difficulty": 6.7174468425,
+     "due": "2026-01-06T09:30:00Z"
+    }
+   ]
+  },
+  {
+   "name": "lapse in review goes to relearning and back",
+   "config": {
+    "desired_retention": 0.9,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "learning",
+     "step": 1,
+     "stability": 2.3065,
+     "difficulty": 2.1181039705,
+     "due": "2026-01-05T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:10:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2.3065,
+     "difficulty": 2.1112142358,
+     "due": "2026-01-07T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-09T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 13.8358401337,
+     "difficulty": 2.1043313908,
+     "due": "2026-01-23T09:00:00Z"
+    },
+    {
+     "rating": 1,
+     "at": "2026-01-25T09:00:00Z",
+     "state": "relearning",
+     "step": 0,
+     "stability": 1.7543154177,
+     "difficulty": 7.389975788,
+     "due": "2026-01-25T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-25T09:10:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 1.7763663947,
+     "difficulty": 7.3778141815,
+     "due": "2026-01-27T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-30T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 7.0953599799,
+     "difficulty": 7.3656647366,
+     "due": "2026-02-06T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "name": "same-day review uses short-term stability",
+   "config": {
+    "desired_retention": 0.9,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "learning",
+     "step": 1,
+     "stability": 2.3065,
+     "difficulty": 2.1181039705,
+     "due": "2026-01-05T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:10:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2.3065,
+     "difficulty": 2.1112142358,
+     "due": "2026-01-07T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-06T05:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2.3065,
+     "difficulty": 2.1043313908,
+     "due": "2026-01-08T05:00:00Z"
+    },
+    {
+     "rating": 2,
+     "at": "2026-01-06T08:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2.3065,
+     "difficulty": 4.7437156084,
+     "due": "2026-01-08T08:00:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-10T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 12.0768732442,
+     "difficulty": 4.7342002621,
+     "due": "2026-01-22T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "name": "overdue review increases stability more",
+   "config": {
+    "desired_retention": 0.9,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "learning",
+     "step": 1,
+     "stability": 2.3065,
+     "difficulty": 2.1181039705,
+     "due": "2026-01-05T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:10:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2.3065,
+     "difficulty": 2.1112142358,
+     "due": "2026-01-07T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-02-04T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 37.0586556665,
+     "difficulty": 2.1043313908,
+     "due": "2026-03-13T09:00:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-07-24T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 274.2207789718,
+     "difficulty": 2.0974554288,
+     "due": "2027-04-24T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "name": "desired retention 0.8 yields longer intervals",
+   "config": {
+    "desired_retention": 0.8,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "learning",
+     "step": 1,
+     "stability": 2.3065,
+     "difficulty": 2.1181039705,
+     "due": "2026-01-05T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:10:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2.3065,
+     "difficulty": 2.1112142358,
+     "due": "2026-01-13T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-10T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 16.1880228285,
+     "difficulty": 2.1043313908,
+     "due": "2026-03-05T09:00:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-30T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 72.7246955382,
+     "difficulty": 2.0974554288,
+     "due": "2026-09-28T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "name": "desired retention 0.95 yields shorter intervals",
+   "config": {
+    "desired_retention": 0.95,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "learning",
+     "step": 1,
+     "stability": 2.3065,
+     "difficulty": 2.1181039705,
+     "due": "2026-01-05T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:10:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2.3065,
+     "difficulty": 2.1112142358,
+     "due": "2026-01-06T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-07T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 7.3191860978,
+     "difficulty": 2.1043313908,
+     "due": "2026-01-10T09:00:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-11T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 23.2053580719,
+     "difficulty": 2.0974554288,
+     "due": "2026-01-20T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "name": "no learning steps graduates immediately",
+   "config": {
+    "desired_retention": 0.9,
+    "learning_steps_s": [],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2.3065,
+     "difficulty": 2.1181039705,
+     "due": "2026-01-07T09:00:00Z"
+    },
+    {
+     "rating": 1,
+     "at": "2026-01-08T09:00:00Z",
+     "state": "relearning",
+     "step": 0,
+     "stability": 0.6368506992,
+     "difficulty": 7.3945027413,
+     "due": "2026-01-08T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-08T09:10:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 0.6893171881,
+     "difficulty": 7.3823366078,
+     "due": "2026-01-09T09:10:00Z"
+    },
+    {
+     "rating": 2,
+     "at": "2026-01-11T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2.3594885439,
+     "difficulty": 8.2475014265,
+     "due": "2026-01-13T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "name": "custom parameters",
+   "config": {
+    "desired_retention": 0.9,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 36500,
+    "parameters": [
+     0.4,
+     1.1,
+     3.2,
+     12.0,
+     7.0,
+     0.5,
+     2.5,
+     0.01,
+     1.6,
+     0.2,
+     0.9,
+     1.6,
+     0.08,
+     0.3,
+     1.4,
+     0.4,
+     2.2,
+     0.6,
+     0.2,
+     0.1,
+     0.2
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "learning",
+     "step": 1,
+     "stability": 3.2,
+     "difficulty": 5.2817181715,
+     "due": "2026-01-05T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-05T09:10:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 3.2118134934,
+     "difficulty": 5.2640840991,
+     "due": "2026-01-08T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-08T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 7.8603190535,
+     "difficulty": 5.2466263674,
+     "due": "2026-01-16T09:00:00Z"
+    },
+    {
+     "rating": 1,
+     "at": "2026-01-17T09:00:00Z",
+     "state": "relearning",
+     "step": 0,
+     "stability": 1.5112663419,
+     "difficulty": 7.843698711,
+     "due": "2026-01-17T09:10:00Z"
+    },
+    {
+     "rating": 3,
+     "at": "2026-01-17T09:10:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 1.6350169034,
+     "difficulty": 7.8004448332,
+     "due": "2026-01-19T09:10:00Z"
+    },
+    {
+     "rating": 4,
+     "at": "2026-01-25T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 14.1474894207,
+     "difficulty": 7.1527458232,
+     "due": "2026-02-08T09:00:00Z"
+    }
+   ]
+  },
+  {
+   "name": "maximum interval caps",
+   "config": {
+    "desired_retention": 0.9,
+    "learning_steps_s": [
+     60,
+     600
+    ],
+    "relearning_steps_s": [
+     600
+    ],
+    "maximum_interval": 180,
+    "parameters": [
+     0.212,
+     1.2931,
+     2.3065,
+     8.2956,
+     6.4133,
+     0.8334,
+     3.0194,
+     0.001,
+     1.8722,
+     0.1666,
+     0.796,
+     1.4835,
+     0.0614,
+     0.2629,
+     1.6483,
+     0.6014,
+     1.8729,
+     0.5425,
+     0.0912,
+     0.0658,
+     0.1542
+    ]
+   },
+   "reviews": [
+    {
+     "rating": 4,
+     "at": "2026-01-05T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 8.2956,
+     "difficulty": 1.0,
+     "due": "2026-01-13T09:00:00Z"
+    },
+    {
+     "rating": 4,
+     "at": "2026-01-25T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 111.5862920729,
+     "difficulty": 1.0,
+     "due": "2026-05-17T09:00:00Z"
+    },
+    {
+     "rating": 4,
+     "at": "2026-05-05T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 585.7578609229,
+     "difficulty": 1.0,
+     "due": "2026-11-01T09:00:00Z"
+    },
+    {
+     "rating": 4,
+     "at": "2027-08-28T09:00:00Z",
+     "state": "review",
+     "step": null,
+     "stability": 2353.0951272143,
+     "difficulty": 1.0,
+     "due": "2028-02-24T09:00:00Z"
+    }
+   ]
+  }
+ ],
+ "retrievability": [
+  {
+   "elapsed_days": 0,
+   "stability": 1.0,
+   "r": 1.0
+  },
+  {
+   "elapsed_days": 1,
+   "stability": 1.0,
+   "r": 0.9
+  },
+  {
+   "elapsed_days": 5,
+   "stability": 5.0,
+   "r": 0.9
+  },
+  {
+   "elapsed_days": 10,
+   "stability": 3.2,
+   "r": 0.805575435566
+  },
+  {
+   "elapsed_days": 100,
+   "stability": 40.0,
+   "r": 0.826135877362
+  },
+  {
+   "elapsed_days": 365,
+   "stability": 12.5,
+   "r": 0.593017834558
+  }
+ ],
+ "intervals": [
+  {
+   "desired_retention": 0.7,
+   "stability": 0.5,
+   "interval_days": 5
+  },
+  {
+   "desired_retention": 0.7,
+   "stability": 1.0,
+   "interval_days": 9
+  },
+  {
+   "desired_retention": 0.7,
+   "stability": 2.3065,
+   "interval_days": 21
+  },
+  {
+   "desired_retention": 0.7,
+   "stability": 7.4,
+   "interval_days": 69
+  },
+  {
+   "desired_retention": 0.7,
+   "stability": 33.3,
+   "interval_days": 309
+  },
+  {
+   "desired_retention": 0.7,
+   "stability": 250.0,
+   "interval_days": 2322
+  },
+  {
+   "desired_retention": 0.8,
+   "stability": 0.5,
+   "interval_days": 2
+  },
+  {
+   "desired_retention": 0.8,
+   "stability": 1.0,
+   "interval_days": 3
+  },
+  {
+   "desired_retention": 0.8,
+   "stability": 2.3065,
+   "interval_days": 8
+  },
+  {
+   "desired_retention": 0.8,
+   "stability": 7.4,
+   "interval_days": 25
+  },
+  {
+   "desired_retention": 0.8,
+   "stability": 33.3,
+   "interval_days": 110
+  },
+  {
+   "desired_retention": 0.8,
+   "stability": 250.0,
+   "interval_days": 829
+  },
+  {
+   "desired_retention": 0.85,
+   "stability": 0.5,
+   "interval_days": 1
+  },
+  {
+   "desired_retention": 0.85,
+   "stability": 1.0,
+   "interval_days": 2
+  },
+  {
+   "desired_retention": 0.85,
+   "stability": 2.3065,
+   "interval_days": 4
+  },
+  {
+   "desired_retention": 0.85,
+   "stability": 7.4,
+   "interval_days": 14
+  },
+  {
+   "desired_retention": 0.85,
+   "stability": 33.3,
+   "interval_days": 63
+  },
+  {
+   "desired_retention": 0.85,
+   "stability": 250.0,
+   "interval_days": 477
+  },
+  {
+   "desired_retention": 0.9,
+   "stability": 0.5,
+   "interval_days": 1
+  },
+  {
+   "desired_retention": 0.9,
+   "stability": 1.0,
+   "interval_days": 1
+  },
+  {
+   "desired_retention": 0.9,
+   "stability": 2.3065,
+   "interval_days": 2
+  },
+  {
+   "desired_retention": 0.9,
+   "stability": 7.4,
+   "interval_days": 7
+  },
+  {
+   "desired_retention": 0.9,
+   "stability": 33.3,
+   "interval_days": 33
+  },
+  {
+   "desired_retention": 0.9,
+   "stability": 250.0,
+   "interval_days": 250
+  },
+  {
+   "desired_retention": 0.95,
+   "stability": 0.5,
+   "interval_days": 1
+  },
+  {
+   "desired_retention": 0.95,
+   "stability": 1.0,
+   "interval_days": 1
+  },
+  {
+   "desired_retention": 0.95,
+   "stability": 2.3065,
+   "interval_days": 1
+  },
+  {
+   "desired_retention": 0.95,
+   "stability": 7.4,
+   "interval_days": 3
+  },
+  {
+   "desired_retention": 0.95,
+   "stability": 33.3,
+   "interval_days": 13
+  },
+  {
+   "desired_retention": 0.95,
+   "stability": 250.0,
+   "interval_days": 101
+  },
+  {
+   "desired_retention": 0.97,
+   "stability": 0.5,
+   "interval_days": 1
+  },
+  {
+   "desired_retention": 0.97,
+   "stability": 1.0,
+   "interval_days": 1
+  },
+  {
+   "desired_retention": 0.97,
+   "stability": 2.3065,
+   "interval_days": 1
+  },
+  {
+   "desired_retention": 0.97,
+   "stability": 7.4,
+   "interval_days": 2
+  },
+  {
+   "desired_retention": 0.97,
+   "stability": 33.3,
+   "interval_days": 7
+  },
+  {
+   "desired_retention": 0.97,
+   "stability": 250.0,
+   "interval_days": 56
+  }
+ ],
+ "fuzz_ranges": [
+  {
+   "interval_days": 1,
+   "min": 1,
+   "max": 1
+  },
+  {
+   "interval_days": 2,
+   "min": 2,
+   "max": 2
+  },
+  {
+   "interval_days": 3,
+   "min": 2,
+   "max": 4
+  },
+  {
+   "interval_days": 5,
+   "min": 4,
+   "max": 6
+  },
+  {
+   "interval_days": 8,
+   "min": 6,
+   "max": 10
+  },
+  {
+   "interval_days": 15,
+   "min": 13,
+   "max": 17
+  },
+  {
+   "interval_days": 30,
+   "min": 27,
+   "max": 33
+  },
+  {
+   "interval_days": 100,
+   "min": 93,
+   "max": 107
+  },
+  {
+   "interval_days": 400,
+   "min": 378,
+   "max": 422
+  }
+ ]
+}

@@ -1,0 +1,47 @@
+# OS and editors
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.iml
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+# The sites' public build settings (their URLs) are not secrets.
+!site/*/.env.development
+!site/*/.env.production
+*.pem
+*.p8
+*.p12
+*.key
+local.properties
+
+# Node
+node_modules/
+.pnpm-store/
+dist/
+!brand/dist/
+.astro/
+.next/
+next-env.d.ts
+out/
+.source/
+*.tsbuildinfo
+
+# Go
+server/bin/
+
+# Gradle and Kotlin
+.gradle/
+.kotlin/
+build/
+
+# Local data of the command-line MCP client
+*.rondo.db
+
+# Claude Code's local settings
+.claude/

@@ -1,0 +1,21 @@
+* text=auto eol=lf
+
+# Generated code: collapse in diffs, exclude from language stats
+server/internal/adapter/postgres/sqlcgen/** linguist-generated=true -diff
+server/internal/adapter/httpapi/openapi/*.gen.go linguist-generated=true -diff
+brand/dist/** linguist-generated=true
+server/internal/adapter/email/tokens_gen.go linguist-generated=true
+app/shared/**/schemas/** linguist-generated=true
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.webp binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.apkg binary
+*.sketch binary
+*.jar binary
+gradlew text eol=lf
+*.bat text eol=crlf

@@ -1,0 +1,170 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../../../../brand/dist/tokens.css";
+@import "katex/dist/katex.min.css";
+
+@font-face {
+  font-family: Geist;
+  src: url("../../../../brand/fonts/geist/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("../../../../brand/fonts/geist/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: Juana;
+  src: url("../../../../brand/fonts/juana/Juana-Light.otf") format("opentype");
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: Juana;
+  src: url("../../../../brand/fonts/juana/Juana-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: Juana;
+  src: url("../../../../brand/fonts/juana/Juana-RegularIt.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* shadcn's theme, from the brand's tokens (which switch with data-theme). */
+@theme inline {
+  --color-background: var(--rd-color-bg-canvas);
+  --color-foreground: var(--rd-color-text-primary);
+  --color-card: var(--rd-color-bg-raised);
+  --color-card-foreground: var(--rd-color-text-primary);
+  --color-popover: var(--rd-color-bg-raised);
+  --color-popover-foreground: var(--rd-color-text-primary);
+  --color-primary: var(--rd-color-bg-accent);
+  --color-primary-foreground: var(--rd-color-text-on-accent);
+  --color-secondary: var(--rd-color-bg-sunken);
+  --color-secondary-foreground: var(--rd-color-text-primary);
+  --color-muted: var(--rd-color-bg-sunken);
+  --color-muted-foreground: var(--rd-color-text-tertiary);
+  --color-accent: var(--rd-color-bg-sunken);
+  --color-accent-foreground: var(--rd-color-text-primary);
+  --color-destructive: var(--rd-color-text-danger);
+  --color-border: var(--rd-color-border-subtle);
+  --color-input: var(--rd-color-border-default);
+  --color-ring: var(--rd-color-border-focus);
+  --color-surface: var(--rd-color-bg-surface);
+  --color-subtle: var(--rd-color-text-secondary);
+  --color-link: var(--rd-color-text-link);
+  --color-warning: var(--rd-color-bg-warning-subtle);
+  --color-new: var(--rd-color-state-new);
+  --color-learning: var(--rd-color-state-learning);
+  --color-review: var(--rd-color-state-review);
+  --color-paused: var(--rd-color-state-paused);
+  --color-again: var(--rd-color-grade-again);
+  --color-hard: var(--rd-color-grade-hard);
+  --color-good: var(--rd-color-grade-good);
+  --color-easy: var(--rd-color-grade-easy);
+  --font-sans: var(--rd-font-family-sans);
+  --font-serif: var(--rd-font-family-serif);
+  --font-mono: var(--rd-font-family-mono);
+  --radius-sm: var(--rd-radius-xs);
+  --radius-md: var(--rd-radius-sm);
+  --radius-lg: var(--rd-radius-md);
+  --radius-xl: var(--rd-radius-lg);
+  --radius-2xl: var(--rd-radius-xl);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font: var(--rd-text-body-md);
+  }
+  h1 {
+    font: var(--rd-text-display-md);
+    letter-spacing: var(--rd-text-display-md-tracking);
+  }
+  h2 {
+    font: var(--rd-text-title-md);
+    letter-spacing: var(--rd-text-title-md-tracking);
+  }
+}
+
+/* Cards and the field editor share how text looks. */
+.content mark {
+  background: var(--rd-color-content-highlight);
+  color: inherit;
+  border-radius: 2px;
+}
+.content code {
+  font: var(--rd-text-mono-md);
+  background: var(--rd-color-content-code-bg);
+  border-radius: var(--rd-radius-xs);
+  padding: 0 0.25em;
+}
+.content rt {
+  font-size: 0.5em;
+}
+.content ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+.content ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+.content table {
+  border-collapse: collapse;
+  margin: 0.25em auto;
+}
+.content td,
+.content th {
+  border: 1px solid var(--rd-color-border-default);
+  padding: 0.25em 0.6em;
+}
+.content th {
+  font-weight: 600;
+}
+.content p + p {
+  margin-top: 0.6em;
+}
+.cloze,
+.content [data-cloze] {
+  color: var(--rd-color-content-cloze);
+  background: var(--rd-color-content-cloze-bg);
+  border-radius: var(--rd-radius-xs);
+  padding: 0 0.2em;
+}
+.cloze-shown {
+  color: var(--rd-color-content-cloze);
+  font-weight: 600;
+}
+.piece-large {
+  font: var(--rd-text-prompt-lg);
+  letter-spacing: var(--rd-text-prompt-lg-tracking);
+}
+.piece-normal {
+  font: var(--rd-text-answer);
+}
+.piece-small {
+  font: var(--rd-text-body-md);
+  color: var(--rd-color-text-secondary);
+}
+.tiptap {
+  outline: none;
+  min-height: 1.6em;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--rd-color-text-disabled);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

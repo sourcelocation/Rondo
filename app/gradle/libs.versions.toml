@@ -1,0 +1,49 @@
+[versions]
+kotlin = "2.4.20"
+coroutines = "1.11.0"
+serialization = "1.11.0"
+datetime = "0.8.0"
+okio = "3.18.2"
+ktor = "3.6.0"
+sqldelight = "2.4.1"
+ksoup = "0.2.6"
+openapi = "7.14.0"
+mcp = "0.15.0"
+ktlint = "1.8.0"
+
+[libraries]
+coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "serialization" }
+datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+zstd = { module = "com.squareup.zstd:zstd-kmp-okio", version = "0.4.0" }
+ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
+ktor-client-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
+ktor-server-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktor-server-test = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqldelight" }
+sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-async = { module = "app.cash.sqldelight:async-extensions", version.ref = "sqldelight" }
+sqldelight-jvm = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
+sqldelight-web = { module = "app.cash.sqldelight:web-worker-driver", version.ref = "sqldelight" }
+hikari = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
+postgres = { module = "org.postgresql:postgresql", version = "42.7.13" }
+logback = { module = "ch.qos.logback:logback-classic", version = "1.6.5" }
+sentry = { module = "io.sentry:sentry", version = "8.59.0" }
+mcp = { module = "io.modelcontextprotocol:kotlin-sdk-server", version.ref = "mcp" }
+
+[plugins]
+multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+openapi = { id = "org.openapi.generator", version.ref = "openapi" }
+spotless = { id = "com.diffplug.spotless", version = "8.10.3" }

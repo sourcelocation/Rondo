@@ -1,0 +1,5 @@
+node_modules/
+dist/
+src/kotlin/
+# vite-plugin-pwa in development.
+dev-dist/

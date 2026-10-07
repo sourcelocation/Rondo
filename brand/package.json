@@ -1,0 +1,32 @@
+{
+  "name": "rondo-brand",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rondo's brand: the design tokens (tokens/), fonts and artwork. shasp (brand.config.ts) compiles them into CSS, TypeScript, Swift, Kotlin, JSON and every platform's icons under dist/. Other projects read dist/; nothing here knows who does.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "shasp build",
+    "check": "shasp check",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint --max-warnings 0 .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@sourcelocation/shasp": "github:sourcelocation/shasp#v0.1.0",
+    "@types/node": "26.6.4",
+    "eslint": "10.12.0",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.13.0",
+    "jiti": "2.7.0",
+    "prettier": "3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.0"
+  }
+}

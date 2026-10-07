@@ -1,0 +1,51 @@
+---
+title: API errors
+icon: CircleAlert
+description: Handle failures by their error code.
+---
+
+A failed request answers with an HTTP status and a JSON body: a stable `code`, and a `message` to show the person using the app.
+
+```json title="Example"
+{
+  "code": "pro_required",
+  "message": "Letting others edit needs Pro."
+}
+```
+
+Match `code`, not the wording of `message`.
+
+| Code                     | Means                                                                                  |
+| ------------------------ | -------------------------------------------------------------------------------------- |
+| `unauthorized`           | Sign in first, or again: the session is missing or expired.                            |
+| `forbidden`              | You can't do that to this deck.                                                        |
+| `read_only`              | The deck's author removed it, or the note keeps Anki's format.                         |
+| `not_found`              | It doesn't exist, or not any more.                                                     |
+| `owner_mismatch`         | A row's owner doesn't match the deck it's in.                                          |
+| `cycle`                  | The move would put a deck inside itself.                                               |
+| `invalid`                | Something in the request isn't valid.                                                  |
+| `template_in_use`        | Notes still use the note type.                                                         |
+| `quota_exceeded`         | Media storage is full.                                                                 |
+| `too_large`              | The file is too large.                                                                 |
+| `clock_ahead`            | The device's clock is ahead; set the time automatically.                               |
+| `client_outdated`        | The app is too old for the server (`426`): update it.                                  |
+| `pro_required`           | That needs Pro.                                                                        |
+| `name_required`          | Older servers: set a display name first.                                               |
+| `profile_required`       | Set up a profile first (sharing and publishing).                                       |
+| `reauthenticate`         | Sign in again, recently, to do that (deleting the account, changing security).         |
+| `conflict`               | It changed meanwhile; try again.                                                       |
+| `unavailable`            | That isn't available right now.                                                        |
+| `internal`               | Something went wrong on the server.                                                    |
+| `second_factor_required` | Enter the code from the authenticator app: the session needs its second step.          |
+| `restricted`             | The account is restricted; the message says until when. See [Community rules](/rules). |
+| `network_restricted`     | Sharing isn't available from this network right now.                                   |
+| `username_taken`         | Someone has that username, or had it in the last 30 days.                              |
+| `username_invalid`       | The username breaks a rule; the message says which.                                    |
+| `too_soon`               | Usernames change once every 30 days; the message says when next.                       |
+| `rate_limited`           | Too many tries for now; try again later.                                               |
+| `code_invalid`           | The code is wrong, used, or expired.                                                   |
+| `already_pro`            | A subscription renews already, so a code can't be added.                               |
+| `passkey_required`       | Staff tools: sign in, or confirm, with a passkey.                                      |
+| `frozen`                 | Staff tools: frozen after too many actions in an hour.                                 |
+
+Pushing rows is different: the request succeeds, and each row the server refused is listed in `rejected` with its code.

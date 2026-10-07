@@ -1,0 +1,69 @@
+name: Release
+
+# A version tag builds the four images and asks ops to deploy them.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  images:
+    name: Image ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { image: api, file: server/Dockerfile, target: "" }
+          - { image: sync, file: app/Dockerfile, target: sync }
+          - { image: web, file: app/Dockerfile, target: web }
+          - { image: site, file: site/Dockerfile, target: "" }
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/rondo-${{ matrix.image }}:${{ github.ref_name }}
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            RELEASE=${{ github.ref_name }}
+            SENTRY_DSN=${{ vars.WEB_SENTRY_DSN }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  deploy:
+    name: Deploy through ops
+    needs: images
+    runs-on: ubuntu-latest
+    # Only v* tags may deploy, and the token that writes to ops lives in this environment.
+    environment: production
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          repository: ${{ github.repository_owner }}/ops
+          token: ${{ secrets.OPS_TOKEN }}
+      # As GeoDuels does: only the image tags change, and a race with another app's deploy rebases.
+      - name: Point apps/rondo at the new images
+        env:
+          TAG: ${{ github.ref_name }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          for image in api sync web site; do
+            yq -i "(.images[] | select(.name == \"ghcr.io/$OWNER/rondo-$image\") | .newTag) = \"$TAG\"" apps/rondo/kustomization.yaml
+          done
+          git config user.name "rondo-release"
+          git config user.email "rondo-release@users.noreply.github.com"
+          git commit -am "deploy rondo $TAG"
+          for attempt in 1 2 3; do git push && exit 0; git pull --rebase; done
+          exit 1

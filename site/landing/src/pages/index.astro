@@ -1,0 +1,23 @@
+---
+import { PUBLIC_RONDO_APP_URL, PUBLIC_RONDO_DOCS_URL } from "astro:env/client";
+import Page from "../layouts/Page.astro";
+---
+
+<Page title="Rondo">
+  <h1>Rondo</h1>
+  <p>Spaced repetition that comes back around.</p>
+  <ul>
+    <li>
+      <a href={PUBLIC_RONDO_APP_URL}>Open Rondo</a>
+    </li>
+    <li>
+      <a href={PUBLIC_RONDO_DOCS_URL}>Documentation</a>
+    </li>
+    <li>
+      <a href="/terms">Terms of Service</a>
+    </li>
+    <li>
+      <a href="/privacy">Privacy Policy</a>
+    </li>
+  </ul>
+</Page>

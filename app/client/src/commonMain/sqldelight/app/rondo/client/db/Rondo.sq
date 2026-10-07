@@ -1,0 +1,215 @@
+-- The device's copy: the synced tables (as on the server, minus server-only columns), a cache of
+-- card states folded from events, and sync bookkeeping. Ids are 16-byte blobs.
+
+CREATE TABLE decks (
+  id BLOB AS kotlin.String NOT NULL PRIMARY KEY,
+  owner_id BLOB AS kotlin.String,
+  parent_id BLOB AS kotlin.String,
+  name TEXT NOT NULL,
+  position TEXT NOT NULL,
+  icon TEXT,
+  color INTEGER NOT NULL,
+  description TEXT,
+  language TEXT,
+  new_per_day INTEGER NOT NULL,
+  reviews_per_day INTEGER NOT NULL,
+  retention INTEGER NOT NULL,
+  gated INTEGER AS kotlin.Boolean NOT NULL,
+  unlock_at INTEGER NOT NULL,
+  v INTEGER NOT NULL,
+  deleted_at INTEGER,
+  dirty INTEGER AS kotlin.Boolean NOT NULL
+);
+
+CREATE TABLE templates (
+  id BLOB AS kotlin.String NOT NULL PRIMARY KEY,
+  owner_id BLOB AS kotlin.String,
+  name TEXT NOT NULL,
+  kind INTEGER NOT NULL,
+  def TEXT NOT NULL,
+  v INTEGER NOT NULL,
+  deleted_at INTEGER,
+  dirty INTEGER AS kotlin.Boolean NOT NULL
+);
+
+CREATE TABLE notes (
+  id BLOB AS kotlin.String NOT NULL PRIMARY KEY,
+  owner_id BLOB AS kotlin.String,
+  deck_id BLOB AS kotlin.String NOT NULL,
+  template_id BLOB AS kotlin.String NOT NULL,
+  fields TEXT NOT NULL,
+  search_text TEXT NOT NULL,
+  v INTEGER NOT NULL,
+  deleted_at INTEGER,
+  dirty INTEGER AS kotlin.Boolean NOT NULL
+);
+CREATE INDEX notes_deck ON notes (deck_id);
+
+CREATE TABLE events (
+  id BLOB AS kotlin.String NOT NULL PRIMARY KEY,
+  subject_id BLOB AS kotlin.String NOT NULL,
+  card INTEGER NOT NULL,
+  kind INTEGER NOT NULL,
+  value INTEGER,
+  at INTEGER NOT NULL,
+  duration_ms INTEGER,
+  due INTEGER,
+  stability REAL,
+  difficulty REAL,
+  reps INTEGER,
+  lapses INTEGER,
+  pushed INTEGER AS kotlin.Boolean NOT NULL
+);
+CREATE INDEX events_subject ON events (subject_id);
+CREATE INDEX events_at ON events (kind, at);
+
+CREATE TABLE settings (
+  one INTEGER NOT NULL PRIMARY KEY,
+  grading INTEGER NOT NULL,
+  theme INTEGER NOT NULL,
+  text_size INTEGER NOT NULL,
+  timezone TEXT,
+  fsrs_weights TEXT,
+  v INTEGER NOT NULL,
+  dirty INTEGER AS kotlin.Boolean NOT NULL,
+  reminder_at INTEGER,
+  reminder_email INTEGER AS kotlin.Boolean
+);
+
+CREATE TABLE card_state (
+  note_id BLOB AS kotlin.String NOT NULL,
+  card INTEGER NOT NULL,
+  deck_id BLOB AS kotlin.String NOT NULL,
+  state INTEGER NOT NULL,
+  step INTEGER NOT NULL,
+  stability REAL NOT NULL,
+  difficulty REAL NOT NULL,
+  due INTEGER,
+  last_at INTEGER,
+  reps INTEGER NOT NULL,
+  lapses INTEGER NOT NULL,
+  learned_at INTEGER,
+  introduced_at INTEGER,
+  suspended INTEGER AS kotlin.Boolean NOT NULL,
+  buried_at INTEGER,
+  flag INTEGER NOT NULL,
+  PRIMARY KEY (note_id, card)
+);
+CREATE INDEX card_state_deck ON card_state (deck_id, state, due);
+
+CREATE TABLE streams (key TEXT NOT NULL PRIMARY KEY, cursor INTEGER NOT NULL, fingerprint TEXT);
+CREATE TABLE lends (deck_id BLOB AS kotlin.String NOT NULL PRIMARY KEY, role INTEGER NOT NULL, owner_id BLOB AS kotlin.String, owner_name TEXT);
+CREATE TABLE rejects (id BLOB AS kotlin.String NOT NULL, entity TEXT NOT NULL, code TEXT NOT NULL, label TEXT NOT NULL, body TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (id, entity));
+CREATE TABLE media (hash TEXT NOT NULL PRIMARY KEY, mime TEXT NOT NULL, bytes BLOB NOT NULL, uploaded INTEGER AS kotlin.Boolean NOT NULL);
+CREATE TABLE meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL);
+
+decks: SELECT * FROM decks;
+deck: SELECT * FROM decks WHERE id = ?;
+putDeck: INSERT OR REPLACE INTO decks VALUES ?;
+dirtyDecks: SELECT * FROM decks WHERE dirty;
+cleanDeck: UPDATE decks SET dirty = 0 WHERE id = ? AND v = ?;
+dropDecks: DELETE FROM decks WHERE id IN ?;
+deckIdsOwnedBy: SELECT id FROM decks WHERE owner_id IS ?;
+adoptDecks: UPDATE decks SET owner_id = :owner, dirty = 1 WHERE owner_id IS :placeholder;
+
+templates: SELECT * FROM templates;
+template: SELECT * FROM templates WHERE id = ?;
+putTemplate: INSERT OR REPLACE INTO templates VALUES ?;
+dirtyTemplates: SELECT * FROM templates WHERE dirty;
+cleanTemplate: UPDATE templates SET dirty = 0 WHERE id = ? AND v = ?;
+adoptTemplates: UPDATE templates SET owner_id = :owner, dirty = 1 WHERE owner_id IS :placeholder;
+dropUnusedTemplates: DELETE FROM templates WHERE owner_id IS NOT :me AND id NOT IN (SELECT template_id FROM notes);
+
+note: SELECT * FROM notes WHERE id = ?;
+notesById: SELECT * FROM notes WHERE id IN ?;
+notesIn: SELECT * FROM notes WHERE deck_id IN ? AND deleted_at IS NULL ORDER BY id LIMIT ?;
+allNotes: SELECT * FROM notes WHERE deleted_at IS NULL;
+deletedNotes: SELECT * FROM notes WHERE deleted_at IS NOT NULL AND owner_id IS ? ORDER BY deleted_at DESC LIMIT 200;
+notesUsing: SELECT count(*) FROM notes WHERE template_id = ? AND deleted_at IS NULL;
+templateUse: SELECT template_id, count(*) AS notes FROM notes WHERE deleted_at IS NULL GROUP BY template_id;
+ankiNotes: SELECT count(*) FROM notes n JOIN templates t ON t.id = n.template_id WHERE t.kind = 2 AND n.deck_id IN ? AND n.deleted_at IS NULL;
+putNote: INSERT OR REPLACE INTO notes VALUES ?;
+dirtyNotes: SELECT * FROM notes WHERE dirty LIMIT 500;
+cleanNote: UPDATE notes SET dirty = 0 WHERE id = ? AND v = ?;
+dropNotesIn: DELETE FROM notes WHERE deck_id IN ?;
+dropUnsyncedNote: DELETE FROM notes WHERE id = ? AND dirty AND v = ?;
+adoptNotes: UPDATE notes SET owner_id = :owner, dirty = 1 WHERE owner_id IS :placeholder;
+purgeNotes: DELETE FROM notes WHERE deleted_at < ?;
+purgeDecks: DELETE FROM decks WHERE deleted_at < ?;
+
+putEvent: INSERT OR IGNORE INTO events VALUES ?;
+eventsOf: SELECT * FROM events WHERE subject_id = ?;
+eventsIn: SELECT * FROM events WHERE subject_id IN ?;
+unpushedEvents: SELECT * FROM events WHERE pushed = 0 LIMIT 500;
+markPushed: UPDATE events SET pushed = 1 WHERE id IN ?;
+dropUnpushedEvent: DELETE FROM events WHERE id = ? AND pushed = 0;
+pending:
+SELECT (SELECT count(*) FROM decks WHERE dirty) + (SELECT count(*) FROM templates WHERE dirty)
+  + (SELECT count(*) FROM notes WHERE dirty) + (SELECT count(*) FROM events WHERE pushed = 0)
+  + (SELECT count(*) FROM settings WHERE dirty);
+unlocked: SELECT subject_id FROM events WHERE kind = 9;
+reviewsSince: SELECT at, value, subject_id, card, duration_ms FROM events WHERE kind = 1 AND at >= ? ORDER BY at;
+allReviews: SELECT * FROM events WHERE kind = 1 AND id NOT IN (SELECT subject_id FROM events WHERE kind = 8) ORDER BY subject_id, card, at;
+
+putSettings: INSERT OR REPLACE INTO settings VALUES ?;
+settings: SELECT * FROM settings;
+
+putCard: INSERT OR REPLACE INTO card_state VALUES ?;
+cardsOf: SELECT * FROM card_state WHERE note_id = ?;
+cardsOfNotes: SELECT * FROM card_state WHERE note_id IN ?;
+dropCardsOf: DELETE FROM card_state WHERE note_id = ? AND card NOT IN ?;
+dropCards: DELETE FROM card_state WHERE note_id IN ?;
+cardsDue: SELECT * FROM card_state WHERE deck_id IN ? AND suspended = 0 AND state > 0 AND due < ?;
+newCards: SELECT * FROM card_state WHERE deck_id = ? AND state = 0 AND suspended = 0 AND (buried_at IS NULL OR buried_at < ?) ORDER BY note_id, card LIMIT ?;
+load:
+SELECT deck_id,
+  total(state = 0 AND suspended = 0 AND (buried_at IS NULL OR buried_at < :dayStart)) AS new_available,
+  total(state IN (1, 3) AND suspended = 0 AND due <= :now) AS learning_due,
+  total(state = 2 AND suspended = 0 AND due < :dayEnd AND (buried_at IS NULL OR buried_at < :dayStart)) AS review_due,
+  total(introduced_at >= :dayStart) AS new_today,
+  total(state = 2 AND last_at >= :dayStart AND introduced_at < :dayStart) AS reviews_today
+FROM card_state GROUP BY deck_id;
+progress:
+SELECT n.deck_id, count(*) AS notes,
+  total(EXISTS (SELECT 1 FROM card_state c WHERE c.note_id = n.id AND c.learned_at IS NOT NULL)) AS learned
+FROM notes n WHERE n.deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM card_state c WHERE c.note_id = n.id AND c.suspended)
+GROUP BY n.deck_id;
+forecast: SELECT due FROM card_state WHERE state = 2 AND suspended = 0 AND due BETWEEN ? AND ?;
+dueBy:
+SELECT deck_id, total(state = 2 AND due < :end) AS review_due, total(state IN (1, 3)) AS learning_due
+FROM card_state WHERE state > 0 AND suspended = 0 GROUP BY deck_id;
+cardTotals: SELECT count(*) AS cards, total(learned_at IS NOT NULL) AS learned, total(suspended) AS suspended FROM card_state;
+
+streams: SELECT * FROM streams;
+putStream: INSERT OR REPLACE INTO streams VALUES ?;
+dropStream: DELETE FROM streams WHERE key = ?;
+lends: SELECT * FROM lends;
+putLend: INSERT OR REPLACE INTO lends VALUES ?;
+dropLends: DELETE FROM lends;
+
+rejects: SELECT * FROM rejects ORDER BY at DESC;
+putReject: INSERT OR REPLACE INTO rejects VALUES ?;
+dropReject: DELETE FROM rejects WHERE id = ? AND entity = ?;
+
+media: SELECT * FROM media WHERE hash = ?;
+putMedia: INSERT OR REPLACE INTO media VALUES ?;
+unuploaded: SELECT hash, mime FROM media WHERE uploaded = 0;
+markUploaded: UPDATE media SET uploaded = 1 WHERE hash = ?;
+
+meta: SELECT value FROM meta WHERE key = ?;
+putMeta: INSERT OR REPLACE INTO meta VALUES (?, ?);
+
+wipe {
+  DELETE FROM decks;
+  DELETE FROM templates;
+  DELETE FROM notes;
+  DELETE FROM events;
+  DELETE FROM settings;
+  DELETE FROM card_state;
+  DELETE FROM streams;
+  DELETE FROM lends;
+  DELETE FROM rejects;
+  DELETE FROM media;
+  -- The schema's version stays: it's the database's, not the account's.
+  DELETE FROM meta WHERE key <> 'schema';
+}

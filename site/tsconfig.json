@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  // The configuration files of this workspace (each package has its own tsconfig.json).
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "erasableSyntaxOnly": true
+  },
+  "include": ["*.config.ts"]
+}

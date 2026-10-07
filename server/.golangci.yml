@@ -1,0 +1,52 @@
+# Lint configuration for the Rondo server.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gocritic
+    - gosec
+    - misspell
+    - nilerr
+    - noctx
+    - revive
+    - unconvert
+    - usestdlibvars
+  settings:
+    errcheck:
+      exclude-functions:
+        - (io.Closer).Close # deferred cleanup
+        - (*os.File).Close
+        - (*database/sql.DB).Close
+        - os.Remove
+    revive:
+      rules:
+        - name: package-comments
+        - name: var-naming
+        - name: receiver-naming
+        - name: error-strings
+        - name: context-as-argument
+    gosec:
+      excludes:
+        - G104 # unchecked errors are covered by errcheck
+        - G115 # integer conversions are bounded where they occur
+        - G117 # token and secret fields are the point of the types that hold them
+        - G704 # outbound URLs come from operator configuration, not from requests
+    gocritic:
+      enabled-tags: [diagnostic, performance]
+      disabled-checks: [hugeParam, rangeValCopy]
+  exclusions:
+    generated: strict
+    rules:
+      - path: _test\.go
+        linters: [gosec, noctx, bodyclose]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes: [github.com/sourcelocation/rondo]

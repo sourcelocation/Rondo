@@ -1,0 +1,95 @@
+# Local development: `docker compose up -d` starts what the servers need; run them on the host (see
+# the README), or add `--profile full` to run them here too. `--profile s3` adds S3-compatible storage.
+#
+# Rondo's ports are 23900-23912, so it runs beside other projects' stacks:
+#   23900 web app (Vite: the app at /app, with the servers, Kratos and Hydra proxied)   23901 Go server   23902 sync server   23903 Postgres
+#   23904 Kratos (admin 23905)   23906 Hydra (admin 23907)   23908 Mailpit (SMTP 23909)   23910 S3
+#   23911 landing   23912 docs
+# Inside containers every service keeps its usual port.
+#
+# Every secret here is for local development only.
+name: rondo
+
+x-postgres: &postgres
+  depends_on: { postgres: { condition: service_healthy } }
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: rondo, POSTGRES_PASSWORD: rondo, POSTGRES_DB: rondo }
+    command: ["postgres", "-c", "max_connections=200"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./dev/postgres.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports: ["127.0.0.1:23903:5432"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U rondo"], interval: 2s, retries: 30 }
+
+  kratos-migrate:
+    <<: *postgres
+    image: oryd/kratos:v26.2.0
+    command: migrate sql -e --yes
+    environment: { DSN: "postgres://rondo:rondo@postgres:5432/rondo_kratos?sslmode=disable" }
+
+  kratos:
+    image: oryd/kratos:v26.2.0
+    command: serve -c /etc/kratos/kratos.yml --dev --watch-courier --sqa-opt-out
+    environment:
+      DSN: "postgres://rondo:rondo@postgres:5432/rondo_kratos?sslmode=disable"
+      SECRETS_COOKIE: dev-cookie-secret-not-for-production
+      SECRETS_CIPHER: 32-char-dev-cipher-not-for-prod!
+    volumes: ["./dev/kratos:/etc/kratos:ro"]
+    ports: ["127.0.0.1:23904:4433", "127.0.0.1:23905:4434"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on: { kratos-migrate: { condition: service_completed_successfully } }
+
+  hydra-migrate:
+    <<: *postgres
+    image: oryd/hydra:v26.2.0
+    command: migrate sql up -e --yes
+    environment: { DSN: "postgres://rondo:rondo@postgres:5432/rondo_hydra?sslmode=disable" }
+
+  hydra:
+    image: oryd/hydra:v26.2.0
+    command: serve all -c /etc/hydra/hydra.yml --dev --sqa-opt-out
+    environment: { DSN: "postgres://rondo:rondo@postgres:5432/rondo_hydra?sslmode=disable" }
+    volumes: ["./dev/hydra.yml:/etc/hydra/hydra.yml:ro"]
+    ports: ["127.0.0.1:23906:4444", "127.0.0.1:23907:4445"]
+    depends_on: { hydra-migrate: { condition: service_completed_successfully } }
+
+  mail:
+    image: axllent/mailpit:v1.25
+    ports: ["127.0.0.1:23908:8025", "127.0.0.1:23909:1025"]
+
+  storage:
+    profiles: [s3]
+    image: rustfs/rustfs:1.0.1
+    environment: { RUSTFS_ACCESS_KEY: rondo, RUSTFS_SECRET_KEY: rondo-dev-secret }
+    volumes: ["storage:/data"]
+    ports: ["127.0.0.1:23910:9000"]
+
+  migrate:
+    <<: *postgres
+    profiles: [full]
+    build: { context: .., dockerfile: server/Dockerfile }
+    command: migrate
+    environment: { RONDO_DATABASE_URL: "postgres://rondo:rondo@postgres:5432/rondo?sslmode=disable" }
+
+  api:
+    profiles: [full]
+    build: { context: .., dockerfile: server/Dockerfile }
+    command: serve
+    env_file: [dev/api.env]
+    environment: { RONDO_DATABASE_URL: "postgres://rondo:rondo@postgres:5432/rondo?sslmode=disable", RONDO_KRATOS_PUBLIC_URL: "http://kratos:4433", RONDO_KRATOS_ADMIN_URL: "http://kratos:4434", RONDO_HYDRA_ADMIN_URL: "http://hydra:4445", RONDO_SMTP_HOST: mail, RONDO_SMTP_PORT: "1025" }
+    ports: ["127.0.0.1:23901:8080"]
+    depends_on: { migrate: { condition: service_completed_successfully } }
+
+  sync:
+    profiles: [full]
+    build: { context: .., dockerfile: app/Dockerfile, target: sync }
+    environment: { RONDO_DATABASE_URL: "postgres://rondo:rondo@postgres:5432/rondo?sslmode=disable", RONDO_KRATOS_PUBLIC_URL: "http://kratos:4433", RONDO_HYDRA_ADMIN_URL: "http://hydra:4445" }
+    ports: ["127.0.0.1:23902:8081"]
+    depends_on: { migrate: { condition: service_completed_successfully } }
+
+volumes:
+  pgdata: {}
+  storage: {}

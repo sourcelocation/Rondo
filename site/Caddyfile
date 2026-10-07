@@ -1,0 +1,35 @@
+# rondo.matthewsource.com's static site: the landing at /, the docs under /docs (exported with that
+# base path). The ingress sends the web app's and the servers' paths elsewhere; share links stay short
+# and go on to the web app.
+:8080 {
+	encode zstd gzip
+	header X-Content-Type-Options nosniff
+	header Referrer-Policy strict-origin-when-cross-origin
+
+	redir /d/* /app{uri}
+	redir /i/* /app{uri}
+	redir /u/* /app{uri}
+	redir /redeem /app{uri}
+	redir /redeem/* /app{uri}
+
+	redir /docs /docs/ 308
+	handle_path /docs/* {
+		root * /srv/docs
+		try_files {path} {path}.html {path}/index.html
+		file_server
+	}
+
+	handle {
+		root * /srv/landing
+		header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'"
+		header /.well-known/apple-app-site-association Content-Type application/json
+		try_files {path} {path}.html {path}/index.html
+		file_server
+	}
+
+	handle_errors 404 {
+		root * /srv/landing
+		rewrite * /404.html
+		file_server
+	}
+}

@@ -1,0 +1,79 @@
+{
+  "$description": "Semantic colors for the light theme. Product code may only use tokens from this layer.",
+  "color": {
+    "$type": "color",
+    "bg": {
+      "canvas": { "$value": "{palette.ink.50}", "$description": "App background (paper)." },
+      "surface": { "$value": "{palette.ink.25}", "$description": "Cards, sheets, list groups." },
+      "raised": { "$value": "{palette.ink.0}", "$description": "Popovers, menus, the study card itself." },
+      "sunken": { "$value": "{palette.ink.100}", "$description": "Inputs, wells, code blocks." },
+      "inverse": { "$value": "{palette.ink.900}" },
+      "accent": { "$value": "{palette.blue.500}" },
+      "accent-subtle": { "$value": "{palette.blue.50}" },
+      "danger-subtle": { "$value": "{palette.red.100}" },
+      "warning-subtle": { "$value": "{palette.amber.100}" },
+      "success-subtle": { "$value": "{palette.green.100}" },
+      "scrim": { "$value": "#14141366" }
+    },
+    "text": {
+      "primary": { "$value": "{palette.ink.900}" },
+      "secondary": { "$value": "{palette.ink.600}" },
+      "tertiary": { "$value": "{palette.ink.500}" },
+      "disabled": { "$value": "{palette.ink.300}" },
+      "inverse": { "$value": "{palette.ink.50}" },
+      "accent": { "$value": "{palette.blue.600}" },
+      "on-accent": { "$value": "{palette.ink.0}" },
+      "danger": { "$value": "{palette.red.600}" },
+      "warning": { "$value": "{palette.amber.700}" },
+      "success": { "$value": "{palette.green.700}" },
+      "link": { "$value": "{palette.blue.600}" }
+    },
+    "border": {
+      "subtle": { "$value": "{palette.ink.150}" },
+      "default": { "$value": "{palette.ink.200}" },
+      "strong": { "$value": "{palette.ink.400}" },
+      "focus": { "$value": "{palette.blue.500}" },
+      "danger": { "$value": "{palette.red.500}" }
+    },
+    "brand": {
+      "$description": "The brand artwork: the mark and logo in pure ink, the app icon's paper.",
+      "ink": { "$value": "{palette.ink.1000}" },
+      "paper": { "$value": "{palette.ink.50}" },
+      "accent": { "$value": "{palette.blue.500}" }
+    },
+    "grade": {
+      "again": { "$value": "{palette.red.600}" },
+      "hard": { "$value": "{palette.amber.600}" },
+      "good": { "$value": "{palette.green.600}" },
+      "easy": { "$value": "{palette.blue.500}" }
+    },
+    "state": {
+      "new": { "$value": "{palette.blue.500}" },
+      "learning": { "$value": "{palette.amber.600}" },
+      "review": { "$value": "{palette.green.600}" },
+      "paused": { "$value": "{palette.ink.400}" }
+    },
+    "flag": {
+      "red": { "$value": "{palette.flag.red}" },
+      "orange": { "$value": "{palette.flag.orange}" },
+      "green": { "$value": "{palette.flag.green}" },
+      "blue": { "$value": "{palette.flag.blue}" },
+      "pink": { "$value": "{palette.flag.pink}" },
+      "turquoise": { "$value": "{palette.flag.turquoise}" },
+      "purple": { "$value": "{palette.flag.purple}" }
+    },
+    "content": {
+      "highlight": { "$value": "#F2B65266", "$description": "Background of highlighted text inside cards." },
+      "cloze": { "$value": "{palette.blue.600}" },
+      "cloze-bg": { "$value": "{palette.blue.50}" },
+      "code-bg": { "$value": "{palette.ink.100}" },
+      "red": { "$value": "{palette.red.600}" },
+      "orange": { "$value": "{palette.flag.orange}" },
+      "yellow": { "$value": "{palette.amber.600}" },
+      "green": { "$value": "{palette.green.600}" },
+      "blue": { "$value": "{palette.blue.600}" },
+      "purple": { "$value": "{palette.flag.purple}" },
+      "gray": { "$value": "{palette.ink.500}" }
+    }
+  }
+}

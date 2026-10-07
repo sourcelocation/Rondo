@@ -2,7 +2,7 @@
 
 Issues and pull requests are welcome. For anything bigger than a fix, please open an issue first so we can agree on the approach.
 
-Changes to cards, sync or search start in the [spec](server/spec). The conformance fixtures keep the Go and Kotlin implementations in step, so update them together.
+Read [ARCHITECTURE.md](ARCHITECTURE.md) first. Changes to the API start in its contract, [`server/api/rondo.yaml`](server/api/rondo.yaml); the rules every write follows live once, in [`:core`](app/core).
 
 ## Contributor License Agreement
 

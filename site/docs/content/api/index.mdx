@@ -1,0 +1,52 @@
+---
+title: API reference
+icon: SquareTerminal
+description: Authentication, sync, and the HTTP endpoints Rondo's apps use.
+---
+
+import { CircleAlert, CloudDownload, CloudUpload, ImageUp } from "lucide-react";
+
+Everything is on `https://rondo.matthewsource.com`: `/api` and `/media` (accounts, sharing, Discover, media, billing), and `/sync` (decks, notes and progress). These pages are generated from the [OpenAPI contract](https://github.com/sourcelocation/rondo/blob/main/server/api/rondo.yaml), which the servers' code is generated from too.
+
+<Callout title="Making an assistant integration?" type="info">
+  Use the [MCP server](/agents) for reading and editing decks through an assistant.
+</Callout>
+
+## Authentication
+
+Sign-in is [Ory Kratos](https://www.ory.sh/docs/kratos/self-service)'s API flows, at `https://rondo.matthewsource.com/auth`. They end with a session token, which every request sends as a bearer token, with the protocol version:
+
+```bash title="Read your profile"
+curl https://rondo.matthewsource.com/api/me \
+  -H "Authorization: Bearer $RONDO_SESSION_TOKEN" \
+  -H "Rondo-Protocol: 1"
+```
+
+A client the server no longer supports gets `426` with [`client_outdated`](/errors).
+
+## Decks, notes and progress
+
+Each device keeps its own copy and syncs rows, not objects: there are no per-deck or per-note endpoints. Rows carry a clock `v`; the newest version of a row wins. Progress is a log of events (reviews, suspensions, flags, …), never overwritten.
+
+<Cards>
+  <Card icon={<CloudUpload />} title="Push" href="/api/sync/push">
+
+Send rows written on the device; refused rows come back with a code each.
+
+</Card>
+  <Card icon={<CloudDownload />} title="Pull" href="/api/sync/pull">
+
+Receive what changed since a cursor, for your own rows and each deck lent to you.
+
+</Card>
+  <Card icon={<ImageUp />} title="Upload media" href="/api/api/request-upload">
+
+Ask where to send a file, by its SHA-256.
+
+</Card>
+  <Card icon={<CircleAlert />} title="Errors" href="/errors">
+
+Stable codes for every refusal.
+
+</Card>
+</Cards>

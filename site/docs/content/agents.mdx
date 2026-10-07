@@ -1,0 +1,239 @@
+---
+title: AI assistants
+icon: Bot
+description: Connect Claude, ChatGPT or a coding agent to your Rondo decks.
+---
+
+Rondo is an MCP (Model Context Protocol) server, so assistants like Claude and ChatGPT can work with your decks: search your notes, turn what you're reading into cards, and tell you what's due. There are two ways in:
+
+<Tabs items={['Through Rondo', 'On your computer']}>
+<Tab value="Through Rondo">
+
+Add this server to your assistant. It signs you in to Rondo, and you choose **Allow**. Needs [Pro](/plans).
+
+```text title="Server URL"
+https://rondo.matthewsource.com/mcp
+```
+
+</Tab>
+<Tab value="On your computer">
+
+`rondo-mcp` keeps a copy of your decks on your computer, syncs it like any other device, and serves the same tools over stdio to assistants on that computer. Any plan. Download it from the [latest release](https://github.com/sourcelocation/rondo/releases/latest) (it needs Java 17 or newer), then:
+
+```bash
+rondo-mcp sign-in
+```
+
+and add `rondo-mcp` to your assistant as a local (stdio) server, for example:
+
+```bash
+claude mcp add --scope user rondo -- rondo-mcp
+```
+
+</Tab>
+</Tabs>
+
+## Connect your assistant
+
+<Tabs groupId="assistant" persist items={['Claude', 'ChatGPT', 'Claude Code', 'Codex', 'Cursor', 'VS Code', 'Gemini CLI', 'Other']}>
+<Tab value="Claude">
+
+Works in Claude on the web and in Claude Desktop.
+
+<Steps>
+<Step>
+
+Open [**Customize › Connectors**](https://claude.ai/customize/connectors) and choose **Add › Add custom connector**.
+
+</Step>
+<Step>
+
+Name it **Rondo**, paste the server URL and choose **Add**.
+
+</Step>
+<Step>
+
+Choose **Connect**, then sign in to Rondo and allow it.
+
+</Step>
+</Steps>
+
+To use Rondo in a chat, choose **+ › Connectors** and turn Rondo on.
+
+On a Team or Enterprise plan, an owner first adds the connector in **Organization settings › Connectors**. Each member then connects their own Rondo account.
+
+</Tab>
+<Tab value="ChatGPT">
+
+Works in ChatGPT on the web, on paid plans.
+
+<Steps>
+<Step>
+
+Open **Settings › Apps**, then **Advanced settings**, and turn on **Developer mode**.
+
+</Step>
+<Step>
+
+Choose **Create app**. Name it **Rondo**, paste the server URL, choose **OAuth** for authentication and create it.
+
+</Step>
+<Step>
+
+Sign in to Rondo and allow it.
+
+</Step>
+</Steps>
+
+Rondo then appears under **Developer mode** in the message composer.
+
+</Tab>
+<Tab value="Claude Code">
+
+Run this in a terminal:
+
+```bash
+claude mcp add --transport http --scope user rondo https://rondo.matthewsource.com/mcp
+```
+
+Then start Claude Code, run `/mcp`, choose **rondo** and sign in.
+
+`--scope user` makes Rondo available in every project. Leave it out to add Rondo to the current project only.
+
+</Tab>
+<Tab value="Codex">
+
+Run this in a terminal:
+
+```bash
+codex mcp add rondo --url https://rondo.matthewsource.com/mcp
+```
+
+Codex opens your browser to sign in. If it doesn't, run `codex mcp login rondo`.
+
+The Codex CLI, the Codex IDE extension and the ChatGPT desktop app share this setup, so you only add Rondo once.
+
+</Tab>
+<Tab value="Cursor">
+
+**[Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=rondo&config=eyJ1cmwiOiJodHRwczovL2FwcC5yb25kby5tYXR0aGV3c291cmNlLmNvbS9tY3AifQ%3D%3D)**
+
+Or add Rondo yourself to `~/.cursor/mcp.json` for every project, or to `.cursor/mcp.json` for one:
+
+```json title="~/.cursor/mcp.json"
+{
+  "mcpServers": {
+    "rondo": { "url": "https://rondo.matthewsource.com/mcp" }
+  }
+}
+```
+
+Cursor then shows **Needs login** next to rondo in its MCP settings. Choose it and sign in.
+
+</Tab>
+<Tab value="VS Code">
+
+**[Add to VS Code](https://vscode.dev/redirect/mcp/install?name=rondo&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Frondo.matthewsource.com%2Fmcp%22%7D)**
+
+Or run this in a terminal:
+
+```bash
+code --add-mcp '{"name":"rondo","type":"http","url":"https://rondo.matthewsource.com/mcp"}'
+```
+
+Then open the Command Palette, run **MCP: List Servers**, start **rondo** and allow it to sign in.
+
+</Tab>
+<Tab value="Gemini CLI">
+
+Run this in a terminal:
+
+```bash
+gemini mcp add --transport http --scope user rondo https://rondo.matthewsource.com/mcp
+```
+
+Then start Gemini CLI, run `/mcp auth rondo` and sign in.
+
+</Tab>
+<Tab value="Other">
+
+Any MCP client that supports remote servers can connect. Add a server with:
+
+- **URL:** `https://rondo.matthewsource.com/mcp`
+- **Transport:** Streamable HTTP
+- **Authentication:** OAuth
+
+If the client only runs local servers, connect through [`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
+
+```json
+{
+  "mcpServers": {
+    "rondo": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://rondo.matthewsource.com/mcp"]
+    }
+  }
+}
+```
+
+</Tab>
+</Tabs>
+
+## Try it
+
+Ask your assistant:
+
+> Find the notes tagged “verbs” in my Spanish deck and suggest five cloze cards from them. Show me the cards before adding them.
+
+> Make ten cards from this article in a new deck called Biology/Cells.
+
+> What's due today?
+
+Assistants write fields in [Rondo's markup](#markup), the same text the editor shows formatted.
+
+<Callout type="warn">
+  An assistant acts with your access, and what it reads, like a web page or a shared deck, can try to steer it. Ask to
+  see cards before they're added. Deleted notes stay in Recently deleted for 30 days.
+</Callout>
+
+## Manage access
+
+**Profile › Agents** lists the assistants connected through Rondo; **Revoke** ends one's access. `rondo-mcp` stops when you delete `~/.rondo`.
+
+<Accordions>
+<Accordion title="Available MCP tools" id="tools">
+
+| Tool             | Does                                                                               |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| `list_decks`     | Every deck you own or can use, with its path, your role and how many notes it has. |
+| `list_templates` | Note types: their fields and the cards they make.                                  |
+| `search_notes`   | Finds notes by text and deck (including its sub-decks).                            |
+| `get_notes`      | Reads notes by id.                                                                 |
+| `create_deck`    | Creates a deck, or a path of decks like `Spanish/Verbs`.                           |
+| `update_deck`    | Renames a deck, or changes its description, daily limits or levels.                |
+| `create_notes`   | Adds notes to a deck with a note type, fields by name.                             |
+| `update_notes`   | Changes notes' fields.                                                             |
+| `move_notes`     | Moves notes to another deck.                                                       |
+| `delete_notes`   | Deletes notes; they stay restorable for 30 days.                                   |
+| `due_today`      | How many new, learning and review cards a deck, or everything, offers today.       |
+
+</Accordion>
+<Accordion title="Markup" id="markup">
+
+| Write                   | For                                      |
+| ----------------------- | ---------------------------------------- |
+| `**bold**`, `*italic*`  | Emphasis                                 |
+| `__underline__`         | Underline                                |
+| `==highlight==`         | Highlight                                |
+| `` `code` ``            | Code                                     |
+| `~sub~`, `^sup^`        | Subscript, superscript                   |
+| `$x^2$`, a line of `$$` | Inline maths; a block between `$$` lines |
+| `{{c1::Tokyo::city}}`   | A cloze, with an optional hint           |
+| `{漢字\|かんじ}`        | A reading over a word                    |
+| `- item`, `1. item`     | Lists                                    |
+| `\| a \| b \|`          | Tables                                   |
+
+A backslash makes the next character plain text: `\*` is an asterisk.
+
+</Accordion>
+</Accordions>

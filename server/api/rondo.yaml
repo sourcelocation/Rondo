@@ -1,0 +1,1377 @@
+openapi: 3.0.3
+info:
+  title: Rondo API
+  version: "1"
+  description: |
+    The Rondo API on one host. `/api` and `/media` are served by the Go server, `/sync` and `/mcp`
+    by the Kotlin sync server. Every request carries `Rondo-Protocol: 1`; a client the server no
+    longer supports gets `426` with code `client_outdated`.
+servers:
+  - url: https://rondo.matthewsource.com
+tags:
+  - name: api
+    description: Accounts, sharing, Discover, media, billing, agents and export (Go).
+  - name: sync
+    description: Pulling and pushing rows (Kotlin).
+  - name: webhooks
+    description: Notifications from the stores, verified by dawl (Go).
+security:
+  - session: []
+
+paths:
+  /api/me:
+    get:
+      tags: [api]
+      operationId: getMe
+      responses:
+        "200": { description: The signed-in account., content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [api]
+      operationId: deleteMe
+      description: Deletes the account immediately. Needs a session re-authenticated in the last 10 minutes.
+      responses:
+        "204": { description: Deleted. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/name:
+    put:
+      tags: [api]
+      operationId: setName
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/NameUpdate" } } } }
+      responses:
+        "200": { description: Saved., content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/profile:
+    put:
+      tags: [api]
+      operationId: updateProfile
+      description: |
+        Changes your username, display name, flag or whether your activity is shown, and confirms the
+        profile (which sharing and publishing need). A username can change once every 30 days.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ProfileUpdate" } } } }
+      responses:
+        "200": { description: Saved., content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/email:
+    post:
+      tags: [api]
+      operationId: changeEmail
+      description: Sends a code to a new address; entering it moves the account there. Needs a sign-in from the last 10 minutes.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/EmailChange" } } } }
+      responses:
+        "202": { description: Code sent. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/email/confirm:
+    post:
+      tags: [api]
+      operationId: confirmEmail
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CodeEntry" } } } }
+      responses:
+        "200": { description: "Moved; the old address is told.", content: { application/json: { schema: { $ref: "#/components/schemas/Me" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/links:
+    get:
+      tags: [api]
+      operationId: listLinks
+      responses:
+        "200": { description: The Google and Apple accounts that sign in to this one., content: { application/json: { schema: { $ref: "#/components/schemas/Links" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [api]
+      operationId: link
+      description: Links a Google or Apple account by an ID token from its own sign-in.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LinkRequest" } } } }
+      responses:
+        "200": { description: Linked., content: { application/json: { schema: { $ref: "#/components/schemas/Links" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/links/{provider}:
+    delete:
+      tags: [api]
+      operationId: unlink
+      parameters: [{ name: provider, in: path, required: true, schema: { type: string, enum: [google, apple] } }]
+      responses:
+        "200": { description: "Unlinked; signing in with an email code always works.", content: { application/json: { schema: { $ref: "#/components/schemas/Links" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/second-factor-reset:
+    delete:
+      tags: [api]
+      operationId: cancelReset
+      description: Cancels removing your second step (signing in with it proves it isn't lost).
+      responses:
+        "204": { description: Cancelled. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/second-factor/reset:
+    post:
+      tags: [api]
+      operationId: requestReset
+      security: []
+      description: "Lost the authenticator app and the recovery codes: emails a code. Answers the same whether or not the address has an account."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ResetRequest" } } } }
+      responses:
+        "202": { description: Sent if there's such an account. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/second-factor/reset/confirm:
+    post:
+      tags: [api]
+      operationId: confirmReset
+      security: []
+      description: "With the emailed code, schedules removing the second step a week later."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ResetConfirm" } } } }
+      responses:
+        "204": { description: Scheduled. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/summary:
+    put:
+      tags: [api]
+      operationId: putSummary
+      description: "What this device counts after syncing: cards due on each of the next 7 days, and cards learned. Reminders and profiles read it."
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Summary" } } } }
+      responses:
+        "204": { description: Kept. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/push-devices:
+    put:
+      tags: [api]
+      operationId: putPushDevice
+      description: Registers this device for pushes (again, by its endpoint), and whether it wants reminders from the server.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PushDevice" } } } }
+      responses:
+        "200": { description: Registered., content: { application/json: { schema: { $ref: "#/components/schemas/PushDeviceId" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/push-devices/{device_id}:
+    delete:
+      tags: [api]
+      operationId: deletePushDevice
+      parameters: [{ name: device_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: No more pushes here. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/push/key:
+    get:
+      tags: [api]
+      operationId: pushKey
+      security: []
+      responses:
+        "200": { description: "The VAPID public key browsers subscribe with; empty when Web Push isn't set up.", content: { application/json: { schema: { $ref: "#/components/schemas/PushKey" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/usernames/{username}:
+    get:
+      tags: [api]
+      operationId: checkUsername
+      parameters: [{ name: username, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Whether you can have it., content: { application/json: { schema: { $ref: "#/components/schemas/UsernameCheck" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/users/{username}:
+    get:
+      tags: [api]
+      operationId: getProfile
+      security: []
+      parameters:
+        - { name: username, in: path, required: true, schema: { type: string } }
+        - { name: year, in: query, schema: { type: integer }, description: The year of activity to show; the latest by default. }
+      responses:
+        "200": { description: A public profile., content: { application/json: { schema: { $ref: "#/components/schemas/PublicProfile" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/me/notifications/{notification_id}/seen:
+    post:
+      tags: [api]
+      operationId: markSeen
+      description: The notification was shown; no device shows it again.
+      parameters: [{ name: notification_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Seen. }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /api/hooks/kratos/registration:
+    post:
+      tags: [api]
+      operationId: kratosRegistration
+      security: [{ hook: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KratosIdentity" } } } }
+      responses:
+        "204": { description: Account created. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/hooks/kratos/courier:
+    post:
+      tags: [api]
+      operationId: kratosCourier
+      security: [{ hook: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/KratosMessage" } } } }
+      responses:
+        "204": { description: Queued for sending. }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /api/decks/{deck_id}/shares:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [api]
+      operationId: listShares
+      responses:
+        "200": { description: People the deck is lent to., content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Share" } } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/decks/{deck_id}/shares/{user_id}:
+    parameters:
+      - { $ref: "#/components/parameters/DeckId" }
+      - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      tags: [api]
+      operationId: setShareRole
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RoleUpdate" } } } }
+      responses:
+        "204": { description: Saved. }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [api]
+      operationId: removeShare
+      description: The owner removes someone, or someone stops borrowing (their own id).
+      responses:
+        "204": { description: Removed. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/decks/{deck_id}/invites:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [api]
+      operationId: listInvites
+      responses:
+        "200": { description: Open invitations., content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Invite" } } } } }
+        default: { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [api]
+      operationId: createInvite
+      description: A link anyone can use for 30 days, or (with `email`) a single-use invitation sent to that address.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InviteRequest" } } } }
+      responses:
+        "201": { description: Created., content: { application/json: { schema: { $ref: "#/components/schemas/Invite" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/invites/{invite_id}:
+    delete:
+      tags: [api]
+      operationId: revokeInvite
+      parameters: [{ name: invite_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Revoked. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/invitations/{token}:
+    parameters: [{ $ref: "#/components/parameters/Token" }]
+    get:
+      tags: [api]
+      operationId: previewInvitation
+      security: []
+      responses:
+        "200": { description: What the invitation opens., content: { application/json: { schema: { $ref: "#/components/schemas/InvitationPreview" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/invitations/{token}/accept:
+    parameters: [{ $ref: "#/components/parameters/Token" }]
+    post:
+      tags: [api]
+      operationId: acceptInvitation
+      responses:
+        "200": { description: The deck is lent to you., content: { application/json: { schema: { $ref: "#/components/schemas/Lend" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /api/decks/{deck_id}/publication:
+    parameters: [{ $ref: "#/components/parameters/DeckId" }]
+    get:
+      tags: [api]
+      operationId: getPublication
+      responses:
+        "200": { description: The deck is on Discover., content: { application/json: { schema: { $ref: "#/components/schemas/Publication" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+    put:
+      tags: [api]
+      operationId: publishDeck
+      responses:
+        "200": { description: Listed on Discover., content: { application/json: { schema: { $ref: "#/components/schemas/Publication" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+    delete:
+      tags: [api]
+      operationId: unpublishDeck
+      description: Removes the deck from Discover. Followers keep it.
+      responses:
+        "204": { description: Unlisted. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/discover:
+    get:
+      tags: [api]
+      operationId: searchDiscover
+      security: []
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: language, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - name: sort
+          in: query
+          description: "top: most followed; new: newest first; hot: most followed in the last week."
+          schema: { type: string, enum: [top, new, hot], default: top }
+      responses:
+        "200": { description: "Public decks, in the order asked for.", content: { application/json: { schema: { $ref: "#/components/schemas/DiscoverPage" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/discover/{slug}:
+    parameters: [{ $ref: "#/components/parameters/Slug" }]
+    get:
+      tags: [api]
+      operationId: getPublicDeck
+      security: []
+      responses:
+        "200": { description: A public deck with a few sample cards., content: { application/json: { schema: { $ref: "#/components/schemas/PublicDeck" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/discover/{slug}/follow:
+    parameters: [{ $ref: "#/components/parameters/Slug" }]
+    post:
+      tags: [api]
+      operationId: followDeck
+      responses:
+        "200": { description: Followed., content: { application/json: { schema: { $ref: "#/components/schemas/Lend" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /api/media:
+    post:
+      tags: [api]
+      operationId: requestUpload
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UploadRequest" } } } }
+      responses:
+        "200": { description: "Where to send the file, or that it is already stored.", content: { application/json: { schema: { $ref: "#/components/schemas/UploadTarget" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/media/{hash}/complete:
+    parameters: [{ $ref: "#/components/parameters/Hash" }]
+    post:
+      tags: [api]
+      operationId: completeUpload
+      responses:
+        "204": { description: Stored and verified. }
+        default: { $ref: "#/components/responses/Problem" }
+  /media/{hash}:
+    parameters: [{ $ref: "#/components/parameters/Hash" }]
+    get:
+      tags: [api]
+      operationId: getMedia
+      security: []
+      description: The file, or a redirect to it. Contents never change, so it may be cached forever.
+      responses:
+        "200": { description: The file., content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+        "302": { description: Stored elsewhere., headers: { Location: { schema: { type: string } } } }
+        default: { $ref: "#/components/responses/Problem" }
+    put:
+      tags: [api]
+      operationId: putMedia
+      description: The upload target of the folder store.
+      requestBody: { required: true, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+      responses:
+        "204": { description: Received. }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /api/billing:
+    get:
+      tags: [api]
+      operationId: getBilling
+      responses:
+        "200": { description: Subscription state., content: { application/json: { schema: { $ref: "#/components/schemas/Billing" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/redeem:
+    post:
+      tags: [api]
+      operationId: redeem
+      description: |
+        Redeems a promo code for Pro: from when your Pro would end, for the code's days. Not while
+        a store subscription renews. On the web only (store rules).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RedeemRequest" } } } }
+      responses:
+        "200": { description: Redeemed., content: { application/json: { schema: { $ref: "#/components/schemas/Billing" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/billing/stripe/checkout:
+    post:
+      tags: [api]
+      operationId: stripeCheckout
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/CheckoutRequest" } } } }
+      responses:
+        "200": { description: Where to pay., content: { application/json: { schema: { $ref: "#/components/schemas/Redirect" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/billing/stripe/portal:
+    post:
+      tags: [api]
+      operationId: stripePortal
+      responses:
+        "200": { description: Where to manage the subscription., content: { application/json: { schema: { $ref: "#/components/schemas/Redirect" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/billing/app-store:
+    post:
+      tags: [api]
+      operationId: verifyAppStore
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/StoreProof" } } } }
+      responses:
+        "200": { description: Verified., content: { application/json: { schema: { $ref: "#/components/schemas/Billing" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/billing/google-play:
+    post:
+      tags: [api]
+      operationId: verifyGooglePlay
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/StoreProof" } } } }
+      responses:
+        "200": { description: Verified., content: { application/json: { schema: { $ref: "#/components/schemas/Billing" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/webhooks/{provider}:
+    post:
+      tags: [webhooks]
+      operationId: receiveWebhook
+      security: []
+      description: Store notifications (Stripe, App Store, Google Play), verified by dawl.
+      parameters: [{ name: provider, in: path, required: true, schema: { type: string, enum: [stripe, app-store, google-play] } }]
+      requestBody: { required: true, content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+      responses:
+        "204": { description: Handled. }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /api/oauth/login/{challenge}:
+    parameters: [{ name: challenge, in: path, required: true, schema: { type: string } }]
+    put:
+      tags: [api]
+      operationId: acceptLogin
+      description: Signs the person in for an agent's OAuth request (Hydra's login step).
+      responses:
+        "200": { description: Where the browser goes next., content: { application/json: { schema: { $ref: "#/components/schemas/Redirect" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/oauth/consent/{challenge}:
+    parameters: [{ name: challenge, in: path, required: true, schema: { type: string } }]
+    get:
+      tags: [api]
+      operationId: getConsent
+      responses:
+        "200": { description: The agent asking for access., content: { application/json: { schema: { $ref: "#/components/schemas/Consent" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [api]
+      operationId: decideConsent
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ConsentDecision" } } } }
+      responses:
+        "200": { description: Where the browser goes next., content: { application/json: { schema: { $ref: "#/components/schemas/Redirect" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/agents:
+    get:
+      tags: [api]
+      operationId: listAgents
+      responses:
+        "200": { description: Agents with access., content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Agent" } } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/agents/{client_id}:
+    delete:
+      tags: [api]
+      operationId: revokeAgent
+      parameters: [{ name: client_id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Revoked. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/export:
+    post:
+      tags: [api]
+      operationId: requestExport
+      description: Builds a ZIP of everything you own and emails a link to it, valid for 7 days.
+      responses:
+        "202": { description: Started. }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /api/staff/team:
+    get:
+      tags: [api]
+      operationId: listTeam
+      description: The owner and everyone with a role.
+      responses:
+        "200": { description: The team., content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/TeamMember" } } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/reports:
+    post:
+      tags: [api]
+      operationId: report
+      description: |
+        Reports a deck or a person. For illegal content, say which law (`law`), explain it in `note`
+        and confirm it's in good faith. One report per person while the matter is open.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ReportRequest" } } } }
+      responses:
+        "204": { description: Received. }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/staff/cases:
+    get:
+      tags: [api]
+      operationId: listCases
+      description: "Open cases, the most serious lanes first, then by weight."
+      parameters:
+        - { name: lane, in: query, schema: { type: string, enum: [illegal, safety, spam, other, waves, flags] } }
+        - { name: target, in: query, schema: { type: string, enum: [deck, person] } }
+      responses:
+        "200": { description: The queue., content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/CaseItem" } } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/staff/cases/{case_id}:
+    get:
+      tags: [api]
+      operationId: getCase
+      parameters: [{ name: case_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: "A case, with its reports or what's behind it.", content: { application/json: { schema: { $ref: "#/components/schemas/Case" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/staff/promo:
+    get:
+      tags: [api]
+      operationId: listPromoBatches
+      description: "Batches of promo codes, newest first. Making one is the promo.batch action."
+      responses:
+        "200": { description: The batches., content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/PromoBatch" } } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/staff/promo/{batch_id}:
+    get:
+      tags: [api]
+      operationId: getPromoBatch
+      parameters: [{ name: batch_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: "A batch and its codes: unused, used by whom, or revoked.", content: { application/json: { schema: { $ref: "#/components/schemas/PromoBatchCodes" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/staff/users:
+    get:
+      tags: [api]
+      operationId: searchUsers
+      description: |
+        People by username, name or id (`q`); by the email they sign in with (`users.email`); or by
+        an address or range they were seen at (`users.network`).
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: email, in: query, schema: { type: string } }
+        - { name: ip, in: query, schema: { type: string } }
+      responses:
+        "200": { description: Up to 30 people., content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/StaffUserItem" } } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/staff/users/{user_id}:
+    get:
+      tags: [api]
+      operationId: getStaffUser
+      description: "Someone as staff see them; private details only with the permissions for them."
+      parameters: [{ name: user_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: The person., content: { application/json: { schema: { $ref: "#/components/schemas/StaffUser" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/staff/actions:
+    get:
+      tags: [api]
+      operationId: listActions
+      description: |
+        The staff log, newest first. Without the `log.view` permission, only entries about `user` or
+        `deck`, or your own (`actor` set to yourself).
+      parameters:
+        - { name: actor, in: query, schema: { type: string, format: uuid } }
+        - { name: user, in: query, schema: { type: string, format: uuid } }
+        - { name: deck, in: query, schema: { type: string, format: uuid } }
+        - { name: kind, in: query, schema: { type: string } }
+        - { name: before, in: query, schema: { type: string, format: uuid }, description: The last id of the page before. }
+      responses:
+        "200": { description: A page of the log., content: { application/json: { schema: { $ref: "#/components/schemas/ActionPage" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+    post:
+      tags: [api]
+      operationId: doAction
+      description: Every staff change goes through here, logged and undoable (most kinds).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/ActionRequest" } } } }
+      responses:
+        "201": { description: Done., content: { application/json: { schema: { $ref: "#/components/schemas/StaffAction" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/staff/actions/{action_id}:
+    parameters: [{ $ref: "#/components/parameters/ActionId" }]
+    get:
+      tags: [api]
+      operationId: getAction
+      responses:
+        "200": { description: One entry., content: { application/json: { schema: { $ref: "#/components/schemas/StaffAction" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/staff/actions/{action_id}/undo:
+    parameters: [{ $ref: "#/components/parameters/ActionId" }]
+    post:
+      tags: [api]
+      operationId: undoAction
+      description: By whoever did it, or anyone ranked above them.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/UndoRequest" } } } }
+      responses:
+        "200": { description: Undone., content: { application/json: { schema: { $ref: "#/components/schemas/StaffAction" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /api/staff/revert:
+    post:
+      tags: [api]
+      operationId: revertActions
+      description: Undoes everything one staff member did since a time.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/RevertRequest" } } } }
+      responses:
+        "200": { description: Undone., content: { application/json: { schema: { $ref: "#/components/schemas/RevertResult" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+
+  /sync/pull:
+    post:
+      tags: [sync]
+      operationId: pull
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PullRequest" } } } }
+      responses:
+        "200": { description: Rows newer than each cursor., content: { application/json: { schema: { $ref: "#/components/schemas/PullResponse" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /sync/push:
+    post:
+      tags: [sync]
+      operationId: push
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PushRequest" } } } }
+      responses:
+        "200": { description: What the server kept and refused., content: { application/json: { schema: { $ref: "#/components/schemas/PushResponse" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+  /sync/fetch:
+    post:
+      tags: [sync]
+      operationId: fetch
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/FetchRequest" } } } }
+      responses:
+        "200": { description: The rows you can read., content: { application/json: { schema: { $ref: "#/components/schemas/Rows" } } } }
+        default: { $ref: "#/components/responses/Problem" }
+
+components:
+  securitySchemes:
+    session: { type: http, scheme: bearer, bearerFormat: JWT, description: A Kratos session tokenized as a JWT. }
+    hook: { type: apiKey, in: header, name: Authorization, description: The webhook secret Kratos is configured with. }
+
+  parameters:
+    DeckId: { name: deck_id, in: path, required: true, schema: { type: string, format: uuid } }
+    Token: { name: token, in: path, required: true, schema: { type: string } }
+    Slug: { name: slug, in: path, required: true, schema: { type: string } }
+    Hash: { name: hash, in: path, required: true, schema: { type: string, pattern: "^[0-9a-f]{64}$" } }
+    ActionId: { name: action_id, in: path, required: true, schema: { type: string, format: uuid } }
+
+  responses:
+    Problem:
+      description: Something went wrong.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Problem" } } }
+
+  schemas:
+    ErrorCode:
+      type: string
+      enum:
+        - unauthorized
+        - forbidden
+        - read_only
+        - not_found
+        - owner_mismatch
+        - cycle
+        - invalid
+        - template_in_use
+        - quota_exceeded
+        - too_large
+        - clock_ahead
+        - client_outdated
+        - pro_required
+        - name_required
+        - reauthenticate
+        - conflict
+        - unavailable
+        - internal
+        - passkey_required
+        - frozen
+        - rate_limited
+        - second_factor_required
+        - username_taken
+        - username_invalid
+        - too_soon
+        - profile_required
+        - restricted
+        - network_restricted
+        - code_invalid
+        - already_pro
+    Problem:
+      type: object
+      required: [code, message]
+      properties:
+        code: { $ref: "#/components/schemas/ErrorCode" }
+        message: { type: string }
+
+    # Rows: each is literally a table row (server/db/migrations), without server-only columns.
+    Deck:
+      type: object
+      required: [id, name, position, color, new_per_day, reviews_per_day, retention, gated, unlock_at, v]
+      properties:
+        id: { type: string, format: uuid }
+        owner_id: { type: string, format: uuid, nullable: true, description: "NULL: the author removed it; read-only." }
+        parent_id: { type: string, format: uuid, nullable: true }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        position: { type: string, description: A fractional index among its siblings. }
+        icon: { type: string, nullable: true }
+        color: { type: integer, minimum: 0, maximum: 7 }
+        description: { type: string, nullable: true }
+        language: { type: string, nullable: true, description: BCP 47 }
+        new_per_day: { type: integer, minimum: 0, maximum: 9999 }
+        reviews_per_day: { type: integer, minimum: 0, maximum: 99999 }
+        retention: { type: integer, minimum: 70, maximum: 99, description: Percent. }
+        gated: { type: boolean, description: Sub-decks unlock in order. }
+        unlock_at: { type: integer, minimum: 50, maximum: 100, description: "Percent of the deck before this one that must be learned." }
+        v: { type: integer, format: int64, description: The row's clock (last writer wins). }
+        deleted_at: { type: integer, format: int64, nullable: true }
+    Template:
+      type: object
+      required: [id, name, kind, def, v]
+      properties:
+        id: { type: string, format: uuid }
+        owner_id: { type: string, format: uuid, nullable: true }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        kind: { type: integer, description: "1 Rondo, 2 Anki HTML (read-only)." }
+        def: { $ref: "#/components/schemas/TemplateDef" }
+        v: { type: integer, format: int64 }
+        deleted_at: { type: integer, format: int64, nullable: true }
+    TemplateDef:
+      type: object
+      required: [fields, cards]
+      properties:
+        fields: { type: array, items: { $ref: "#/components/schemas/FieldDef" } }
+        cards: { type: array, items: { $ref: "#/components/schemas/CardDef" } }
+        css: { type: string, nullable: true, description: Anki HTML templates only. }
+    FieldDef:
+      type: object
+      required: [id, name, kind]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        kind: { type: string, enum: [text, image, audio, occlusion] }
+        tts: { type: boolean, nullable: true }
+    CardDef:
+      type: object
+      required: [id, name, front, back]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        front: { type: array, items: { $ref: "#/components/schemas/Block" } }
+        back: { type: array, items: { $ref: "#/components/schemas/Block" } }
+        each: { type: integer, nullable: true, description: "One card per cloze number or mask group of this field." }
+        anki_front: { type: string, nullable: true }
+        anki_back: { type: string, nullable: true }
+    Block:
+      type: object
+      description: Exactly one of field, divider, label or typein.
+      properties:
+        field: { type: integer, nullable: true }
+        size: { type: string, nullable: true, enum: [small, normal, large] }
+        align: { type: string, nullable: true, enum: [start, center] }
+        divider: { type: boolean, nullable: true }
+        label: { type: string, nullable: true }
+        typein: { type: integer, nullable: true }
+    Note:
+      type: object
+      required: [id, deck_id, template_id, fields, v]
+      properties:
+        id: { type: string, format: uuid }
+        owner_id: { type: string, format: uuid, nullable: true }
+        deck_id: { type: string, format: uuid }
+        template_id: { type: string, format: uuid }
+        fields: { type: object, additionalProperties: { type: string }, description: Field id to content. }
+        v: { type: integer, format: int64 }
+        deleted_at: { type: integer, format: int64, nullable: true }
+    Event:
+      type: object
+      required: [id, user_id, subject_id, card, kind, at]
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        subject_id: { type: string, format: uuid }
+        card: { type: integer }
+        kind: { type: integer, description: "1 review, 2 reset, 3 suspend, 4 unsuspend, 5 bury, 6 flag, 7 snapshot, 8 void, 9 unlock." }
+        value: { type: integer, nullable: true }
+        at: { type: integer, format: int64 }
+        duration_ms: { type: integer, nullable: true }
+        due: { type: integer, format: int64, nullable: true }
+        stability: { type: number, nullable: true }
+        difficulty: { type: number, nullable: true }
+        reps: { type: integer, nullable: true }
+        lapses: { type: integer, nullable: true }
+    Settings:
+      type: object
+      required: [user_id, grading, theme, text_size, v]
+      properties:
+        user_id: { type: string, format: uuid }
+        grading: { type: integer, description: 4 or 2 answer buttons. }
+        theme: { type: integer, description: "0 system, 1 light, 2 dark." }
+        text_size: { type: integer, description: Percent. }
+        timezone: { type: string, nullable: true }
+        fsrs_weights: { type: string, nullable: true }
+        reminder_at: { type: integer, nullable: true, minimum: 0, maximum: 1439, description: "Minutes after midnight to be reminded at; absent: no reminders." }
+        reminder_email: { type: boolean, nullable: true, description: Reminders by email too. }
+        v: { type: integer, format: int64 }
+    Rows:
+      type: object
+      properties:
+        decks: { type: array, items: { $ref: "#/components/schemas/Deck" } }
+        templates: { type: array, items: { $ref: "#/components/schemas/Template" } }
+        notes: { type: array, items: { $ref: "#/components/schemas/Note" } }
+        events: { type: array, items: { $ref: "#/components/schemas/Event" } }
+        settings: { type: array, items: { $ref: "#/components/schemas/Settings" } }
+
+    PullRequest:
+      type: object
+      required: [streams]
+      properties:
+        streams: { type: array, items: { $ref: "#/components/schemas/StreamPosition" } }
+    StreamPosition:
+      type: object
+      required: [key, cursor]
+      properties:
+        key: { type: string, description: "`me`, or the id of a lent deck." }
+        cursor: { type: integer, format: int64 }
+        fingerprint: { type: string, nullable: true }
+    PullResponse:
+      type: object
+      required: [lends, streams]
+      properties:
+        lends: { type: array, items: { $ref: "#/components/schemas/Lend" } }
+        streams: { type: array, items: { $ref: "#/components/schemas/StreamPage" } }
+    StreamPage:
+      type: object
+      required: [key, rows, cursor, more, resync]
+      properties:
+        key: { type: string }
+        rows: { $ref: "#/components/schemas/Rows" }
+        cursor: { type: integer, format: int64 }
+        more: { type: boolean }
+        fingerprint: { type: string, nullable: true }
+        deck_ids: { type: array, nullable: true, items: { type: string, format: uuid }, description: "Set when the fingerprint changed: every deck now in the stream." }
+        resync: { type: boolean, description: "The cursor is older than purged deletions: start the stream again." }
+    PushRequest:
+      type: object
+      required: [rows]
+      properties:
+        rows: { $ref: "#/components/schemas/Rows" }
+    PushResponse:
+      type: object
+      required: [accepted, rejected]
+      properties:
+        accepted: { type: integer }
+        rejected: { type: array, items: { $ref: "#/components/schemas/Rejection" } }
+    Rejection:
+      type: object
+      required: [entity, id, code]
+      properties:
+        entity: { type: string, enum: [deck, template, note, event, settings] }
+        id: { type: string, format: uuid }
+        code: { $ref: "#/components/schemas/ErrorCode" }
+    FetchRequest:
+      type: object
+      properties:
+        decks: { type: array, items: { type: string, format: uuid } }
+        templates: { type: array, items: { type: string, format: uuid } }
+    Lend:
+      type: object
+      required: [deck_id, role]
+      properties:
+        deck_id: { type: string, format: uuid }
+        role: { type: integer, description: "1 viewer, 2 editor." }
+        owner_id: { type: string, format: uuid, nullable: true }
+        owner_name: { type: string, nullable: true }
+
+    Me:
+      type: object
+      required: [id, pro]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, nullable: true }
+        pro: { type: boolean }
+        pro_until: { type: string, format: date-time, nullable: true }
+        lending:
+          type: array
+          items: { type: string, format: uuid }
+          description: Your decks that others borrow, follow or are invited to; moving decks out of them asks first.
+        username: { type: string }
+        flag: { type: string, nullable: true }
+        profile_confirmed: { type: boolean, description: "Confirmed once: sharing and publishing need it." }
+        activity_hidden: { type: boolean }
+        username_changes_at: { type: string, format: date-time, nullable: true, description: When the username can change next. }
+        restricted_until: { type: string, format: date-time, nullable: true, description: "Until then you can't publish, share, invite or change your name." }
+        second_factor_reset_at: { type: string, format: date-time, nullable: true, description: "When your second step is removed, as someone asked." }
+        suggested_flag: { type: string, nullable: true, description: The country this request seems to come from. }
+        roles: { type: array, items: { type: string }, description: "owner, admin, moderator, support or curator." }
+        permissions:
+          type: array
+          items: { type: string }
+          description: The staff tools you can use now. Empty until this session signed in with a passkey.
+        staff_locked: { type: boolean, description: "You have a role, but this session didn't sign in with a passkey." }
+        notifications:
+          type: array
+          items: { $ref: "#/components/schemas/Notification" }
+          description: Not yet shown on any device, oldest first.
+    Notification:
+      type: object
+      description: Written by the server, shown once on whichever device opens next.
+      required: [id, kind, presentation, title, body, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string }
+        presentation: { type: string, description: "modal or toast; anything else shows as a toast." }
+        title: { type: string }
+        body: { type: string }
+        link_label: { type: string, nullable: true }
+        link_url: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+    NameUpdate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 60 }
+    KratosIdentity:
+      type: object
+      required: [identity_id]
+      properties:
+        identity_id: { type: string, format: uuid }
+    KratosMessage:
+      type: object
+      required: [template_type, recipient]
+      properties:
+        template_type: { type: string }
+        recipient: { type: string }
+        code: { type: string, nullable: true }
+        url: { type: string, nullable: true }
+    Share:
+      type: object
+      required: [user_id, role]
+      properties:
+        user_id: { type: string, format: uuid }
+        name: { type: string, nullable: true, description: "The display name, else the username." }
+        username: { type: string, nullable: true }
+        role: { type: integer }
+    RoleUpdate:
+      type: object
+      required: [role]
+      properties:
+        role: { type: integer, minimum: 1, maximum: 2 }
+    InviteRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { type: integer, minimum: 1, maximum: 2 }
+        email: { type: string, format: email, nullable: true }
+    Invite:
+      type: object
+      required: [id, role, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        role: { type: integer }
+        email: { type: string, nullable: true }
+        url: { type: string, nullable: true, description: Only in the answer that created a link invitation. }
+        expires_at: { type: string, format: date-time }
+    InvitationPreview:
+      type: object
+      description: The deck as Discover shows it, and the role the invitation gives.
+      required: [deck, role]
+      properties:
+        deck: { $ref: "#/components/schemas/PublicDeck" }
+        role: { type: integer }
+    Publication:
+      type: object
+      required: [deck_id, slug, followers]
+      properties:
+        deck_id: { type: string, format: uuid }
+        slug: { type: string }
+        followers: { type: integer }
+        removed: { type: boolean, description: "Moderators took it off Discover; it can't be listed again." }
+    DiscoverItem:
+      type: object
+      required: [deck_id, name, followers, notes]
+      properties:
+        slug: { type: string, nullable: true, description: "Absent when the deck isn't on Discover (an invitation's preview)." }
+        deck_id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, nullable: true }
+        language: { type: string, nullable: true }
+        icon: { type: string, nullable: true }
+        color: { type: integer, nullable: true }
+        owner_name: { type: string, nullable: true, description: "The display name, else the username." }
+        owner_username: { type: string, nullable: true }
+        owner_flag: { type: string, nullable: true }
+        followers: { type: integer }
+        notes: { type: integer }
+    DiscoverPage:
+      type: object
+      required: [items, more]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/DiscoverItem" } }
+        more: { type: boolean }
+    PublicDeck:
+      type: object
+      required: [item, decks, samples]
+      properties:
+        item: { $ref: "#/components/schemas/DiscoverItem" }
+        decks: { type: array, items: { $ref: "#/components/schemas/Deck" }, description: The deck and everything under it. }
+        samples: { $ref: "#/components/schemas/Rows" }
+    UploadRequest:
+      type: object
+      required: [hash, size, mime]
+      properties:
+        hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+        size: { type: integer, minimum: 1 }
+        mime: { type: string }
+    UploadTarget:
+      type: object
+      required: [exists]
+      properties:
+        exists: { type: boolean }
+        url: { type: string, nullable: true }
+        headers: { type: object, additionalProperties: { type: string } }
+    Billing:
+      type: object
+      required: [pro]
+      properties:
+        pro: { type: boolean }
+        pro_until: { type: string, format: date-time, nullable: true }
+        provider: { type: string, nullable: true, enum: [stripe, app-store, google-play, promo, grant] }
+        renews: { type: boolean, nullable: true }
+    CheckoutRequest:
+      type: object
+      required: [plan]
+      properties:
+        plan: { type: string, enum: [monthly, yearly] }
+    StoreProof:
+      type: object
+      required: [proof]
+      properties:
+        proof: { type: string, description: The App Store signed transaction or the Play purchase token. }
+        product_id: { type: string, nullable: true }
+    Redirect:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string }
+    Consent:
+      type: object
+      required: [client_id, client_name, scopes]
+      properties:
+        client_id: { type: string }
+        client_name: { type: string }
+        client_uri: { type: string, nullable: true }
+        scopes: { type: array, items: { type: string } }
+    ConsentDecision:
+      type: object
+      required: [accept]
+      properties:
+        accept: { type: boolean }
+    Agent:
+      type: object
+      required: [client_id, client_name, granted_at]
+      properties:
+        client_id: { type: string }
+        client_name: { type: string }
+        granted_at: { type: string, format: date-time }
+
+    UserRef:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string, nullable: true }
+        name: { type: string, nullable: true }
+        flag: { type: string, nullable: true }
+    TeamMember:
+      type: object
+      required: [user, roles]
+      properties:
+        user: { $ref: "#/components/schemas/UserRef" }
+        roles: { type: array, items: { type: string } }
+    StaffAction:
+      type: object
+      required: [id, kind, created_at, data, undoable]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string }
+        actor: { $ref: "#/components/schemas/UserRef" }
+        user: { $ref: "#/components/schemas/UserRef" }
+        deck_id: { type: string, format: uuid, nullable: true }
+        deck_name: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        until: { type: string, format: date-time, nullable: true }
+        data: { type: object, additionalProperties: { type: string } }
+        case_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+        undone_at: { type: string, format: date-time, nullable: true }
+        undone_by: { $ref: "#/components/schemas/UserRef" }
+        undo_reason: { type: string, nullable: true }
+        undoable: { type: boolean, description: Whether you can undo it. }
+    ActionPage:
+      type: object
+      required: [items, more]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/StaffAction" } }
+        more: { type: boolean }
+    ActionRequest:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string }
+        user_id: { type: string, format: uuid, nullable: true }
+        deck_id: { type: string, format: uuid, nullable: true }
+        reason: { type: string, nullable: true }
+        note: { type: string, nullable: true, maxLength: 2000 }
+        until: { type: string, format: date-time, nullable: true }
+        data: { type: object, additionalProperties: { type: string } }
+        case_id: { type: string, format: uuid, nullable: true }
+    UndoRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    RevertRequest:
+      type: object
+      required: [actor_id, since, reason]
+      properties:
+        actor_id: { type: string, format: uuid }
+        since: { type: string, format: date-time }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    RevertResult:
+      type: object
+      required: [undone]
+      properties:
+        undone: { type: integer }
+
+    ProfileUpdate:
+      type: object
+      properties:
+        username: { type: string, nullable: true }
+        name: { type: string, nullable: true, description: Empty clears it. }
+        flag: { type: string, nullable: true, description: An ISO 3166 country code; empty clears it. }
+        activity_hidden: { type: boolean, nullable: true }
+        confirm: { type: boolean, nullable: true, description: Confirms the profile. }
+    UsernameCheck:
+      type: object
+      required: [username, available]
+      properties:
+        username: { type: string, description: As it would be saved. }
+        available: { type: boolean }
+        reason: { type: string, nullable: true, description: "invalid, reserved, rude, taken or held." }
+        suggestion: { type: string, nullable: true, description: A free one like it. }
+    PublicProfile:
+      type: object
+      required: [id, username, joined, pro, decks]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        name: { type: string, nullable: true }
+        flag: { type: string, nullable: true }
+        joined: { type: string, format: date-time }
+        pro: { type: boolean }
+        moved_from: { type: string, nullable: true, description: "The old username asked for, when it led here." }
+        decks: { type: array, items: { $ref: "#/components/schemas/DiscoverItem" } }
+        activity: { $ref: "#/components/schemas/Activity" }
+    Activity:
+      type: object
+      description: Absent when its person hides it.
+      required: [year, years, reviews, year_reviews, year_days, year_minutes, streak, longest_streak, days]
+      properties:
+        year: { type: integer }
+        years: { type: array, items: { type: integer }, description: Years with any reviews. }
+        reviews: { type: integer, description: All time. }
+        learned: { type: integer, nullable: true, description: "Cards learned, as their devices last counted." }
+        year_reviews: { type: integer }
+        year_days: { type: integer }
+        year_minutes: { type: integer }
+        streak: { type: integer, description: Days in a row up to today (or yesterday). }
+        longest_streak: { type: integer }
+        days: { type: array, items: { $ref: "#/components/schemas/ActivityDay" }, description: The year's days with reviews. }
+    ActivityDay:
+      type: object
+      required: [date, reviews]
+      properties:
+        date: { type: string, format: date }
+        reviews: { type: integer }
+
+    StaffUserItem:
+      type: object
+      required: [user, joined, roles]
+      properties:
+        user: { $ref: "#/components/schemas/UserRef" }
+        joined: { type: string, format: date-time }
+        roles: { type: array, items: { type: string } }
+        restricted_until: { type: string, format: date-time, nullable: true }
+        banned_until: { type: string, format: date-time, nullable: true }
+    StaffUser:
+      type: object
+      required: [user, joined, pro, roles, recent, suggested_kind]
+      properties:
+        user: { $ref: "#/components/schemas/UserRef" }
+        joined: { type: string, format: date-time }
+        pro: { type: boolean }
+        roles: { type: array, items: { type: string } }
+        restricted_until: { type: string, format: date-time, nullable: true }
+        banned_until: { type: string, format: date-time, nullable: true }
+        recent: { type: integer, description: "Warnings, restrictions, bans and removed decks in the last 180 days." }
+        suggested_kind: { type: string, description: The next step on the ladder. }
+        suggested_days: { type: integer, nullable: true, description: "For a restriction: how long; absent for good." }
+        email: { type: string, nullable: true, description: With users.email. }
+        email_verified: { type: boolean, nullable: true }
+        sign_in: { type: array, nullable: true, items: { type: string }, description: "How they can sign in: code, passkey, totp, google, apple." }
+        ips: { type: array, nullable: true, items: { $ref: "#/components/schemas/IPUse" }, description: With users.network. }
+        names: { type: array, nullable: true, items: { $ref: "#/components/schemas/NameUse" }, description: With users.names. }
+        related: { type: array, nullable: true, items: { $ref: "#/components/schemas/Related" }, description: With users.network. }
+        billing: { $ref: "#/components/schemas/Billing" }
+    IPUse:
+      type: object
+      required: [ip, first_at, last_at, uses]
+      properties:
+        ip: { type: string }
+        first_at: { type: string, format: date-time }
+        last_at: { type: string, format: date-time }
+        uses: { type: integer }
+    NameUse:
+      type: object
+      required: [kind, at, by_staff, undone]
+      properties:
+        kind: { type: string, description: username or name. }
+        value: { type: string, nullable: true }
+        at: { type: string, format: date-time }
+        by_staff: { type: boolean }
+        undone: { type: boolean }
+    Related:
+      type: object
+      required: [user, why]
+      properties:
+        user: { $ref: "#/components/schemas/UserRef" }
+        why: { type: array, items: { type: string }, description: "address, email or name." }
+
+    ReportRequest:
+      type: object
+      required: [target_kind, target_id, reason]
+      properties:
+        target_kind: { type: string, enum: [deck, person] }
+        target_id: { type: string, format: uuid }
+        reason: { type: string, description: "spam, harassment, hate, sexual, impersonation, illegal or other." }
+        law: { type: string, nullable: true, description: "For illegal content: copyright, child_safety, terrorism, privacy or other_law." }
+        note: { type: string, nullable: true, maxLength: 2000 }
+        good_faith: { type: boolean, nullable: true }
+    CaseDeck:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string, nullable: true }
+        owner: { $ref: "#/components/schemas/UserRef" }
+    CaseItem:
+      type: object
+      required: [id, kind, lane, score, reports, reasons, opened_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, description: "reports, wave or flag." }
+        lane: { type: string }
+        score: { type: number }
+        reports: { type: integer }
+        reasons: { type: array, items: { type: string } }
+        deck: { $ref: "#/components/schemas/CaseDeck" }
+        person: { $ref: "#/components/schemas/UserRef" }
+        summary: { type: string, nullable: true, description: "A wave's measure (reports, publications, signups) or a flag's rule." }
+        today: { type: integer, nullable: true, description: A wave's count in the last day. }
+        usual: { type: number, nullable: true, description: A wave's usual count. }
+        opened_at: { type: string, format: date-time }
+        resolved_at: { type: string, format: date-time, nullable: true }
+    Case:
+      type: object
+      required: [item, reports, decks, people, reporters]
+      properties:
+        item: { $ref: "#/components/schemas/CaseItem" }
+        reports: { type: array, items: { $ref: "#/components/schemas/ReportItem" } }
+        decks: { type: array, items: { $ref: "#/components/schemas/CaseDeck" }, description: A wave's decks. }
+        people: { type: array, items: { $ref: "#/components/schemas/UserRef" }, description: A wave's people. }
+        reporters: { type: array, items: { $ref: "#/components/schemas/UserRef" }, description: A wave's reporters. }
+    ReportItem:
+      type: object
+      required: [reporter, reason, weight, created_at]
+      properties:
+        reporter: { $ref: "#/components/schemas/UserRef" }
+        reason: { type: string }
+        law: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        weight: { type: number }
+        created_at: { type: string, format: date-time }
+
+    RedeemRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, maxLength: 40 }
+    PromoBatch:
+      type: object
+      required: [id, days, codes, used, created_at, undone]
+      properties:
+        id: { type: string, format: uuid }
+        note: { type: string, nullable: true }
+        days: { type: integer }
+        codes: { type: integer }
+        used: { type: integer }
+        redeem_by: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        by: { $ref: "#/components/schemas/UserRef" }
+        undone: { type: boolean, description: "Undone: none of its codes work." }
+    PromoCodeItem:
+      type: object
+      required: [code, revoked]
+      properties:
+        code: { type: string, description: Grouped in fours. }
+        used_by: { $ref: "#/components/schemas/UserRef" }
+        used_at: { type: string, format: date-time, nullable: true }
+        revoked: { type: boolean }
+    PromoBatchCodes:
+      type: object
+      required: [batch, codes]
+      properties:
+        batch: { $ref: "#/components/schemas/PromoBatch" }
+        codes: { type: array, items: { $ref: "#/components/schemas/PromoCodeItem" } }
+
+    EmailChange:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+    CodeEntry:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, maxLength: 20 }
+    Links:
+      type: object
+      required: [providers]
+      properties:
+        providers: { type: array, items: { type: string }, description: "google, apple." }
+    LinkRequest:
+      type: object
+      required: [provider, id_token]
+      properties:
+        provider: { type: string, enum: [google, apple] }
+        id_token: { type: string }
+        nonce: { type: string, nullable: true }
+    ResetRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+    ResetConfirm:
+      type: object
+      required: [email, code]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        code: { type: string, maxLength: 20 }
+
+    Summary:
+      type: object
+      required: [due, learned]
+      properties:
+        due: { type: array, items: { type: integer }, minItems: 1, maxItems: 7, description: "Cards due on each of the next days, today first." }
+        learned: { type: integer }
+    PushDevice:
+      type: object
+      required: [platform, endpoint, reminders]
+      properties:
+        platform: { type: string, enum: [web, apns, fcm] }
+        endpoint: { type: string, maxLength: 2000, description: "The push service's address, or the device token." }
+        p256dh: { type: string, nullable: true }
+        auth: { type: string, nullable: true }
+        reminders: { type: boolean, description: Wants reminders from the server. }
+        local_until: { type: string, format: date-time, nullable: true, description: "Shows its own reminders until then, so the server doesn't." }
+    PushDeviceId:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+    PushKey:
+      type: object
+      required: [key]
+      properties:
+        key: { type: string }

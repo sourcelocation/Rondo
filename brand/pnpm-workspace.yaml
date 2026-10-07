@@ -1,0 +1,6 @@
+# Dependencies' install scripts stay off. Exact versions keep the lockfile and package.json in step.
+allowBuilds:
+  esbuild: false
+  # shasp comes from its git tag (package.json) and builds itself on install; the key pins its commit.
+  "@sourcelocation/shasp@https://codeload.github.com/sourcelocation/shasp/tar.gz/379f3b9efe985831c34b93a09e64a77845946069": true
+savePrefix: ""

@@ -1,0 +1,144 @@
+{
+  "$description": "Platform-agnostic foundation tokens. Sizes are in density-independent points (pt on Apple, dp/sp on Android, px on web).",
+  "font": {
+    "family": {
+      "$type": "fontFamily",
+      "serif": {
+        "$value": ["Juana", "serif"],
+        "$description": "Display & card prompts."
+      },
+      "sans": { "$value": ["Geist", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"] },
+      "mono": { "$value": ["Geist Mono", "SF Mono", "JetBrains Mono", "Menlo", "monospace"] }
+    },
+    "weight": {
+      "$type": "fontWeight",
+      "light": { "$value": 300 },
+      "regular": { "$value": 400 },
+      "medium": { "$value": 500 },
+      "semibold": { "$value": 600 },
+      "bold": { "$value": 700 }
+    }
+  },
+  "text": {
+    "$type": "typography",
+    "display-xl": { "$value": { "fontFamily": "{font.family.serif}", "fontWeight": "{font.weight.light}", "fontSize": "72", "lineHeight": "76", "letterSpacing": "-1.8" } },
+    "display-lg": { "$value": { "fontFamily": "{font.family.serif}", "fontWeight": "{font.weight.light}", "fontSize": "52", "lineHeight": "56", "letterSpacing": "-1.0" } },
+    "display-md": { "$value": { "fontFamily": "{font.family.serif}", "fontWeight": "{font.weight.regular}", "fontSize": "38", "lineHeight": "44", "letterSpacing": "-0.6" } },
+    "title-lg": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.semibold}", "fontSize": "26", "lineHeight": "32", "letterSpacing": "-0.4" } },
+    "title-md": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.semibold}", "fontSize": "20", "lineHeight": "26", "letterSpacing": "-0.2" } },
+    "title-sm": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.semibold}", "fontSize": "17", "lineHeight": "22", "letterSpacing": "-0.1" } },
+    "body-lg": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.regular}", "fontSize": "17", "lineHeight": "26", "letterSpacing": "0" } },
+    "body-md": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.regular}", "fontSize": "15", "lineHeight": "22", "letterSpacing": "0" } },
+    "body-sm": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.regular}", "fontSize": "13", "lineHeight": "18", "letterSpacing": "0" } },
+    "label-lg": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.medium}", "fontSize": "15", "lineHeight": "20", "letterSpacing": "0" } },
+    "label-md": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.medium}", "fontSize": "13", "lineHeight": "16", "letterSpacing": "0.1" } },
+    "label-sm": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.medium}", "fontSize": "11", "lineHeight": "14", "letterSpacing": "0.4" } },
+    "caption": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.regular}", "fontSize": "12", "lineHeight": "16", "letterSpacing": "0.1" } },
+    "mono-md": { "$value": { "fontFamily": "{font.family.mono}", "fontWeight": "{font.weight.regular}", "fontSize": "14", "lineHeight": "20", "letterSpacing": "0" } },
+    "numeric-lg": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.medium}", "fontSize": "32", "lineHeight": "36", "letterSpacing": "-0.8" } },
+    "prompt-xxl": { "$value": { "fontFamily": "{font.family.serif}", "fontWeight": "{font.weight.regular}", "fontSize": "60", "lineHeight": "66", "letterSpacing": "-1.2" }, "$description": "Card prompt, 1–3 glyph content (e.g. a kanji)." },
+    "prompt-xl": { "$value": { "fontFamily": "{font.family.serif}", "fontWeight": "{font.weight.regular}", "fontSize": "46", "lineHeight": "52", "letterSpacing": "-0.8" }, "$description": "Card prompt, a single word." },
+    "prompt-lg": { "$value": { "fontFamily": "{font.family.serif}", "fontWeight": "{font.weight.regular}", "fontSize": "34", "lineHeight": "42", "letterSpacing": "-0.4" }, "$description": "Card prompt, a short phrase." },
+    "prompt-md": { "$value": { "fontFamily": "{font.family.serif}", "fontWeight": "{font.weight.regular}", "fontSize": "26", "lineHeight": "34", "letterSpacing": "-0.2" }, "$description": "Card prompt, a sentence." },
+    "prompt-sm": { "$value": { "fontFamily": "{font.family.serif}", "fontWeight": "{font.weight.regular}", "fontSize": "21", "lineHeight": "30", "letterSpacing": "0" }, "$description": "Card prompt, a paragraph." },
+    "answer": { "$value": { "fontFamily": "{font.family.sans}", "fontWeight": "{font.weight.regular}", "fontSize": "18", "lineHeight": "28", "letterSpacing": "0" }, "$description": "Card body text." }
+  },
+  "space": {
+    "$type": "dimension",
+    "0": { "$value": "0" },
+    "1": { "$value": "2" },
+    "2": { "$value": "4" },
+    "3": { "$value": "8" },
+    "4": { "$value": "12" },
+    "5": { "$value": "16" },
+    "6": { "$value": "20" },
+    "7": { "$value": "24" },
+    "8": { "$value": "32" },
+    "9": { "$value": "40" },
+    "10": { "$value": "48" },
+    "11": { "$value": "64" },
+    "12": { "$value": "80" },
+    "13": { "$value": "96" },
+    "14": { "$value": "128" }
+  },
+  "radius": {
+    "$type": "dimension",
+    "none": { "$value": "0" },
+    "xs": { "$value": "4" },
+    "sm": { "$value": "8" },
+    "md": { "$value": "12" },
+    "lg": { "$value": "16" },
+    "xl": { "$value": "24" },
+    "card": { "$value": "28", "$description": "The study card." },
+    "full": { "$value": "9999" }
+  },
+  "size": {
+    "$type": "dimension",
+    "touch-min": { "$value": "44", "$description": "Minimum hit target. Android rounds up to 48 via platform conventions." },
+    "icon-sm": { "$value": "16" },
+    "icon-md": { "$value": "20" },
+    "icon-lg": { "$value": "24" },
+    "control-sm": { "$value": "32" },
+    "control-md": { "$value": "40" },
+    "control-lg": { "$value": "52" },
+    "content-max": { "$value": "720", "$description": "Max width of reading/study column." },
+    "sidebar": { "$value": "264" },
+    "border-hairline": { "$value": "1" },
+    "border-thick": { "$value": "2" },
+    "focus-ring": { "$value": "3" }
+  },
+  "opacity": {
+    "$type": "number",
+    "disabled": { "$value": 0.4 },
+    "muted": { "$value": 0.64 },
+    "pressed": { "$value": 0.88 }
+  },
+  "motion": {
+    "duration": {
+      "$type": "duration",
+      "instant": { "$value": "80ms" },
+      "fast": { "$value": "140ms" },
+      "base": { "$value": "220ms" },
+      "slow": { "$value": "360ms" },
+      "deliberate": { "$value": "560ms" }
+    },
+    "easing": {
+      "$type": "cubicBezier",
+      "standard": { "$value": [0.2, 0, 0, 1] },
+      "emphasized": { "$value": [0.3, 0, 0, 1] },
+      "enter": { "$value": [0, 0, 0, 1] },
+      "exit": { "$value": [0.4, 0, 1, 1] }
+    },
+    "spring": {
+      "$type": "number",
+      "card-flip-response": { "$value": 0.42, "$description": "Spring response (s) for the card flip." },
+      "card-flip-damping": { "$value": 0.86 },
+      "swipe-response": { "$value": 0.32 },
+      "swipe-damping": { "$value": 0.78 }
+    }
+  },
+  "elevation": {
+    "$type": "shadow",
+    "1": { "$value": [{ "color": "#14141310", "offsetX": "0", "offsetY": "1", "blur": "2", "spread": "0" }] },
+    "2": { "$value": [{ "color": "#1414130F", "offsetX": "0", "offsetY": "4", "blur": "12", "spread": "-2" }, { "color": "#14141308", "offsetX": "0", "offsetY": "1", "blur": "3", "spread": "0" }] },
+    "3": { "$value": [{ "color": "#14141314", "offsetX": "0", "offsetY": "16", "blur": "40", "spread": "-8" }, { "color": "#1414130A", "offsetX": "0", "offsetY": "2", "blur": "6", "spread": "0" }] }
+  },
+  "layer": {
+    "$type": "number",
+    "base": { "$value": 0 },
+    "sticky": { "$value": 100 },
+    "dropdown": { "$value": 200 },
+    "overlay": { "$value": 300 },
+    "modal": { "$value": 400 },
+    "toast": { "$value": 500 },
+    "tooltip": { "$value": 600 }
+  },
+  "breakpoint": {
+    "$type": "dimension",
+    "sm": { "$value": "640" },
+    "md": { "$value": "768" },
+    "lg": { "$value": "1024" },
+    "xl": { "$value": "1280" },
+    "2xl": { "$value": "1536" }
+  }
+}

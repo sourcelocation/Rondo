@@ -1,0 +1,45 @@
+---
+title: Import from Anki
+icon: Import
+description: Bring your decks, review history, and media into Rondo.
+---
+
+<Steps>
+<Step>
+
+### Export from Anki
+
+In Anki, open **File › Export**. Choose **Anki Deck Package** (`.apkg`) for a deck or **Anki Collection Package** (`.colpkg`) for everything. Include scheduling information and media. Both the current format and the older one ("Support older Anki versions") work.
+
+</Step>
+<Step>
+
+### Choose how to import
+
+Open **Home › Import from Anki** (or **Profile › Import**).
+
+| Option                 | What it does                                                                                                                                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Make it editable       | On by default. Turns Anki's HTML into Rondo cards: formatting, clozes, MathJax and furigana become Rondo's own, images and sounds get fields of their own. Standard Anki types become Rondo's built-in ones. |
+| Include review history | On by default. Brings every past review, for [Progress](/studying#progress) and a schedule fitted to you. Off brings only where each card stands.                                                            |
+| Deck                   | Where the imported decks go: the top level, or inside one of your decks.                                                                                                                                     |
+
+With **Make it editable** off, cards keep Anki's own HTML and look exactly as they did in Anki, but can't be edited in Rondo. You can change your mind later: open the deck and choose **Convert to Rondo format**, which makes an editable copy and keeps your progress.
+
+</Step>
+<Step>
+
+### Choose the file
+
+Choose **Choose file** and pick the package. It is read on your device; only your decks, notes and media sync afterwards, as usual.
+
+When it's done, Rondo says how many notes and media files came in, and how many notes didn't fit (a field over 64 KB, say) and were left out.
+
+</Step>
+</Steps>
+
+<Callout title="Image occlusion" type="info">
+  Anki's Image Occlusion notes become Rondo's: rectangles, ellipses and polygons each become a mask.
+</Callout>
+
+Importing the same package twice makes a second copy; delete the first from **Decks** if you don't need it.

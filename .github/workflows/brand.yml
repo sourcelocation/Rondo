@@ -1,0 +1,41 @@
+name: Brand
+
+on:
+  push:
+    branches: [master]
+    paths: [brand/**, .github/workflows/brand.yml]
+  pull_request:
+    paths: [brand/**, .github/workflows/brand.yml]
+
+concurrency:
+  group: brand-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: brand
+
+jobs:
+  check:
+    name: Lint and published output
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          package_json_file: brand/package.json
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: brand/.node-version
+          cache: pnpm
+          cache-dependency-path: brand/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      # dist/ is what every other project reads: it must be what the sources produce.
+      - name: Published output is current
+        run: pnpm check
