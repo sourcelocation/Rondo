@@ -88,7 +88,7 @@ authorless and read-only. Media are named by their SHA-256 and never change.
 | Jobs | Go server | River, queued in the same database: mail, pushes, exports, derivations and periodic cleanup. |
 | Web app | `app/platforms/web` | A PWA under `/app`: SQLite in WebAssembly on OPFS, one tab at a time. Overlays live in the address. |
 | Sites | `site/` | The landing page (static, only the logo from `brand/`, strict CSP) and the docs. The launch list lives in Listmonk. |
-| Shipping | ops repository | A tag builds four images; Flux deploys them to k3s behind Cloudflare. CI lints, tests and checks generated code. |
+| Shipping | ops repository | A release is a pull request from master into production, titled with its version; merging it tags it, builds four images, and Flux deploys them to k3s behind Cloudflare. CI lints, tests and checks generated code. |
 
 ## Where a change goes
 

@@ -1,18 +1,81 @@
 name: Release
 
-# A version tag builds the four images and asks ops to deploy them.
+# A release is a pull request from master into production, titled with the version it ships
+# (v1.2.3). On the pull request, "Release version" checks the title; merging it tags the merge
+# commit, builds the four images and asks ops to deploy them.
 on:
+  pull_request:
+    branches: [production]
+    types: [opened, edited, reopened, synchronize]
   push:
-    tags: ["v*"]
+    branches: [production]
 
 permissions:
   contents: read
-  packages: write
+
+concurrency:
+  group: release-${{ github.event_name }}-${{ github.event.pull_request.number || 'production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  version:
+    name: Release version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            pr=$(jq '.pull_request' "$GITHUB_EVENT_PATH")
+          else
+            pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+              --jq "[.[] | select(.base.ref == \"production\" and .merged_at != null)][0]")
+          fi
+          if [ -z "$pr" ] || [ "$pr" = null ]; then
+            echo "::error::production only changes through a release pull request."; exit 1
+          fi
+          tag=$(jq -r '.title' <<<"$pr")
+          from=$(jq -r '.head.repo.full_name + ":" + .head.ref' <<<"$pr")
+          if [ "$from" != "$GITHUB_REPOSITORY:$DEFAULT_BRANCH" ]; then
+            echo "::error::A release comes from $DEFAULT_BRANCH, not $from."; exit 1
+          fi
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::The title is the version it releases, like v1.2.3, not \"$tag\"."; exit 1
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --silent 2>/dev/null; then
+            echo "::error::$tag is released already."; exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  tag:
+    name: Tag
+    if: github.event_name == 'push'
+    needs: version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$TAG" -f sha="$GITHUB_SHA" --silent
+
   images:
     name: Image ${{ matrix.image }}
+    if: github.event_name == 'push'
+    needs: [version, tag]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         include:
@@ -34,19 +97,20 @@ jobs:
           file: ${{ matrix.file }}
           target: ${{ matrix.target }}
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/rondo-${{ matrix.image }}:${{ github.ref_name }}
+          tags: ghcr.io/${{ github.repository_owner }}/rondo-${{ matrix.image }}:${{ needs.version.outputs.tag }}
           build-args: |
-            VERSION=${{ github.ref_name }}
-            RELEASE=${{ github.ref_name }}
+            VERSION=${{ needs.version.outputs.tag }}
+            RELEASE=${{ needs.version.outputs.tag }}
             SENTRY_DSN=${{ vars.WEB_SENTRY_DSN }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   deploy:
     name: Deploy through ops
-    needs: images
+    if: github.event_name == 'push'
+    needs: [version, images]
     runs-on: ubuntu-latest
-    # Only v* tags may deploy, and the token that writes to ops lives in this environment.
+    # Only production may deploy, and the token that writes to ops lives in this environment.
     environment: production
     steps:
       - uses: actions/checkout@v7.0.1
@@ -56,7 +120,7 @@ jobs:
       # As GeoDuels does: only the image tags change, and a race with another app's deploy rebases.
       - name: Point apps/rondo at the new images
         env:
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ needs.version.outputs.tag }}
           OWNER: ${{ github.repository_owner }}
         run: |
           for image in api sync web site; do
