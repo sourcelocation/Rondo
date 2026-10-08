@@ -10,6 +10,7 @@ import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.call
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
+import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.request.header
@@ -55,7 +56,15 @@ fun main() {
     val hydra = env["RONDO_HYDRA_PUBLIC_URL"] ?: "$origin/"
     Maintenance(db).start()
     val sync = Sync(db)
-    embeddedServer(CIO, port = env["RONDO_SYNC_PORT"]?.toInt() ?: 23902) {
+    embeddedServer(
+        CIO,
+        configure = {
+            connector { port = env["RONDO_SYNC_PORT"]?.toInt() ?: 23902 }
+            // On a signal, requests in flight get up to 20 seconds, within the pod's grace period.
+            shutdownGracePeriod = 1_000
+            shutdownTimeout = 20_000
+        },
+    ) {
         rondo(sync, auth)
         mcp(db, sync, auth, origin, hydra)
     }.start(wait = true)

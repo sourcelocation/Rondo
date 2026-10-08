@@ -1,5 +1,6 @@
 import { gsap } from "gsap";
 import { Mesh, Program, Renderer, Triangle } from "ogl";
+import { onResize } from "./dom";
 
 /** The page's moods: how strongly the light shows behind each section, and in which colours. */
 export const moods = {
@@ -157,8 +158,8 @@ export class Aurora {
     this.mesh = new Mesh(gl, { geometry: new Triangle(gl), program });
     host.append(gl.canvas);
     host.classList.add("is-webgl");
-    this.resize();
-    window.addEventListener("resize", () => this.resize());
+    this.resize(host);
+    onResize(host, () => this.resize(host));
     if (!still) {
       window.addEventListener(
         "pointermove",
@@ -189,9 +190,10 @@ export class Aurora {
     gsap.to(this.state, { ...target, duration, ease: "sine.inOut", overwrite: true });
   }
 
-  private resize(): void {
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.uniforms.uResolution.value = [window.innerWidth, window.innerHeight];
+  private resize(host: HTMLElement): void {
+    const { clientWidth: width, clientHeight: height } = host;
+    this.renderer.setSize(width, height);
+    this.uniforms.uResolution.value = [width, height];
     this.dirty = true;
   }
 

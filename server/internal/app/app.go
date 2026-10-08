@@ -212,11 +212,11 @@ func Serve(ctx context.Context, cfg Config, log *slog.Logger) error {
 			staffService.Renewers[provider] = renewer
 		}
 	}
-	// Workers start once everything they use is wired.
-	if err := queue.Start(ctx); err != nil {
+	// Workers start once everything they use is wired. A signal doesn't cancel running jobs: the
+	// drain below lets them finish.
+	if err := queue.Start(context.WithoutCancel(ctx)); err != nil {
 		return err
 	}
-	defer func() { _ = queue.Stop(context.WithoutCancel(ctx)) }()
 
 	e := echo.New()
 	e.HTTPErrorHandler = problems(log)
@@ -237,17 +237,26 @@ func Serve(ctx context.Context, cfg Config, log *slog.Logger) error {
 	}
 
 	server := &http.Server{Addr: cfg.Addr, Handler: e, ReadHeaderTimeout: 10 * time.Second}
-	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.WithoutCancel(ctx), 20*time.Second)
-		defer cancel()
-		_ = server.Shutdown(shutdown)
-	}()
+	served := make(chan error, 1)
+	go func() { served <- server.ListenAndServe() }()
 	log.Info("serving", "addr", cfg.Addr)
-	if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+	select {
+	case err := <-served:
+		_ = queue.StopAndCancel(context.WithoutCancel(ctx))
 		return err
+	case <-ctx.Done():
 	}
-	return nil
+
+	// The drain, within the pod's grace period: requests in flight finish, then running jobs. Jobs
+	// still running at the deadline are cancelled, and River runs them again later.
+	draining, cancel := context.WithTimeout(context.WithoutCancel(ctx), 20*time.Second)
+	defer cancel()
+	log.Info("draining")
+	err = server.Shutdown(draining)
+	if queue.Stop(draining) != nil {
+		_ = queue.StopAndCancel(context.WithoutCancel(ctx))
+	}
+	return err
 }
 
 // stores connects the payment providers that are configured.

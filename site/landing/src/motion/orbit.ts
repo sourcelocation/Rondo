@@ -1,6 +1,6 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { all } from "./dom";
+import { all, onResize } from "./dom";
 import { TAU, damp, quantize } from "./math";
 
 /** The core's layer: marks behind the ring's middle sort under it, marks in front over it. */
@@ -34,7 +34,7 @@ export class Orbit {
     this.rest = -(yours / this.items.length) * TAU;
     root.classList.add("is-moving");
     this.measure();
-    window.addEventListener("resize", () => {
+    onResize(root, () => {
       this.measure();
       if (this.still) this.draw();
     });

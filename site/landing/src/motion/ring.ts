@@ -1,5 +1,5 @@
 import { gsap } from "gsap";
-import { all } from "./dom";
+import { all, onResize } from "./dom";
 import { TAU, clamp, damp, quantize } from "./math";
 
 interface Slot {
@@ -53,7 +53,7 @@ export class CardRing {
       layer: -1,
     }));
     this.measure();
-    window.addEventListener("resize", () => {
+    onResize(root, () => {
       this.measure();
       if (this.still) this.draw();
     });

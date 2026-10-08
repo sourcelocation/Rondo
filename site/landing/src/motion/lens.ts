@@ -1,6 +1,6 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { one } from "./dom";
+import { one, onResize } from "./dom";
 import { clamp, damp } from "./math";
 
 /** How much the lens magnifies. */
@@ -34,7 +34,7 @@ export class CodeLens {
     this.measure();
     this.at.x = this.target.x = this.width * 0.5;
     this.at.y = this.target.y = this.height * 0.45;
-    window.addEventListener("resize", () => {
+    onResize(root, () => {
       this.measure();
       this.draw();
     });

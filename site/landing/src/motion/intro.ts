@@ -2,8 +2,8 @@ import { gsap } from "gsap";
 import { one } from "./dom";
 
 /**
- * The opening. The mark appears in a sweep that turns counter-clockwise, as its arrow does, then rises into the
- * logo in the bar and becomes its mark there while the wordmark breathes in beside it.
+ * The opening. The mark appears in a sweep that turns counter-clockwise, as its arrow does, then rises and fades
+ * away while the logo in the bar fades in.
  */
 export class Intro {
   private readonly mark: SVGElement;
@@ -28,7 +28,7 @@ export class Intro {
     return quick && window.scrollY < 8;
   }
 
-  /** The sweep and the flight; `landed` runs as the mark settles, for the page to follow. */
+  /** The sweep and the hand-off to the bar; `landed` runs as the mark leaves, for the page to follow. */
   play(landed: () => void): gsap.core.Timeline {
     gsap.set(this.logo, { opacity: 1, clearProps: "filter" });
     gsap.set([this.mark, this.word], { opacity: 0 });
@@ -42,27 +42,21 @@ export class Intro {
     );
     timeline.to(this.overlay, { scale: 1.04, duration: 0.35, ease: "sine.inOut", yoyo: true, repeat: 1 }, "-=0.05");
     timeline.add(() => {
-      this.fly(timeline.time(), timeline);
+      this.leave(timeline.time(), timeline);
       landed();
     });
     return timeline;
   }
 
-  /** Flies the mark from the centre onto the logo's, measured as it leaves. */
-  private fly(at: number, timeline: gsap.core.Timeline): void {
-    const from = one(this.overlay, "svg", SVGElement).getBoundingClientRect();
-    const to = this.mark.getBoundingClientRect();
-    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
-    const dy = to.top + to.height / 2 - (from.top + from.height / 2);
-    const duration = 1.15;
-    timeline.to(this.overlay, { x: dx, y: dy, scale: to.height / from.height, duration, ease: "expo.inOut" }, at);
-    timeline.set(this.mark, { opacity: 1 }, at + duration);
-    timeline.set(this.overlay, { visibility: "hidden" }, at + duration);
+  /** The mark rises into a blur as the logo in the bar comes in out of one. */
+  private leave(at: number, timeline: gsap.core.Timeline): void {
+    timeline.to(this.overlay, { y: -56, opacity: 0, filter: "blur(12px)", duration: 0.9, ease: "power2.in" }, at);
+    timeline.set(this.overlay, { visibility: "hidden" }, at + 0.9);
     timeline.fromTo(
-      this.word,
-      { opacity: 0, x: -14, filter: "blur(10px)" },
-      { opacity: 1, x: 0, filter: "blur(0px)", duration: 1.3, ease: "expo.out", clearProps: "filter,transform" },
-      at + duration - 0.25,
+      [this.mark, this.word],
+      { opacity: 0, filter: "blur(8px)" },
+      { opacity: 1, filter: "blur(0px)", duration: 1.1, ease: "power2.out", clearProps: "filter" },
+      at,
     );
   }
 }

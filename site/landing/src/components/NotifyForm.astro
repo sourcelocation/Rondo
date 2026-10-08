@@ -5,7 +5,8 @@ import { LAUNCH, launchDay } from "../launch/launch";
 
 /**
  * The launch list's form: an address, confirmed by email, for one email on launch day and nothing else
- * (launch/notify.ts). Every form on a page turns to "Check your inbox" together, and stays so on later visits.
+ * (launch/notify.ts). Every form on a page turns to "Check your inbox" together, with a way back to the field to
+ * correct the address.
  */
 interface Props {
   /** Unique on the page. */
@@ -56,7 +57,14 @@ const day = launchDay(true);
       </svg>
       <p>
         <b>Check your inbox.</b>
-        <span data-notify-address>Confirm with the link we sent. Then one email on launch day, and nothing else.</span>
+        <span>
+          <span data-notify-address>
+            Confirm with the link we sent. Then one email on launch day, and nothing else.
+          </span>
+          <button class="notify__change" type="button" data-notify-change>
+            Wrong address?
+          </button>
+        </span>
       </p>
     </div>
   </div>
@@ -98,6 +106,7 @@ const day = launchDay(true);
     grid-area: 1 / 1;
   }
 
+  .notify__field[hidden],
   /* A glass pill around the address, with the send button inside it. */
   .notify__field {
     position: relative;
@@ -241,10 +250,6 @@ const day = launchDay(true);
       var(--shadow-1);
   }
 
-  .notify__done[hidden] {
-    display: none;
-  }
-
   .notify__check {
     width: 34px;
     height: 34px;
@@ -273,6 +278,22 @@ const day = launchDay(true);
   .notify__done b {
     font-weight: 500;
     color: var(--ink);
+  }
+
+  .notify__done [data-notify-address] {
+    overflow-wrap: anywhere;
+  }
+
+  .notify__change {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--ink-4);
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.4s var(--ease-out);
+  }
+
+  .notify__change:hover {
+    text-decoration-color: currentcolor;
   }
 
   .notify__note {
