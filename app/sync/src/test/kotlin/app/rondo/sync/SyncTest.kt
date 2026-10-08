@@ -19,9 +19,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/** One pool for the whole run: JUnit makes a Harness per test, and a pool each would hold its
+ * connections until the run ends, past Postgres's limit. Tests run one at a time. */
+private val sharedDb by lazy { Db(System.getenv("RONDO_TEST_DATABASE_URL")) }
+
 /** A clean schema from server/db/migrations, two people and helpers to push and pull as them. */
 open class Harness {
-    val db = Db(System.getenv("RONDO_TEST_DATABASE_URL"))
+    val db = sharedDb
     val sync = Sync(db)
     val alice = Ids.new()
     val bob = Ids.new()
