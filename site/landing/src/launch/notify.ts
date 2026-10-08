@@ -27,12 +27,30 @@ function remember(email: string): void {
   }
 }
 
+/** The server's refusal, in words for the visitor: an address it won't take, or too many sign-ups from here. */
+class Refused extends Error {}
+
 /**
- * Puts an address on the launch list, for one email on launch day and nothing else. A stub until the server keeps
- * the list: it takes as long as a request would, and remembers the address in this browser only.
+ * Puts an address on the launch list, for one email on launch day and nothing else. The server hands it to Listmonk,
+ * which emails a link to confirm it. Takes at least as long as the send button's spinner needs to be seen.
  */
 export async function joinLaunchList(email: string): Promise<void> {
-  await pause(1100);
+  const [response] = await Promise.all([
+    fetch("/api/launch-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Rondo-Protocol": "1" },
+      body: JSON.stringify({ email }),
+    }),
+    pause(700),
+  ]);
+  if (!response.ok) {
+    const problem: unknown = await response.json().catch(() => null);
+    const refusal = response.status === 400 || response.status === 429 || response.status === 503;
+    if (refusal && problem instanceof Object && "message" in problem && typeof problem.message === "string") {
+      throw new Refused(problem.message);
+    }
+    throw new Error(`The launch list answered ${String(response.status)}`);
+  }
   remember(email);
 }
 
@@ -93,9 +111,10 @@ export class NotifyForm {
     try {
       await joinLaunchList(email);
       document.dispatchEvent(new CustomEvent(JOINED, { detail: email }));
-    } catch {
+    } catch (error) {
       this.input.readOnly = false;
-      this.refuse("Something went wrong on our side. Please try again.", "failed");
+      const message = error instanceof Refused ? error.message : "Something went wrong on our side. Please try again.";
+      this.refuse(message, "failed");
     }
   }
 
@@ -117,11 +136,11 @@ export class NotifyForm {
     }
   }
 
-  /** On the list: the field gives way to the confirmation, the tick drawing itself in. */
+  /** On the list, once confirmed: the field gives way to the confirmation, the tick drawing itself in. */
   private joined(email: string, animate: boolean): void {
     if (this.form.dataset.state === "done") return;
     this.state("done");
-    this.address.textContent = `One email to ${masked(email)} on ${launchDay()}, then nothing.`;
+    this.address.textContent = `Confirm with the link sent to ${masked(email)}. Then one email on ${launchDay()}, and nothing else.`;
     document.documentElement.dataset.listed = "";
     this.done.hidden = false;
     this.input.tabIndex = -1;

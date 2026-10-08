@@ -4,8 +4,8 @@ import Mail from "@lucide/astro/icons/mail";
 import { LAUNCH, launchDay } from "../launch/launch";
 
 /**
- * The launch list's form: an address, for one email on launch day and nothing else (launch/notify.ts). Every form on
- * a page turns to "You're on the list" together, and stays so on later visits.
+ * The launch list's form: an address, confirmed by email, for one email on launch day and nothing else
+ * (launch/notify.ts). Every form on a page turns to "Check your inbox" together, and stays so on later visits.
  */
 interface Props {
   /** Unique on the page. */
@@ -55,14 +55,14 @@ const day = launchDay(true);
         <path d="M7.5 12.4l3 3 6-6.4" data-notify-tick></path>
       </svg>
       <p>
-        <b>You’re on the list.</b>
-        <span data-notify-address>One email on launch day, then nothing.</span>
+        <b>Check your inbox.</b>
+        <span data-notify-address>Confirm with the link we sent. Then one email on launch day, and nothing else.</span>
       </p>
     </div>
   </div>
 
   <p class="notify__note" id={`${id}-note`} data-notify-note>
-    One email on launch day,{" "}
+    Confirm by email, then one email on launch day,{" "}
     <time datetime={new Date(LAUNCH).toISOString()} data-launch-day>
       {day}
     </time>

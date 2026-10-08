@@ -23,6 +23,7 @@ import (
 	"github.com/sourcelocation/rondo/server/internal/blob"
 	"github.com/sourcelocation/rondo/server/internal/idtoken"
 	"github.com/sourcelocation/rondo/server/internal/jobs"
+	"github.com/sourcelocation/rondo/server/internal/launch"
 	"github.com/sourcelocation/rondo/server/internal/mail"
 	"github.com/sourcelocation/rondo/server/internal/notify"
 	"github.com/sourcelocation/rondo/server/internal/ory"
@@ -67,6 +68,8 @@ type Server struct {
 	Tokens idtoken.Verifier
 	// Pusher sends Web Push, when it's set up.
 	Pusher *notify.Pusher
+	// Launch is the launch list in Listmonk, open when it's set up.
+	Launch *launch.List
 
 	mu       sync.Mutex
 	sessions map[string]session

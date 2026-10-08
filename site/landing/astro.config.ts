@@ -10,7 +10,11 @@ export default defineConfig({
   // The Caddyfile's Content-Security-Policy allows only the site's own files: no inline scripts or styles and no
   // data: URLs. So nothing is inlined into the pages, however small.
   build: { inlineStylesheets: "never" },
-  vite: { build: { assetsInlineLimit: 0 } },
+  vite: {
+    build: { assetsInlineLimit: 0 },
+    // The launch list's sign-ups go to the Go server, which the ingress puts under /api on the same host.
+    server: { proxy: { "/api": "http://localhost:23901" } },
+  },
   env: {
     schema: {
       // .env.development and .env.production
