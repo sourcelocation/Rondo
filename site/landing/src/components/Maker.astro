@@ -3,19 +3,40 @@ import { Image } from "astro:assets";
 import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
 import { links } from "../content/links";
 import { projects } from "../content/work";
+import portrait from "../assets/maker/sourcelocation.webp";
 
 /**
- * Who makes Rondo, and what they made before: an index of projects whose screenshots follow the pointer
- * (motion/work.ts), and sit in the rows on touch screens.
+ * Who makes Rondo, and what they made before: their portrait, which opens up as it scrolls in and tilts toward the
+ * pointer (motion/portrait.ts), and an index of projects whose screenshots follow the pointer (motion/work.ts), and
+ * sit in the rows on touch screens.
  */
 ---
 
 <section class="section maker" id="maker" aria-labelledby="maker-title" data-mood="maker">
   <div class="container maker__grid">
+    <p class="kicker maker__kicker" data-reveal="fade">
+      <span class="kicker__index">05</span>The maker
+    </p>
+
+    <figure class="portrait" data-portrait>
+      <div class="portrait__card" data-portrait-card>
+        <div class="portrait__frame" data-portrait-frame>
+          <Image
+            class="portrait__image"
+            src={portrait}
+            alt="sourcelocation from behind, looking out at a lit cable-stayed bridge at sunset"
+            widths={[400, 720, 1080]}
+            sizes="(width < 960px) min(100vw - 32px, 360px), 420px"
+            loading="lazy"
+            data-portrait-image
+          />
+          <span class="tone-wash" aria-hidden="true"></span>
+          <span class="portrait__sheen" aria-hidden="true"></span>
+        </div>
+      </div>
+    </figure>
+
     <div class="maker__intro">
-      <p class="kicker" data-reveal="fade">
-        <span class="kicker__index">05</span>The maker
-      </p>
       <h2 id="maker-title" class="heading" data-reveal="words">
         Made by someone <em>who ships.</em>
       </h2>
@@ -43,14 +64,17 @@ import { projects } from "../content/work";
             <span class="work__arrow" aria-hidden="true">
               <ArrowUpRight stroke-width={1.5} />
             </span>
-            <Image
-              class="work__thumb"
-              src={project.image}
-              alt={project.alt}
-              widths={[480, 800]}
-              sizes="(width < 760px) 100vw, 1px"
-              loading="lazy"
-            />
+            <span class="work__shot">
+              <Image
+                class="work__thumb"
+                src={project.image}
+                alt={project.alt}
+                widths={[480, 800]}
+                sizes="(width < 760px) 100vw, 1px"
+                loading="lazy"
+              />
+              <span class="tone-wash" aria-hidden="true"></span>
+            </span>
           </a>
         </li>
       ))}
@@ -61,18 +85,45 @@ import { projects } from "../content/work";
     {projects.map((project) => (
       <Image class="preview__image" src={project.image} alt="" widths={[640, 960]} sizes="480px" loading="lazy" />
     ))}
+    <span class="tone-wash" aria-hidden="true"></span>
   </div>
+
+  <!--
+    The section's pictures in the page's own two colours: their shadows in ink, their light in paper, the middle
+    lifted so they stay airy.
+  -->
+  <svg class="tone" aria-hidden="true" focusable="false">
+    <filter id="maker-tone" color-interpolation-filters="sRGB">
+      <feColorMatrix type="saturate" values="0" />
+      <feComponentTransfer>
+        <feFuncR type="table" tableValues="0.05 0.5 0.8 0.96 1" />
+        <feFuncG type="table" tableValues="0.05 0.5 0.8 0.96 1" />
+        <feFuncB type="table" tableValues="0.07 0.53 0.83 0.98 1" />
+      </feComponentTransfer>
+    </filter>
+  </svg>
 </section>
 
 <style>
   .maker__grid {
     display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: clamp(48px, 6vw, 112px);
-    align-items: end;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "kicker kicker"
+      "portrait intro"
+      "portrait work";
+    column-gap: clamp(48px, 6vw, 112px);
+    align-items: start;
+  }
+
+  .maker__kicker {
+    grid-area: kicker;
+    margin-bottom: clamp(32px, 5vh, 56px);
   }
 
   .maker__intro {
+    grid-area: intro;
     display: grid;
     gap: clamp(20px, 3vh, 32px);
     justify-items: start;
@@ -86,7 +137,83 @@ import { projects } from "../content/work";
     color: var(--ink);
   }
 
+  .portrait {
+    grid-area: portrait;
+    position: relative;
+  }
+
+  /* What leans; its shadow is a filter, so it follows the frame's shape as the frame opens. */
+  .portrait__card {
+    filter: drop-shadow(0 14px 22px rgb(18 22 40 / 12%)) drop-shadow(0 40px 48px rgb(18 22 40 / 16%));
+    will-change: transform;
+  }
+
+  .portrait__frame {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    border-radius: 28px;
+    overflow: hidden;
+    background: var(--mist);
+  }
+
+  .portrait__frame::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 18%) inset;
+    pointer-events: none;
+  }
+
+  /* Pictures in ink and paper (the filter at the end of the section), lit by the light behind the page. */
+  .portrait__frame :global(.portrait__image),
+  .work__link :global(.work__thumb),
+  .preview :global(.preview__image) {
+    filter: url("#maker-tone");
+  }
+
+  .tone {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+
+  .tone-wash {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(155deg, var(--sky), var(--lilac) 50%, var(--peach));
+    mix-blend-mode: color;
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .portrait__frame :global(.portrait__image) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 58% 50%;
+    will-change: transform;
+  }
+
+  /* Light that slides across the glass as it tilts. */
+  .portrait__sheen {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at var(--sheen-x, 30%) var(--sheen-y, 20%),
+      rgb(255 255 255 / 28%),
+      transparent 55%
+    );
+    mix-blend-mode: soft-light;
+    pointer-events: none;
+  }
+
   .work {
+    grid-area: work;
+    margin-top: clamp(40px, 7vh, 72px);
     border-top: 1px solid var(--line-2);
   }
 
@@ -177,7 +304,7 @@ import { projects } from "../content/work";
     transform: rotate(45deg);
   }
 
-  .work__link :global(.work__thumb) {
+  .work__shot {
     display: none;
   }
 
@@ -218,6 +345,17 @@ import { projects } from "../content/work";
   @media (width < 960px) {
     .maker__grid {
       grid-template-columns: 1fr;
+      grid-template-rows: none;
+      grid-template-areas:
+        "kicker"
+        "intro"
+        "portrait"
+        "work";
+    }
+
+    .portrait {
+      width: min(100%, 360px);
+      margin-top: clamp(40px, 7vh, 64px);
     }
   }
 
@@ -239,14 +377,20 @@ import { projects } from "../content/work";
       display: none;
     }
 
-    .work__link :global(.work__thumb) {
+    .work__shot {
       grid-area: thumb;
+      position: relative;
+      display: block;
+      margin-bottom: 18px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px var(--line);
+    }
+
+    .work__link :global(.work__thumb) {
       display: block;
       width: 100%;
       height: auto;
-      margin-bottom: 18px;
-      border-radius: 16px;
-      box-shadow: 0 0 0 1px var(--line);
     }
 
     .work:hover .work__link:not(:hover) {

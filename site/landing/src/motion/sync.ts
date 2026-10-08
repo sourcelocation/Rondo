@@ -1,6 +1,6 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { all, one } from "./dom";
+import { all, one, onResize } from "./dom";
 
 const SVG = "http://www.w3.org/2000/svg";
 
@@ -177,7 +177,7 @@ export class SyncScene {
       this.link();
       if (this.still) this.settle();
     };
-    window.addEventListener("resize", relayout);
+    onResize(root, relayout);
     void document.fonts.ready.then(relayout);
     relayout();
     if (still) return;

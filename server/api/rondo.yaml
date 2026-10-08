@@ -470,6 +470,19 @@ paths:
         "202": { description: Started. }
         default: { $ref: "#/components/responses/Problem" }
 
+  /api/launch-list:
+    post:
+      tags: [api]
+      operationId: joinLaunchList
+      security: []
+      description: |
+        Puts an address on the launch list, for one email on launch day. Listmonk keeps the list and
+        emails a link to confirm it; an address it knows already is sent nothing more. Three sign-ups
+        an hour from one address (IPv6: one /64).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LaunchListJoin" } } } }
+      responses:
+        "202": { description: "Asked to confirm, unless the address was there already." }
+        default: { $ref: "#/components/responses/Problem" }
   /api/staff/team:
     get:
       tags: [api]
@@ -1348,6 +1361,11 @@ components:
       properties:
         email: { type: string, format: email, maxLength: 254 }
         code: { type: string, maxLength: 20 }
+    LaunchListJoin:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
 
     Summary:
       type: object

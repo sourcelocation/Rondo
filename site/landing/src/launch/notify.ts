@@ -2,50 +2,46 @@ import { gsap } from "gsap";
 import { one } from "../motion/dom";
 import { launchDay } from "./launch";
 
-/** Where this browser remembers that its visitor is on the list (and as whom). */
-const KEY = "rondo:launch-list";
 /** Told to every form on the page when the visitor joins through any of them. */
 const JOINED = "rondo:joined";
+/** Told to every form on the page when the visitor wants to give another address. */
+const CHANGING = "rondo:changing";
 
 const ADDRESS = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/u;
 
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function remembered(): string | null {
-  try {
-    return localStorage.getItem(KEY);
-  } catch {
-    return null;
-  }
-}
-
-function remember(email: string): void {
-  try {
-    localStorage.setItem(KEY, email);
-  } catch {
-    // Without storage, the visitor is still on the list; only this browser forgets it.
-  }
-}
+/** The server's refusal, in words for the visitor: an address it won't take, or too many sign-ups from here. */
+class Refused extends Error {}
 
 /**
- * Puts an address on the launch list, for one email on launch day and nothing else. A stub until the server keeps
- * the list: it takes as long as a request would, and remembers the address in this browser only.
+ * Puts an address on the launch list, for one email on launch day and nothing else. The server hands it to Listmonk,
+ * which emails a link to confirm it. Takes at least as long as the send button's spinner needs to be seen.
  */
 export async function joinLaunchList(email: string): Promise<void> {
-  await pause(1100);
-  remember(email);
-}
-
-/** "m•••@gmail.com", so the confirmation shows whose address it was without showing all of it. */
-function masked(email: string): string {
-  const [name = "", domain = ""] = email.split("@");
-  return `${name.slice(0, 1)}•••@${domain}`;
+  const [response] = await Promise.all([
+    fetch("/api/launch-list", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Rondo-Protocol": "1" },
+      body: JSON.stringify({ email }),
+    }),
+    pause(700),
+  ]);
+  if (!response.ok) {
+    const problem: unknown = await response.json().catch(() => null);
+    const refusal = response.status === 400 || response.status === 429 || response.status === 503;
+    if (refusal && problem instanceof Object && "message" in problem && typeof problem.message === "string") {
+      throw new Refused(problem.message);
+    }
+    throw new Error(`The launch list answered ${String(response.status)}`);
+  }
 }
 
 /**
  * A launch-list form. It checks the address as it's typed (the send button turns to ink when it looks complete),
  * says what's wrong in place of its note, and once sent turns into a confirmation, together with every other form
- * on the page and on later visits.
+ * on the page. The confirmation shows the whole address, so a mistyped one can be changed. Nothing is remembered
+ * past the page: a later visit offers the form again.
  */
 export class NotifyForm {
   private readonly input: HTMLInputElement;
@@ -64,6 +60,7 @@ export class NotifyForm {
     this.address = one(form, "[data-notify-address]");
     this.tick = one(form, "[data-notify-tick]", SVGPathElement);
     this.noteText = this.note.innerHTML;
+    const change = one(form, "[data-notify-change]", HTMLButtonElement);
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -74,10 +71,14 @@ export class NotifyForm {
       if (form.dataset.state === "invalid" || form.dataset.state === "failed") this.state("idle", this.noteText);
     });
     document.addEventListener(JOINED, (event) => {
-      if (event instanceof CustomEvent && typeof event.detail === "string") this.joined(event.detail, true);
+      if (event instanceof CustomEvent && typeof event.detail === "string") this.joined(event.detail);
     });
-    const email = remembered();
-    if (email != null) this.joined(email, false);
+    change.addEventListener("click", () => {
+      document.dispatchEvent(new Event(CHANGING));
+      this.input.focus();
+      this.input.select();
+    });
+    document.addEventListener(CHANGING, () => this.reopen());
   }
 
   private async send(): Promise<void> {
@@ -93,9 +94,10 @@ export class NotifyForm {
     try {
       await joinLaunchList(email);
       document.dispatchEvent(new CustomEvent(JOINED, { detail: email }));
-    } catch {
+    } catch (error) {
       this.input.readOnly = false;
-      this.refuse("Something went wrong on our side. Please try again.", "failed");
+      const message = error instanceof Refused ? error.message : "Something went wrong on our side. Please try again.";
+      this.refuse(message, "failed");
     }
   }
 
@@ -117,18 +119,16 @@ export class NotifyForm {
     }
   }
 
-  /** On the list: the field gives way to the confirmation, the tick drawing itself in. */
-  private joined(email: string, animate: boolean): void {
+  /** On the list, once confirmed: the field gives way to the confirmation, the tick drawing itself in. */
+  private joined(email: string): void {
     if (this.form.dataset.state === "done") return;
     this.state("done");
-    this.address.textContent = `One email to ${masked(email)} on ${launchDay()}, then nothing.`;
+    this.input.value = email;
+    this.form.dataset.ready = "true";
+    this.address.textContent = `Confirm with the link sent to ${email}. Then one email on ${launchDay()}, and nothing else.`;
     document.documentElement.dataset.listed = "";
     this.done.hidden = false;
     this.input.tabIndex = -1;
-    if (!animate) {
-      this.field.hidden = true;
-      return;
-    }
     const length = this.tick.getTotalLength();
     gsap
       .timeline({ onComplete: () => (this.field.hidden = true) })
@@ -146,6 +146,30 @@ export class NotifyForm {
         0.45,
       );
   }
+
+  /** Back to the field, the address sent still in it, to send another. */
+  private reopen(): void {
+    if (this.form.dataset.state !== "done") return;
+    gsap.killTweensOf([this.field, this.done, this.tick]);
+    this.state("idle", this.noteText);
+    delete document.documentElement.dataset.listed;
+    this.done.hidden = true;
+    this.field.hidden = false;
+    this.input.readOnly = false;
+    this.input.removeAttribute("tabindex");
+    gsap.fromTo(
+      this.field,
+      { opacity: 0, scale: 0.97, filter: "blur(8px)" },
+      {
+        opacity: 1,
+        scale: 1,
+        filter: "blur(0px)",
+        duration: 0.6,
+        ease: "expo.out",
+        clearProps: "opacity,transform,filter",
+      },
+    );
+  }
 }
 
 /**
@@ -154,9 +178,11 @@ export class NotifyForm {
  */
 export class NotifyPanel {
   private readonly trigger: HTMLElement | null;
+  private readonly ariaLabel: string | null;
 
   constructor(private readonly panel: HTMLElement) {
     this.trigger = document.querySelector<HTMLElement>(`[popovertarget="${panel.id}"]`);
+    this.ariaLabel = this.trigger?.getAttribute("aria-label") ?? null;
     panel.addEventListener("beforetoggle", (event) => {
       if (event.newState === "open") this.place();
     });
@@ -172,8 +198,8 @@ export class NotifyPanel {
     window.addEventListener("resize", () => {
       if (panel.matches(":popover-open")) this.place();
     });
-    document.addEventListener(JOINED, () => this.listed());
-    if (remembered() != null) this.listed();
+    document.addEventListener(JOINED, () => this.label("On the list", "You’re on the launch list"));
+    document.addEventListener(CHANGING, () => this.label("Notify me", null));
   }
 
   private place(): void {
@@ -187,9 +213,12 @@ export class NotifyPanel {
     style.setProperty("--from-height", `${String(Math.round(button.height))}px`);
   }
 
-  private listed(): void {
+  /** Relabels the button; a null `aria` gives it back the label it was built with. */
+  private label(text: string, aria: string | null): void {
     if (this.trigger == null) return;
-    for (const label of this.trigger.querySelectorAll("[data-notify-trigger-label]")) label.textContent = "On the list";
-    this.trigger.setAttribute("aria-label", "You’re on the launch list");
+    for (const label of this.trigger.querySelectorAll("[data-notify-trigger-label]")) label.textContent = text;
+    if (aria != null) this.trigger.setAttribute("aria-label", aria);
+    else if (this.ariaLabel != null) this.trigger.setAttribute("aria-label", this.ariaLabel);
+    else this.trigger.removeAttribute("aria-label");
   }
 }

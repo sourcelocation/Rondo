@@ -10,6 +10,7 @@ import { magnetize } from "./magnetic";
 import { Marquee } from "./marquee";
 import { Reveals } from "./reveal";
 import { playPlatforms } from "./platforms";
+import { Portrait } from "./portrait";
 import { CardRing } from "./ring";
 import { SmoothScroll } from "./scroll";
 import { SyncScene } from "./sync";
@@ -109,6 +110,7 @@ export class Landing {
     new CodeLens(one(document, "[data-lens]"), this.reduced);
     new SyncScene(one(document, "[data-merge]"), this.reduced);
     playPlatforms(one(document, "[data-trio]"), this.reduced);
+    new Portrait(one(document, "[data-portrait]"), this.reduced, hasFinePointer());
     new WorkPreview(one(document, "[data-work]"), one(document, "[data-preview]"), this.reduced);
     if (!this.reduced && hasFinePointer()) magnetize(all(document, "[data-magnetic]"));
   }

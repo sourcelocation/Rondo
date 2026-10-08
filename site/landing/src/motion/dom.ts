@@ -17,6 +17,16 @@ export function all(root: ParentNode, selector: string, kind: Kind<Element> = HT
   return [...root.querySelectorAll(selector)].filter((element) => element instanceof kind);
 }
 
+/**
+ * Calls `measure` whenever `element` changes size. The window's resize won't do: a phone's browser fires it on every
+ * frame its toolbar slides in or out, and measuring then makes scrolling stutter.
+ */
+export function onResize(element: Element, measure: () => void): void {
+  new ResizeObserver(() => {
+    measure();
+  }).observe(element);
+}
+
 /** Whether the visitor asked for less motion: the page then shows everything in place and moves only on request. */
 export function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;

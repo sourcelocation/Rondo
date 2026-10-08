@@ -713,6 +713,11 @@ type KratosMessage struct {
 	Url          *string `json:"url,omitempty"`
 }
 
+// LaunchListJoin defines model for LaunchListJoin.
+type LaunchListJoin struct {
+	Email openapi_types.Email `json:"email"`
+}
+
 // Lend defines model for Lend.
 type Lend struct {
 	DeckId    openapi_types.UUID  `json:"deck_id"`
@@ -1346,6 +1351,9 @@ type KratosCourierJSONRequestBody = KratosMessage
 // KratosRegistrationJSONRequestBody defines body for KratosRegistration for application/json ContentType.
 type KratosRegistrationJSONRequestBody = KratosIdentity
 
+// JoinLaunchListJSONRequestBody defines body for JoinLaunchList for application/json ContentType.
+type JoinLaunchListJSONRequestBody = LaunchListJoin
+
 // ChangeEmailJSONRequestBody defines body for ChangeEmail for application/json ContentType.
 type ChangeEmailJSONRequestBody = EmailChange
 
@@ -1468,6 +1476,9 @@ type ServerInterface interface {
 
 	// (DELETE /api/invites/{invite_id})
 	RevokeInvite(ctx *echo.Context, inviteId openapi_types.UUID) error
+
+	// (POST /api/launch-list)
+	JoinLaunchList(ctx *echo.Context) error
 
 	// (DELETE /api/me)
 	DeleteMe(ctx *echo.Context) error
@@ -1952,6 +1963,15 @@ func (w *ServerInterfaceWrapper) RevokeInvite(ctx *echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.RevokeInvite(ctx, inviteId)
+	return err
+}
+
+// JoinLaunchList converts echo context to params.
+func (w *ServerInterfaceWrapper) JoinLaunchList(ctx *echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.JoinLaunchList(ctx)
 	return err
 }
 
@@ -2610,6 +2630,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/api/agents", wrapper.ListAgents, options.OperationMiddlewares["listAgents"]...)
 	router.DELETE(options.BaseURL+"/api/agents/:client_id", wrapper.RevokeAgent, options.OperationMiddlewares["revokeAgent"]...)
 	router.POST(options.BaseURL+"/api/export", wrapper.RequestExport, options.OperationMiddlewares["requestExport"]...)
+	router.POST(options.BaseURL+"/api/launch-list", wrapper.JoinLaunchList, options.OperationMiddlewares["joinLaunchList"]...)
 	router.GET(options.BaseURL+"/api/staff/team", wrapper.ListTeam, options.OperationMiddlewares["listTeam"]...)
 	router.POST(options.BaseURL+"/api/reports", wrapper.Report, options.OperationMiddlewares["report"]...)
 	router.GET(options.BaseURL+"/api/staff/cases", wrapper.ListCases, options.OperationMiddlewares["listCases"]...)
@@ -3505,6 +3526,39 @@ type RevokeInvitedefaultJSONResponse struct {
 }
 
 func (response RevokeInvitedefaultJSONResponse) VisitRevokeInviteResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type JoinLaunchListRequestObject struct {
+	Body *JoinLaunchListJSONRequestBody
+}
+
+type JoinLaunchListResponseObject interface {
+	VisitJoinLaunchListResponse(w http.ResponseWriter) error
+}
+
+type JoinLaunchList202Response struct {
+}
+
+func (response JoinLaunchList202Response) VisitJoinLaunchListResponse(w http.ResponseWriter) error {
+	w.WriteHeader(202)
+	return nil
+}
+
+type JoinLaunchListdefaultJSONResponse struct {
+	Body       Problem
+	StatusCode int
+}
+
+func (response JoinLaunchListdefaultJSONResponse) VisitJoinLaunchListResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response.Body); err != nil {
@@ -5104,6 +5158,9 @@ type StrictServerInterface interface {
 	// (DELETE /api/invites/{invite_id})
 	RevokeInvite(ctx context.Context, request RevokeInviteRequestObject) (RevokeInviteResponseObject, error)
 
+	// (POST /api/launch-list)
+	JoinLaunchList(ctx context.Context, request JoinLaunchListRequestObject) (JoinLaunchListResponseObject, error)
+
 	// (DELETE /api/me)
 	DeleteMe(ctx context.Context, request DeleteMeRequestObject) (DeleteMeResponseObject, error)
 
@@ -5927,6 +5984,45 @@ func (sh *strictHandler) RevokeInvite(ctx *echo.Context, inviteId openapi_types.
 		return err
 	} else if validResponse, ok := response.(RevokeInviteResponseObject); ok {
 		return validResponse.VisitRevokeInviteResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// JoinLaunchList operation middleware
+func (sh *strictHandler) JoinLaunchList(ctx *echo.Context) error {
+	var request JoinLaunchListRequestObject
+
+	var body JoinLaunchListJSONRequestBody
+	var err error
+	if _, ok := ctx.Echo().Binder.(*echo.DefaultBinder); ok {
+		// Bind only the request body, so that path and query parameters
+		// are not also bound into the body struct.
+		err = echo.BindBody(ctx, &body)
+	} else {
+		// A custom binder is installed on the Echo instance; defer to it
+		// entirely, since echo.Binder does not expose body-only binding.
+		err = ctx.Bind(&body)
+	}
+	if err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.JoinLaunchList(ctx.Request().Context(), request.(JoinLaunchListRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "JoinLaunchList")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(JoinLaunchListResponseObject); ok {
+		return validResponse.VisitJoinLaunchListResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}

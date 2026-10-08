@@ -1,9 +1,11 @@
 name: CI
 
+# Release pull requests into production carry master's latest commit, which this already tested.
 on:
   push:
     branches: [master]
   pull_request:
+    branches-ignore: [production]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -88,26 +90,3 @@ jobs:
           pnpm format:check
           pnpm typecheck
           pnpm build
-
-  images:
-    name: Image ${{ matrix.image }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - { image: api, file: server/Dockerfile, target: "" }
-          - { image: sync, file: app/Dockerfile, target: sync }
-          - { image: web, file: app/Dockerfile, target: web }
-          - { image: site, file: site/Dockerfile, target: "" }
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: docker/setup-buildx-action@v4.4.1
-      # Built, not pushed: a broken image fails here, not at the release. The cache is the release's.
-      - uses: docker/build-push-action@v7.4.0
-        with:
-          context: .
-          file: ${{ matrix.file }}
-          target: ${{ matrix.target }}
-          push: false
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}

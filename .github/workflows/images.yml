@@ -1,0 +1,68 @@
+name: Images
+
+# Builds the images, without pushing them, when something they're built from changes that CI's tests
+# don't compile: a Dockerfile, a lockfile, a toolchain version, a server config. Releases build the
+# real images; this catches a broken build before a release does.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "**/Dockerfile"
+      - "**/.dockerignore"
+      - "**/Caddyfile"
+      - "**/pnpm-lock.yaml"
+      - "**/.node-version"
+      - server/go.mod
+      - server/go.sum
+      - app/gradle/libs.versions.toml
+      - app/gradle/wrapper/gradle-wrapper.properties
+      - .github/workflows/images.yml
+  pull_request:
+    branches-ignore: [production]
+    paths:
+      - "**/Dockerfile"
+      - "**/.dockerignore"
+      - "**/Caddyfile"
+      - "**/pnpm-lock.yaml"
+      - "**/.node-version"
+      - server/go.mod
+      - server/go.sum
+      - app/gradle/libs.versions.toml
+      - app/gradle/wrapper/gradle-wrapper.properties
+      - .github/workflows/images.yml
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  images:
+    name: Image ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { image: api, file: server/Dockerfile, target: "" }
+          - { image: sync, file: app/Dockerfile, target: sync }
+          - { image: web, file: app/Dockerfile, target: web }
+          - { image: site, file: site/Dockerfile, target: "" }
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Reads the cache release builds write; never writes it.
+      - uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          push: false
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rondo-${{ matrix.image }}:buildcache
