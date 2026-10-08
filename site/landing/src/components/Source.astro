@@ -1,0 +1,245 @@
+---
+import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
+import { excerpts } from "../content/code";
+import { links } from "../content/links";
+import Kotlin from "./Kotlin.astro";
+
+/**
+ * Free and open source. Rondo's own code lies blurred under glass, and a lens that follows the pointer brings every
+ * line it passes into focus (motion/lens.ts).
+ */
+const facts = [
+  { value: "Free", label: "To study, on every device" },
+  { value: "AGPL-3.0", label: "Every line in the open" },
+  { value: "Self-host", label: "Run it on your own server" },
+  { value: "Export", label: "Everything, as one ZIP" },
+];
+---
+
+<section class="section source" id="open-source" aria-labelledby="source-title" data-mood="source">
+  <div class="container source__head">
+    <p class="kicker" data-reveal="fade">
+      <span class="kicker__index">02</span>Free &amp; open source
+    </p>
+    <h2 id="source-title" class="heading" data-reveal="words">
+      Free, and open to <em>the last line.</em>
+    </h2>
+    <p class="lead" data-reveal="lines">
+      Rondo costs nothing to study with and is open source under the AGPL. Read how it schedules your cards, export
+      everything you own, or run your own server.
+    </p>
+  </div>
+
+  <div class="container">
+    <div class="lens" data-lens data-reveal="rise">
+      <div class="lens__code lens__code--soft" aria-hidden="true">
+        {excerpts.map((excerpt) => (
+          <div class="lens__column">
+            <p class="lens__file mono">{excerpt.file}</p>
+            <Kotlin code={excerpt.code} />
+          </div>
+        ))}
+      </div>
+      <div class="lens__window" aria-hidden="true" data-lens-window>
+        {/* motion/lens.ts fills it with a copy of the code above. */}
+        <div class="lens__code lens__code--sharp" data-lens-sharp></div>
+        <div class="lens__glass"></div>
+      </div>
+      <a class="lens__cta button button--glass" href={links.source} data-magnetic>
+        <span class="button__label">
+          <span>Read the source</span>
+          <span aria-hidden="true">Read the source</span>
+        </span>
+        <ArrowUpRight class="button__arrow" aria-hidden="true" stroke-width={1.75} />
+      </a>
+    </div>
+
+    <ul class="facts">
+      {facts.map((fact) => (
+        <li class="fact" data-reveal="fade">
+          <span class="fact__value">{fact.value}</span>
+          <span class="fact__label">{fact.label}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .source__head {
+    display: grid;
+    justify-items: center;
+    gap: clamp(20px, 3vh, 32px);
+    text-align: center;
+  }
+
+  .source__head .heading {
+    max-width: 12em;
+  }
+
+  .source__head .lead {
+    max-width: 34em;
+  }
+
+  .lens {
+    position: relative;
+    height: clamp(440px, 64vh, 640px);
+    margin-top: clamp(56px, 9vh, 96px);
+    border-radius: 32px;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgb(255 255 255 / 72%), rgb(255 255 255 / 48%));
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 1px 0 var(--glass-edge) inset,
+      var(--shadow-2);
+    cursor: none;
+  }
+
+  .lens__code {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 44px;
+    padding: 44px 48px;
+    font: 400 12.5px / 1.75 var(--mono);
+    color: var(--ink-3);
+    pointer-events: none;
+  }
+
+  .lens__code--soft {
+    filter: blur(5px);
+    opacity: 0.75;
+  }
+
+  /*
+   * The lens: a round window that moves over the panel, holding a sharp copy of the code that moves the other way,
+   * magnified a little about the window's centre. Both only translate, so following the pointer never repaints.
+   */
+  .lens__window {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform;
+  }
+
+  .lens__code--sharp {
+    inset: auto;
+    left: 0;
+    top: 0;
+    color: var(--ink-2);
+    background: rgb(255 255 255 / 55%);
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  .lens__column {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .lens__file {
+    margin-bottom: 16px;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+  }
+
+  .lens__code :global(pre) {
+    margin: 0;
+    font: inherit;
+    white-space: pre;
+  }
+
+  .lens__code :global(.token.keyword),
+  .lens__code :global(.token.function) {
+    color: var(--ink);
+  }
+
+  .lens__code--soft :global(.token.keyword),
+  .lens__code--soft :global(.token.function) {
+    color: var(--ink-2);
+  }
+
+  .lens__code :global(.token.comment) {
+    color: var(--ink-4);
+    font-style: italic;
+  }
+
+  .lens__code :global(.token.number),
+  .lens__code :global(.token.string) {
+    color: #5b7fd6;
+  }
+
+  .lens__glass {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 1px rgb(11 11 13 / 8%),
+      0 2px 0 rgb(255 255 255 / 90%) inset,
+      0 -10px 30px -8px rgb(169 202 255 / 30%) inset,
+      0 30px 60px -20px rgb(30 40 80 / 25%);
+    background: radial-gradient(circle at 32% 26%, rgb(255 255 255 / 45%), transparent 42%);
+    pointer-events: none;
+  }
+
+  .lens__cta {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+    cursor: pointer;
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
+    margin-top: clamp(40px, 6vh, 64px);
+  }
+
+  .fact {
+    display: grid;
+    gap: 8px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line-2);
+  }
+
+  .fact__value {
+    font-size: var(--size-h3);
+    font-weight: 400;
+    letter-spacing: -0.035em;
+  }
+
+  .fact__label {
+    font-size: var(--size-small);
+    color: var(--ink-3);
+  }
+
+  @media (width < 960px) {
+    .lens__code {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 32px 28px;
+    }
+
+    .lens__column + .lens__column {
+      display: none;
+    }
+
+    .lens {
+      cursor: auto;
+    }
+
+    .facts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      row-gap: 32px;
+    }
+  }
+</style>

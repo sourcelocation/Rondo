@@ -1,0 +1,143 @@
+---
+import { launchMoment } from "../launch/launch";
+
+/**
+ * The time left until the launch, ticking (launch/countdown.ts): large on the download page, or `inline` as one line
+ * of text where the landing page asks for an address. Hidden without JavaScript, which keeps it.
+ */
+interface Props {
+  inline?: boolean;
+}
+
+const { inline = false } = Astro.props;
+const units = [
+  { name: "days", label: "Days", short: "d" },
+  { name: "hours", label: "Hours", short: "h" },
+  { name: "minutes", label: "Minutes", short: "m" },
+  { name: "seconds", label: "Seconds", short: "s" },
+];
+---
+
+<div
+  class:list={["countdown", { "countdown--inline": inline }]}
+  role="timer"
+  aria-label={`Rondo opens ${launchMoment(true)}`}
+  data-countdown
+>
+  {inline && <span class="countdown__lead">Opens to everyone in</span>}
+  {units.map((unit, index) => (
+    <>
+      {!inline && index > 0 && <span class="countdown__colon" aria-hidden="true" />}
+      <span class="countdown__unit">
+        <span class="countdown__value" data-unit={unit.name} aria-hidden="true">
+          <span class="digit">
+            <span>0</span>
+          </span>
+          <span class="digit">
+            <span>0</span>
+          </span>
+        </span>
+        <span class="countdown__label" aria-hidden="true">
+          {inline ? unit.short : unit.label}
+        </span>
+      </span>
+    </>
+  ))}
+</div>
+
+<style>
+  .countdown {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: clamp(10px, 2.2vw, 28px);
+  }
+
+  .countdown__unit {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+  }
+
+  .countdown__value {
+    display: flex;
+    font-size: clamp(2.75rem, 1.6rem + 4.6vw, 5.5rem);
+    font-weight: 330;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Each digit holds its current character, and its next one while that rolls in. */
+  .digit {
+    display: grid;
+    width: 0.6em;
+    height: 1.05em;
+    overflow: clip;
+    overflow-clip-margin: 0.15em;
+  }
+
+  .digit > :global(span) {
+    grid-area: 1 / 1;
+    display: block;
+    text-align: center;
+  }
+
+  .countdown__label {
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+
+  .countdown__colon {
+    display: grid;
+    gap: 0.18em;
+    padding-top: 0.32em;
+    font-size: clamp(2.75rem, 1.6rem + 4.6vw, 5.5rem);
+  }
+
+  .countdown__colon::before,
+  .countdown__colon::after {
+    content: "";
+    width: 0.07em;
+    height: 0.07em;
+    border-radius: 50%;
+    background: var(--ink-4);
+  }
+
+  /* One line: "Opens to everyone in 13d 04h 22m 05s". */
+  .countdown--inline {
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0 0.55em;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+
+  .countdown--inline .countdown__lead {
+    margin-right: 0.15em;
+    color: var(--ink-2);
+  }
+
+  .countdown--inline .countdown__unit {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.08em;
+  }
+
+  .countdown--inline .countdown__value {
+    font-size: inherit;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  .countdown--inline .digit {
+    width: 0.62em;
+    height: 1.3em;
+    overflow-clip-margin: 0.1em;
+  }
+
+  .countdown--inline .countdown__label {
+    font-size: inherit;
+    color: var(--ink-3);
+  }
+</style>

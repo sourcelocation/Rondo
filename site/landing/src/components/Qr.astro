@@ -1,0 +1,76 @@
+---
+import { create } from "qrcode";
+
+/**
+ * A QR code for `url`, drawn at build time from qrcode's matrix in the site's own hand: round dots for the data, and
+ * rounded squares for the patterns readers look for first (the three corner marks, and the alignment mark of codes
+ * of versions 2 to 6). Readers find dots only once those are whole, so a longer address (version 7 on, with more
+ * alignment marks) is drawn in plain squares.
+ */
+interface Props {
+  url: string;
+  label: string;
+}
+
+const { url, label } = Astro.props;
+const { modules, version } = create(url, { errorCorrectionLevel: "M" });
+const size = modules.size;
+const dotted = version <= 6;
+const margin = 1;
+
+type Box = readonly [x: number, y: number, size: number];
+const finders: readonly Box[] = [
+  [0, 0, 7],
+  [size - 7, 0, 7],
+  [0, size - 7, 7],
+];
+const alignment: readonly Box[] = dotted && version >= 2 ? [[size - 9, size - 9, 5]] : [];
+const marks = [...finders, ...alignment];
+const inMark = (row: number, column: number) =>
+  marks.some(([x, y, side]) => column >= x && column < x + side && row >= y && row < y + side);
+
+// Every dark module outside the marks, as one path: circles, or squares for longer codes.
+const radius = 0.43;
+let modulesPath = "";
+for (let row = 0; row < size; row++) {
+  for (let column = 0; column < size; column++) {
+    if (modules.get(row, column) === 0 || (dotted && inMark(row, column))) continue;
+    modulesPath += dotted
+      ? `M${(column + 0.5 - radius).toFixed(2)} ${String(row + 0.5)}a${radius} ${radius} 0 1 0 ${radius * 2} 0` +
+        `a${radius} ${radius} 0 1 0 ${-radius * 2} 0`
+      : `M${String(column)} ${String(row)}h1v1h-1z`;
+  }
+}
+---
+
+<svg
+  class="qr"
+  viewBox={`${-margin} ${-margin} ${size + margin * 2} ${size + margin * 2}`}
+  role="img"
+  aria-label={label}
+  shape-rendering="geometricPrecision"
+>
+  <path d={modulesPath}></path>
+  {dotted &&
+    marks.map(([x, y, side]) => (
+      <>
+        <rect class="qr__ring" x={x + 0.5} y={y + 0.5} width={side - 1} height={side - 1} rx={side * 0.25} />
+        <rect x={x + 2} y={y + 2} width={side - 4} height={side - 4} rx={(side - 4) * 0.32} />
+      </>
+    ))}
+</svg>
+
+<style>
+  .qr {
+    display: block;
+    width: 100%;
+    height: auto;
+    fill: var(--ink);
+  }
+
+  .qr__ring {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 1;
+  }
+</style>

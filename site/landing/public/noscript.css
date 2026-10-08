@@ -1,0 +1,16 @@
+/* Without JavaScript nothing animates in: everything shows at once, and the parts only motion draws stay away. */
+[data-reveal] {
+  opacity: 1 !important;
+  animation: none !important;
+}
+
+[data-ring],
+[data-intro],
+.lens__window {
+  display: none !important;
+}
+
+.study__answer {
+  height: auto !important;
+  opacity: 1 !important;
+}

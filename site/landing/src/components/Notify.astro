@@ -1,0 +1,172 @@
+---
+import Bell from "@lucide/astro/icons/bell";
+import Check from "@lucide/astro/icons/check";
+import NotifyForm from "./NotifyForm.astro";
+
+/**
+ * The launch list's way in: the form itself where there's room, or in the bar a button that opens it in a glass
+ * panel (a native popover, so Escape and a click outside close it). The button becomes a quiet "On the list" once
+ * the visitor is.
+ */
+interface Props {
+  /** Unique on the page. */
+  name: string;
+  mode?: "inline" | "popover";
+  /** Shows only the button's icon on narrow screens. */
+  squeeze?: boolean;
+  /** A halo of light around the field (NotifyForm's `invite`). */
+  invite?: boolean;
+}
+
+const { name, mode = "inline", squeeze = false, invite = false } = Astro.props;
+const panel = `notify-${name}-panel`;
+---
+
+{mode === "inline" && <NotifyForm name={name} invite={invite} />}
+{mode === "popover" && (
+  <>
+    <button
+      class:list={["button", "button--glass", "notify-trigger", { "button--squeeze": squeeze }]}
+      type="button"
+      popovertarget={panel}
+      aria-label={squeeze ? "Get notified at launch" : undefined}
+      data-notify-trigger
+      data-magnetic
+    >
+      <span class="button__icon notify-trigger__icon" aria-hidden="true">
+        <Bell class="notify-trigger__bell" stroke-width={1.75} />
+        <Check class="notify-trigger__check" stroke-width={2.25} />
+      </span>
+      <span class="button__label">
+        <span data-notify-trigger-label>Notify me</span>
+        <span aria-hidden="true" data-notify-trigger-label>
+          Notify me
+        </span>
+      </span>
+    </button>
+    <div class="notify-pop" id={panel} popover data-notify-panel>
+      <p class="notify-pop__title">Be first to know.</p>
+      <p class="notify-pop__lead">
+        Rondo opens to everyone soon. Leave your address and we’ll write once, then never again.
+      </p>
+      <NotifyForm name={name} />
+    </div>
+  </>
+)}
+
+<style>
+  .notify-trigger :global(.notify-trigger__check) {
+    display: none;
+  }
+
+  :global(html[data-listed]) .notify-trigger :global(.notify-trigger__bell) {
+    display: none;
+  }
+
+  :global(html[data-listed]) .notify-trigger :global(.notify-trigger__check) {
+    display: block;
+    color: var(--signal);
+  }
+
+  /*
+   * The panel opens out of the button: it starts at the button's size and corner (--from-width and --from-height,
+   * set as it opens) and grows into a card, its contents arriving out of a blur.
+   */
+  .notify-pop {
+    --from-width: 120px;
+    --from-height: 40px;
+    position: fixed;
+    inset: auto;
+    top: var(--top, 76px);
+    right: var(--right, 16px);
+    width: min(400px, 100vw - 32px);
+    margin: 0;
+    padding: 22px 20px 20px;
+    border: 0;
+    border-radius: 26px;
+    background: linear-gradient(180deg, rgb(255 255 255 / 90%), rgb(255 255 255 / 76%));
+    color: var(--ink);
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 1px 0 var(--glass-edge) inset,
+      0 30px 70px -24px rgb(30 40 80 / 32%),
+      0 8px 24px -12px rgb(30 40 80 / 14%);
+    -webkit-backdrop-filter: blur(28px) saturate(1.5);
+    backdrop-filter: blur(28px) saturate(1.5);
+    overflow: hidden;
+    clip-path: inset(0 0 0 0 round 26px);
+    transition:
+      clip-path 0.7s var(--ease-out),
+      opacity 0.4s var(--ease-out),
+      display 0.7s allow-discrete,
+      overlay 0.7s allow-discrete;
+  }
+
+  .notify-pop:not(:popover-open) {
+    opacity: 0;
+    clip-path: inset(0 0 calc(100% - var(--from-height)) calc(100% - var(--from-width)) round 999px);
+    transition-duration: 0.35s;
+  }
+
+  @starting-style {
+    .notify-pop:popover-open {
+      opacity: 0;
+      clip-path: inset(0 0 calc(100% - var(--from-height)) calc(100% - var(--from-width)) round 999px);
+    }
+  }
+
+  .notify-pop > * {
+    transition:
+      opacity 0.5s var(--ease-out) 0.12s,
+      filter 0.5s var(--ease-out) 0.12s,
+      transform 0.6s var(--ease-out) 0.12s;
+  }
+
+  .notify-pop:not(:popover-open) > * {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(-6px);
+    transition-delay: 0s;
+  }
+
+  @starting-style {
+    .notify-pop:popover-open > * {
+      opacity: 0;
+      filter: blur(6px);
+      transform: translateY(-6px);
+    }
+  }
+
+  .notify-pop::backdrop {
+    background: transparent;
+  }
+
+  .notify-pop__title {
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: -0.03em;
+  }
+
+  .notify-pop__lead {
+    margin: 6px 0 18px;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--ink-2);
+  }
+
+  .notify-pop :global(.notify) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .notify-pop :global(.notify__note) {
+    padding-left: 18px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .notify-pop,
+    .notify-pop > * {
+      transition: none;
+    }
+  }
+</style>

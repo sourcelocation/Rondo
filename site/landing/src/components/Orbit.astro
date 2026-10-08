@@ -1,0 +1,123 @@
+---
+import { orbit } from "../content/downloads";
+import BrandIcon from "./BrandIcon.astro";
+import Logo from "./Logo.astro";
+
+/**
+ * Rondo's mark, with the platforms' marks circling it on a tilted ring (motion/orbit.ts). The ring slows and comes to
+ * rest with the visitor's own platform in front, named. Without the motion, the marks sit in a row.
+ */
+---
+
+<div class="orbit" aria-hidden="true" data-orbit>
+  <div class="orbit__core">
+    <Logo mark />
+  </div>
+  {orbit.map((item) => (
+    <div class="orbit__item" data-orbit-item data-for={item.for.join(" ")}>
+      <span class="orbit__disc">
+        <BrandIcon name={item.brand} />
+      </span>
+      <span class="orbit__label">{item.label}</span>
+    </div>
+  ))}
+</div>
+
+<style>
+  .orbit {
+    position: relative;
+    width: min(100%, 760px);
+    height: clamp(300px, 34vw, 440px);
+    --disc: clamp(54px, 6.4vw, 76px);
+  }
+
+  .orbit__core {
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    width: calc(var(--disc) * 1.6);
+    height: calc(var(--disc) * 1.6);
+    border-radius: 50%;
+    background: linear-gradient(180deg, rgb(255 255 255 / 92%), rgb(255 255 255 / 64%));
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 1px 0 var(--glass-edge) inset,
+      0 30px 60px -24px rgb(30 40 80 / 35%),
+      0 0 80px -10px rgb(169 202 255 / 70%);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    backdrop-filter: blur(20px) saturate(1.4);
+    translate: -50% -50%;
+  }
+
+  .orbit__core :global(.logo) {
+    font-size: calc(var(--disc) * 0.62);
+  }
+
+  /* Placed by the motion; without it, in a row under the core. */
+  .orbit__item {
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    width: var(--disc);
+    margin: calc(var(--disc) / -2) 0 0 calc(var(--disc) / -2);
+    will-change: transform, filter, opacity;
+  }
+
+  .orbit__disc {
+    display: grid;
+    place-items: center;
+    width: var(--disc);
+    height: var(--disc);
+    border-radius: 50%;
+    background: linear-gradient(165deg, #fff, rgb(255 255 255 / 78%));
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 1px 0 var(--glass-edge) inset,
+      0 18px 36px -18px rgb(30 40 80 / 40%);
+    color: var(--ink);
+    font-size: calc(var(--disc) * 0.42);
+    transition: box-shadow 0.8s var(--ease-out);
+  }
+
+  .orbit__item.is-yours .orbit__disc {
+    box-shadow:
+      0 0 0 1px rgb(111 143 255 / 45%),
+      0 0 0 6px rgb(111 143 255 / 12%),
+      0 1px 0 var(--glass-edge) inset,
+      0 22px 40px -18px rgb(60 80 200 / 45%);
+  }
+
+  .orbit__label {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--ink-2);
+    opacity: 0;
+  }
+
+  .orbit:not(.is-moving) .orbit__item:nth-of-type(2) {
+    transform: translateX(calc(var(--disc) * -3.2)) translateY(calc(var(--disc) * 1.6));
+  }
+
+  .orbit:not(.is-moving) .orbit__item:nth-of-type(3) {
+    transform: translateX(calc(var(--disc) * -1.6)) translateY(calc(var(--disc) * 1.6));
+  }
+
+  .orbit:not(.is-moving) .orbit__item:nth-of-type(4) {
+    transform: translateY(calc(var(--disc) * 1.6));
+  }
+
+  .orbit:not(.is-moving) .orbit__item:nth-of-type(5) {
+    transform: translateX(calc(var(--disc) * 1.6)) translateY(calc(var(--disc) * 1.6));
+  }
+
+  .orbit:not(.is-moving) .orbit__item:nth-of-type(6) {
+    transform: translateX(calc(var(--disc) * 3.2)) translateY(calc(var(--disc) * 1.6));
+  }
+</style>

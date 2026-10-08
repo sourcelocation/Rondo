@@ -1,0 +1,90 @@
+---
+import { links } from "../content/links";
+import Logo from "./Logo.astro";
+
+/** The foot of every page: where else to go, the licence, and the logo set large, rising into view. */
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="container footer__inner">
+    <div class="footer__row">
+      <nav class="footer__links" aria-label="Footer">
+        <a class="link" href="/download">
+          Download
+        </a>
+        <a class="link" href={links.app} data-when="live">
+          Open Rondo
+        </a>
+        <a class="link" href={links.docs}>
+          Docs
+        </a>
+        <a class="link" href={links.source}>
+          GitHub
+        </a>
+        <a class="link" href="/terms">
+          Terms
+        </a>
+        <a class="link" href="/privacy">
+          Privacy
+        </a>
+      </nav>
+      <p class="footer__legal">
+        © {year} Rondo ·{" "}
+        <a class="link" href={links.license}>
+          AGPL-3.0
+        </a>
+      </p>
+    </div>
+    <div class="footer__logo" data-footer-logo>
+      <Logo />
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    position: relative;
+    overflow: clip;
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+  }
+
+  .footer__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px 32px;
+    flex-wrap: wrap;
+    font-size: var(--size-small);
+    color: var(--ink-2);
+  }
+
+  .footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+  }
+
+  .footer__legal {
+    color: var(--ink-3);
+  }
+
+  .footer__inner {
+    container-type: inline-size;
+  }
+
+  /* The logo spans the container (it is 1304 wide for 302 high); its lower part fades out at the page's end. */
+  .footer__logo {
+    margin-top: clamp(48px, 8vh, 96px);
+    margin-bottom: -5cqw;
+    font-size: calc(100cqw * 302 / 1304);
+    line-height: 0;
+    color: var(--ink);
+    mask-image: linear-gradient(to bottom, #000 35%, rgb(0 0 0 / 8%) 100%);
+  }
+
+  .footer__logo :global(.logo) {
+    width: 100%;
+  }
+</style>

@@ -1,0 +1,45 @@
+---
+import ArrowDownToLine from "@lucide/astro/icons/arrow-down-to-line";
+import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
+import BrandIcon from "./BrandIcon.astro";
+
+/**
+ * A pill link. Its label rolls over to a copy of itself on hover, and it leans toward the pointer (Magnetic). Its
+ * icon: `open` (an arrow after the label, for what leaves the page), `install` (the mark of the visitor's platform,
+ * which the styles pick by /launch.js's data-os), or `github`.
+ */
+interface Props {
+  href: string;
+  label: string;
+  variant?: "solid" | "glass";
+  icon?: "open" | "install" | "github";
+  /** Shows only the icon on narrow screens; the label stays for screen readers. */
+  squeeze?: boolean;
+  class?: string;
+}
+
+const { href, label, variant = "solid", icon, squeeze = false, class: className } = Astro.props;
+---
+
+<a
+  class:list={["button", `button--${variant}`, { "button--squeeze": squeeze }, className]}
+  href={href}
+  aria-label={squeeze ? label : undefined}
+  data-magnetic
+>
+  {icon === "github" && <BrandIcon name="github" class="button__icon" />}
+  {icon === "install" && (
+    <span class="button__icon os-icons" aria-hidden="true">
+      <BrandIcon name="apple" class="os-icon os-icon--apple" />
+      <BrandIcon name="android" class="os-icon os-icon--android" />
+      <BrandIcon name="windows" class="os-icon os-icon--windows" />
+      <BrandIcon name="linux" class="os-icon os-icon--linux" />
+      <ArrowDownToLine class="os-icon os-icon--any" stroke-width={2} />
+    </span>
+  )}
+  <span class="button__label">
+    <span>{label}</span>
+    <span aria-hidden="true">{label}</span>
+  </span>
+  {icon === "open" && <ArrowUpRight class="button__arrow" aria-hidden="true" stroke-width={1.75} />}
+</a>

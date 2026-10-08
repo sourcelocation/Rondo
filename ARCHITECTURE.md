@@ -453,6 +453,21 @@ which writes `brand/dist`. The web app imports its CSS, mail reads `tokens.json`
 the native apps will read the Swift and Kotlin output. `site/` builds the landing page and the docs
 into one image; the docs' API reference is generated from the contract.
 
+The landing page is static Astro. Its motion lives in `site/landing/src/motion`, one module per
+scene over GSAP and Lenis, with an OGL shader for the light behind the page; the markup works
+without it, and with reduced motion everything is shown in place. It takes only the logo from
+`brand/`, through one inline sprite. The site's Content-Security-Policy (`site/Caddyfile`) allows
+only its own files, so the pages carry no inline scripts, styles or `data:` URLs, and the build
+inlines nothing.
+
+Until the launch (`site/landing/src/launch`), the site's actions are a star on GitHub and a launch
+list (one email on launch day, nothing else) in place of opening and installing the apps.
+`/launch.js`, built from the launch time and `PUBLIC_RONDO_RELEASE` (`auto` follows the clock;
+`pre` and `live` hold it), puts the mode and the visitor's platform on `<html>` before a page
+paints, and a page open at the launch turns by itself. The list's sign-up is a stub until the server
+keeps it. `/download` lists every platform; the stores' links are filled in at the launch
+(`site/landing/src/content/downloads.ts`).
+
 ## Running and shipping
 
 - **Locally**, Rondo keeps to ports 23900–23912 (listed in `server/compose.yaml`), so it runs beside

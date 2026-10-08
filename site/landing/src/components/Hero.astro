@@ -1,0 +1,178 @@
+---
+import { ring } from "../content/cards";
+import Actions from "./Actions.astro";
+import Countdown from "./Countdown.astro";
+
+/**
+ * The first screen: the promise, set between flashcards that circle it like a theme coming back around
+ * (motion/ring.ts), with the cards behind it and in front of it blurred out of focus. Under it, what Rondo is, and
+ * the way in: until the launch, the time left and the launch list; then, the apps. The way in scrolls away with the
+ * page, as clickable as anything else, rather than fading with the headline.
+ */
+---
+
+<section class="hero" aria-labelledby="hero-title" data-hero data-mood="hero">
+  <div class="hero__ring" aria-hidden="true" data-ring>
+    {ring.map((card) => (
+      <div class="ring-card" data-ring-card>
+        <span class="ring-card__deck">{card.deck}</span>
+        <span class="ring-card__front" lang={card.lang}>
+          {card.front}
+        </span>
+        <span class="ring-card__back" lang={card.lang}>
+          {card.detail ?? card.back}
+        </span>
+      </div>
+    ))}
+  </div>
+
+  <div class="hero__center container">
+    <h1 id="hero-title" class="hero__title" data-reveal="hero" data-reveal-manual data-hero-title>
+      <span class="hero__line">Remember</span>
+      <span class="hero__line">
+        <em>for good.</em>
+      </span>
+    </h1>
+    <p class="hero__lead lead" data-reveal="lines" data-reveal-manual>
+      Rondo is a free, open-source flashcard app with everything you rely on in Anki. Native on every device, and in
+      sync whether you’re online or off.
+    </p>
+    <div class="hero__entry" data-reveal="fade" data-reveal-manual>
+      <div class="hero__when" data-when="pre">
+        <Countdown inline />
+      </div>
+      <Actions name="hero" invite />
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Clipped at the sides only: as the hero scrolls away, its cards drift past its foot and fade over what follows. */
+  .hero {
+    position: relative;
+    height: 100svh;
+    min-height: 640px;
+    isolation: isolate;
+    overflow-x: clip;
+  }
+
+  /* The ring sets no stacking context, so its cards sort around the headline: behind it or in front. */
+  .hero__ring {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    --card-w: clamp(116px, 13.5vw, 214px);
+    --card-h: calc(var(--card-w) * 0.66);
+  }
+
+  .ring-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    width: var(--card-w);
+    height: var(--card-h);
+    margin: calc(var(--card-h) / -2) 0 0 calc(var(--card-w) / -2);
+    padding: calc(var(--card-w) * 0.065) calc(var(--card-w) * 0.075);
+    border-radius: calc(var(--card-w) * 0.085);
+    background: linear-gradient(165deg, rgb(255 255 255 / 92%), rgb(255 255 255 / 66%));
+    box-shadow:
+      0 0 0 1px rgb(11 11 13 / 5%),
+      0 1px 0 rgb(255 255 255 / 95%) inset,
+      0 18px 40px -22px rgb(30 40 80 / 30%),
+      0 2px 6px rgb(30 40 80 / 5%);
+    opacity: 0;
+    will-change: transform, filter, opacity;
+    backface-visibility: hidden;
+  }
+
+  .ring-card__deck {
+    font-size: calc(var(--card-w) * 0.058);
+    font-weight: 450;
+    line-height: 1;
+    color: var(--ink-3);
+  }
+
+  .ring-card__front {
+    align-self: center;
+    justify-self: center;
+    font-size: calc(var(--card-w) * 0.13);
+    font-weight: 420;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+  }
+
+  .ring-card__back {
+    justify-self: center;
+    font: italic 340 calc(var(--card-w) * 0.068) / 1.2 var(--serif);
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  .hero__center {
+    position: absolute;
+    inset: var(--nav) 0 0;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    padding-bottom: 4vh;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .hero__title {
+    position: relative;
+    z-index: 1000;
+    font-size: var(--size-hero);
+    font-weight: 360;
+    line-height: 0.88;
+    letter-spacing: -0.055em;
+  }
+
+  .hero__line {
+    display: block;
+  }
+
+  .hero__title em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    letter-spacing: -0.035em;
+    font-optical-sizing: auto;
+  }
+
+  .hero__lead {
+    position: relative;
+    z-index: 2000;
+    max-width: 30em;
+    margin-top: clamp(22px, 3.6vh, 36px);
+    font-size: clamp(1rem, 0.95rem + 0.25vw, 1.1875rem);
+  }
+
+  /* The way in: above the ring's cards, and clickable through the centre's click-through layout. */
+  .hero__entry {
+    position: relative;
+    z-index: 2000;
+    display: grid;
+    justify-items: center;
+    gap: 18px;
+    margin-top: clamp(26px, 4.4vh, 44px);
+    pointer-events: auto;
+  }
+
+  .hero__entry :global(.actions__set) {
+    justify-content: center;
+  }
+
+  .hero__entry :global(.notify__note) {
+    padding: 0;
+    text-align: center;
+  }
+
+  @media (height < 600px) {
+    .hero__lead {
+      display: none;
+    }
+  }
+</style>

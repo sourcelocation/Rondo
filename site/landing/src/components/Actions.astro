@@ -1,0 +1,65 @@
+---
+import { links } from "../content/links";
+import Button from "./Button.astro";
+import Notify from "./Notify.astro";
+
+/**
+ * The site's two actions, wherever it asks something of the visitor (the bar, the hero, the close). Until the launch:
+ * a star on GitHub and the launch list. From then on: open Rondo and install it — opening first on computers,
+ * installing first on phones and tablets. The styles choose by /launch.js's data-release and data-device.
+ */
+interface Props {
+  /** Unique on the page. */
+  name: string;
+  /** The bar's smaller version, whose launch list opens in a panel. */
+  compact?: boolean;
+  /** A halo of light around the way in (the first button, or the launch list's field), where the page invites. */
+  invite?: boolean;
+  class?: string;
+}
+
+const { name, compact = false, invite = false, class: className } = Astro.props;
+const halo = invite ? { class: "halo" } : {};
+---
+
+<div class:list={["actions", { "actions--compact": compact }, className]}>
+  <div class="actions__set" data-when="live" data-on="desktop">
+    <Button href={links.app} label="Open Rondo" icon="open" {...halo} />
+    <Button href="/download" label="Install Rondo" icon="install" variant="glass" squeeze={compact} />
+  </div>
+  <div class="actions__set" data-when="live" data-on="mobile">
+    <Button href="/download" label="Install Rondo" icon="install" {...halo} />
+    <Button href={links.app} label="Open Rondo" icon="open" variant="glass" squeeze={compact} />
+  </div>
+  <div class="actions__set" data-when="pre">
+    <Button href={links.source} label="Star on GitHub" icon="github" squeeze={compact} />
+    <Notify name={name} mode={compact ? "popover" : "inline"} invite={invite} />
+  </div>
+</div>
+
+<style>
+  .actions__set {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .actions--compact .actions__set {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .actions--compact :global(.button) {
+    --button-height: 40px;
+    padding-inline: 18px;
+    font-size: 14px;
+  }
+
+  @media (width < 520px) {
+    .actions--compact :global(.button--squeeze) {
+      padding: 0;
+    }
+  }
+</style>

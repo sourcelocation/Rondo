@@ -1,0 +1,64 @@
+---
+import Footer from "../components/Footer.astro";
+import Nav from "../components/Nav.astro";
+import Page from "./Page.astro";
+
+/** A plain page of the site (the legal pages, a missing page): a heading and some text, between the bar and foot. */
+interface Props {
+  title: string;
+  heading: string;
+  description?: string;
+}
+
+const { title, heading, description } = Astro.props;
+---
+
+<Page title={title} {...(description == null ? {} : { description })}>
+  <div class="glow" aria-hidden="true"></div>
+  <Nav />
+  <main class="document container" id="main">
+    <h1 class="document__heading">{heading}</h1>
+    <div class="document__body">
+      <slot />
+    </div>
+  </main>
+  <Footer />
+</Page>
+
+<style>
+  .glow {
+    position: fixed;
+    inset: 0 0 auto;
+    height: 70vh;
+    pointer-events: none;
+    background:
+      radial-gradient(50% 70% at 15% 0%, rgb(169 202 255 / 45%), transparent 70%),
+      radial-gradient(45% 65% at 85% 0%, rgb(207 191 255 / 40%), transparent 70%);
+  }
+
+  .document {
+    position: relative;
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    gap: clamp(24px, 4vh, 40px);
+    min-height: 72svh;
+    padding-block: calc(var(--nav) + 64px) 96px;
+  }
+
+  .document__heading {
+    font-size: var(--size-h2);
+    font-weight: 380;
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+  }
+
+  .document__body {
+    display: grid;
+    gap: 24px;
+    justify-items: start;
+    max-width: 34em;
+    font-size: var(--size-lead);
+    color: var(--ink-2);
+  }
+</style>

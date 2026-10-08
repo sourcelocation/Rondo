@@ -1,0 +1,56 @@
+---
+import Actions from "./Actions.astro";
+
+/** The last word: an invitation in, with the light coming back up behind it. */
+---
+
+<section class="closing" aria-labelledby="closing-title" data-mood="closing">
+  <div class="container closing__inner">
+    <h2 id="closing-title" class="closing__title" data-reveal="words">
+      Start <em>remembering.</em>
+    </h2>
+    <p class="lead" data-reveal="lines">
+      Free and open source. Bring your Anki decks along.
+    </p>
+    <div class="closing__actions" data-reveal="fade">
+      <Actions name="closing" invite />
+    </div>
+  </div>
+</section>
+
+<style>
+  .closing {
+    position: relative;
+    padding-block: clamp(120px, 22vh, 260px) clamp(100px, 18vh, 200px);
+  }
+
+  .closing__inner {
+    display: grid;
+    justify-items: center;
+    gap: clamp(24px, 4vh, 40px);
+    text-align: center;
+  }
+
+  .closing__title {
+    font-size: clamp(3.5rem, 1.6rem + 7.6vw, 10rem);
+    font-weight: 360;
+    line-height: 0.92;
+    letter-spacing: -0.055em;
+  }
+
+  .closing__title em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    letter-spacing: -0.035em;
+  }
+
+  .closing__actions :global(.actions__set) {
+    justify-content: center;
+  }
+
+  .closing__actions :global(.notify__note) {
+    padding: 0;
+    text-align: center;
+  }
+</style>

@@ -1,0 +1,522 @@
+---
+import FileArchive from "@lucide/astro/icons/file-archive";
+import { features } from "../content/features";
+import { area, chart, curve, marks, recall, reviews } from "../content/history";
+
+/**
+ * Coming from Anki: what Rondo has of it, and one card's memory moving over (motion/history.ts). Its recall falls
+ * and is refreshed at every review, the gaps growing; the deck is imported partway through, and the curve carries
+ * on in Rondo unbroken. Drawn here as it ends, so it reads without the motion. Below, the features drift past.
+ */
+const { width, height, top, target, base } = chart;
+const reviewed = reviews.filter((review) => review.x <= marks.now);
+// The two stretches of the card's life, each spanned by a bracket under the curve.
+const regions = [
+  { label: "In Anki", from: marks.learned, to: marks.seam - 6 },
+  { label: "In Rondo", from: marks.seam + 6, to: marks.next },
+];
+const bracket = base + 22;
+const seamFraction = (marks.seam - marks.learned) / (marks.now - marks.learned);
+const stats = [
+  { label: "Notes", value: 2000 },
+  { label: "Media files", value: 1204 },
+  { label: "Past reviews", value: 38412 },
+];
+const number = new Intl.NumberFormat("en");
+---
+
+<section class="section anki" id="anki" aria-labelledby="anki-title" data-mood="anki">
+  <div class="container anki__grid">
+    <div class="anki__copy">
+      <p class="kicker" data-reveal="fade">
+        <span class="kicker__index">01</span>Coming from Anki
+      </p>
+      <h2 id="anki-title" class="heading" data-reveal="words">
+        Everything you rely on in Anki. <em>Already here.</em>
+      </h2>
+      <p class="lead" data-reveal="lines">
+        FSRS scheduling, cloze, image occlusion, LaTeX, furigana, typed answers and text-to-speech, with note types of
+        your own. Import your .apkg and .colpkg files with their media and every past review, and each card picks up
+        exactly where it left off.
+      </p>
+    </div>
+
+    <div class="anki__stage" data-reveal="rise">
+      <figure class="history glass" aria-hidden="true" data-history>
+        <div class="history__head">
+          <div class="history__card">
+            <span lang="ja">記憶</span>
+            <em>memory</em>
+          </div>
+          <p class="history__title">One card’s recall, over the years</p>
+        </div>
+
+        <div class="history__chart" data-history-chart>
+          <svg class="history__svg" viewBox={`0 0 ${width} ${height}`} data-history-svg>
+            <defs>
+              <clipPath id="history-drawn">
+                <rect x="0" y="0" width={marks.now + 2} height={height} data-history-drawn></rect>
+              </clipPath>
+              <clipPath id="history-ahead">
+                <rect x={marks.now} y="0" width={marks.next - marks.now + 8} height={height} data-history-ahead></rect>
+              </clipPath>
+              <linearGradient id="history-old" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#0b0b0d" stop-opacity="0.08"></stop>
+                <stop offset="1" stop-color="#0b0b0d" stop-opacity="0"></stop>
+              </linearGradient>
+              <linearGradient id="history-new" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#8fb4ff" stop-opacity="0.5"></stop>
+                <stop offset="1" stop-color="#cfbfff" stop-opacity="0.12"></stop>
+              </linearGradient>
+              <linearGradient
+                id="history-ink"
+                gradientUnits="userSpaceOnUse"
+                x1={marks.learned}
+                x2={marks.now}
+                y1="0"
+                y2="0"
+              >
+                <stop offset="0" stop-color="#0b0b0d" stop-opacity="0.42"></stop>
+                <stop offset={seamFraction} stop-color="#0b0b0d" stop-opacity="0.42"></stop>
+                <stop offset={seamFraction} stop-color="#0b0b0d"></stop>
+                <stop offset="1" stop-color="#0b0b0d"></stop>
+              </linearGradient>
+              <linearGradient
+                id="history-seam"
+                gradientUnits="userSpaceOnUse"
+                x1="0"
+                x2="0"
+                y1={top - 34}
+                y2={base + 26}
+              >
+                <stop offset="0" stop-color="#6f8fff" stop-opacity="0"></stop>
+                <stop offset="0.3" stop-color="#6f8fff" stop-opacity="0.85"></stop>
+                <stop offset="1" stop-color="#6f8fff" stop-opacity="0"></stop>
+              </linearGradient>
+              <radialGradient id="history-glow">
+                <stop offset="0" stop-color="#8fb4ff" stop-opacity="0.75"></stop>
+                <stop offset="1" stop-color="#8fb4ff" stop-opacity="0"></stop>
+              </radialGradient>
+            </defs>
+
+            <line class="history__rule" x1={marks.learned} x2={width - 12} y1={top} y2={top}></line>
+            <line
+              class="history__rule history__rule--target"
+              x1={marks.learned}
+              x2={width - 12}
+              y1={target}
+              y2={target}
+            ></line>
+            <text class="history__axis" x={marks.learned - 10} y={top + 4}>
+              100%
+            </text>
+            <text class="history__axis" x={marks.learned - 10} y={target + 4}>
+              90%
+            </text>
+
+            <g clip-path="url(#history-drawn)">
+              <path class="history__area history__area--old" d={area(marks.learned, marks.seam)}></path>
+              <path class="history__area history__area--new" d={area(marks.seam, marks.now)}></path>
+              <path class="history__line" d={curve(marks.learned, marks.now)}></path>
+            </g>
+            <path class="history__ahead" clip-path="url(#history-ahead)" d={curve(marks.now, marks.next)}></path>
+
+            <line
+              class="history__seam"
+              x1={marks.seam}
+              x2={marks.seam}
+              y1={top - 34}
+              y2={base + 26}
+              data-history-seam
+            ></line>
+            <text class="history__seam-label" x={marks.seam} y={top - 44} data-history-seam-label>
+              Imported into Rondo
+            </text>
+
+            {reviewed.map((review) => (
+              <circle class="history__dot" cx={review.x} cy={target} r="4.5" data-history-dot />
+            ))}
+            <circle
+              class="history__dot history__dot--next"
+              cx={marks.next}
+              cy={target}
+              r="4.5"
+              data-history-next
+            ></circle>
+            {reviews.map((review) => (
+              <text class="history__gap" x={review.labelX} y={target + 26} data-history-gap>
+                {review.label}
+              </text>
+            ))}
+            {regions.map((region) => (
+              <g class="history__region" data-history-region>
+                <path d={`M ${region.from} ${bracket - 5} V ${bracket} H ${region.to} V ${bracket - 5}`} />
+                <text x={(region.from + region.to) / 2} y={bracket + 22}>
+                  {region.label}
+                </text>
+              </g>
+            ))}
+
+            <line
+              class="history__playhead"
+              x1={marks.now}
+              x2={marks.now}
+              y1={top - 18}
+              y2={base}
+              data-history-playhead
+            ></line>
+            <circle class="history__glow" cx={marks.now} cy={recall(marks.now)} r="18" data-history-glow></circle>
+            <circle class="history__ripple" cx={marks.now} cy={recall(marks.now)} r="5" data-history-ripple></circle>
+            <circle class="history__head" cx={marks.now} cy={recall(marks.now)} r="5" data-history-head></circle>
+          </svg>
+
+          <div class="history__package" data-history-package>
+            <FileArchive stroke-width={1.5} />
+            <span>
+              <b>Japanese Core 2000</b>
+              <small>.apkg from Anki</small>
+            </span>
+          </div>
+        </div>
+
+        <dl class="history__stats" data-history-stats>
+          {stats.map((stat) => (
+            <div>
+              <dt>{stat.label}</dt>
+              <dd data-count={stat.value}>{number.format(stat.value)}</dd>
+            </div>
+          ))}
+        </dl>
+      </figure>
+    </div>
+  </div>
+
+  <div class="features" aria-label="What Rondo does" data-reveal="fade">
+    {features.map((row, index) => (
+      <div class="features__row" data-marquee={index % 2 === 0 ? "left" : "right"}>
+        <ul class="features__track" data-marquee-track>
+          {row.map((feature) => (
+            <li class="chip">{feature}</li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+</section>
+
+<style>
+  .anki__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(48px, 7vw, 120px);
+    align-items: center;
+  }
+
+  .anki__copy {
+    display: grid;
+    gap: clamp(20px, 3vh, 32px);
+    justify-items: start;
+  }
+
+  .anki__copy .lead {
+    max-width: 30em;
+  }
+
+  .anki__stage {
+    position: relative;
+  }
+
+  .history {
+    position: relative;
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: clamp(18px, 2.4vw, 28px);
+    border-radius: 28px;
+  }
+
+  .history__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .history__card {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    padding: 10px 18px 9px;
+    border-radius: 12px;
+    background: linear-gradient(165deg, #fff, rgb(255 255 255 / 80%));
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 10px 24px -16px rgb(30 40 80 / 35%);
+  }
+
+  .history__card span {
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  .history__card em {
+    font: italic 340 13px / 1.2 var(--serif);
+    color: var(--ink-3);
+  }
+
+  .history__title {
+    font-size: var(--size-small);
+    color: var(--ink-3);
+    text-align: right;
+  }
+
+  .history__chart {
+    position: relative;
+  }
+
+  .history__svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .history__svg text {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    fill: var(--ink-3);
+    text-anchor: middle;
+  }
+
+  .history__rule {
+    stroke: var(--line-2);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .history__rule--target {
+    stroke: rgb(11 11 13 / 22%);
+    stroke-dasharray: 3 5;
+  }
+
+  .history__svg .history__axis {
+    font-size: 11px;
+    text-anchor: end;
+  }
+
+  .history__area--old {
+    fill: url(#history-old);
+  }
+
+  .history__area--new {
+    fill: url(#history-new);
+  }
+
+  .history__line,
+  .history__ahead {
+    fill: none;
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .history__line {
+    stroke: url(#history-ink);
+  }
+
+  .history__ahead {
+    stroke: rgb(11 11 13 / 38%);
+    stroke-dasharray: 2 6;
+  }
+
+  .history__seam {
+    stroke: url(#history-seam);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .history__svg .history__seam-label {
+    font-size: 12px;
+    font-weight: 500;
+    fill: #4d6fe0;
+  }
+
+  .history__dot {
+    fill: #fff;
+    stroke: var(--ink);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .history__dot--next {
+    stroke: rgb(11 11 13 / 45%);
+    stroke-dasharray: 2 3;
+  }
+
+  .history__region path {
+    fill: none;
+    stroke: rgb(11 11 13 / 22%);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .history__svg .history__region text {
+    font-size: 13px;
+    font-weight: 500;
+    fill: var(--ink-2);
+  }
+
+  .history__playhead {
+    stroke: rgb(111 143 255 / 35%);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .history__glow {
+    fill: url(#history-glow);
+  }
+
+  .history__ripple {
+    fill: none;
+    stroke: #6f8fff;
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+    opacity: 0;
+  }
+
+  .history__head {
+    fill: var(--ink);
+  }
+
+  /* The Anki package, which drops in on the curve where the deck was imported (placed by motion/history.ts). */
+  .history__package {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px 10px 12px;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow:
+      0 0 0 1px var(--line),
+      var(--shadow-2);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .history__package :global(svg) {
+    width: 26px;
+    height: 26px;
+    color: var(--ink-2);
+  }
+
+  .history__package span {
+    display: grid;
+    gap: 1px;
+  }
+
+  .history__package b {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .history__package small {
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+
+  .history__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin: 4px 0 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .history__stats div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .history__stats dt {
+    order: 2;
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+
+  .history__stats dd {
+    margin: 0;
+    font-size: clamp(1.375rem, 1.1rem + 0.8vw, 1.875rem);
+    font-weight: 380;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .features {
+    display: grid;
+    gap: 14px;
+    margin-top: clamp(80px, 12vh, 140px);
+    mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  }
+
+  .features__row {
+    display: flex;
+    overflow: hidden;
+  }
+
+  .features__track {
+    display: flex;
+    flex: none;
+    gap: 14px;
+    padding-right: 14px;
+    will-change: transform;
+  }
+
+  .chip {
+    flex: none;
+    padding: 14px 22px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 66%);
+    box-shadow:
+      0 0 0 1px var(--line) inset,
+      0 1px 0 var(--glass-edge) inset;
+    font-size: clamp(0.9375rem, 0.88rem + 0.25vw, 1.0625rem);
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  @media (width < 960px) {
+    .anki__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* The chart shrinks with the screen; its words stay a readable size. */
+  @media (width < 640px) {
+    .history__svg text,
+    .history__svg .history__seam-label {
+      font-size: 19px;
+    }
+
+    .history__svg .history__region text {
+      font-size: 20px;
+    }
+
+    .history__svg .history__axis {
+      display: none;
+    }
+
+    .history__title {
+      display: none;
+    }
+
+    .history__stats dt {
+      font-size: 12px;
+    }
+  }
+</style>

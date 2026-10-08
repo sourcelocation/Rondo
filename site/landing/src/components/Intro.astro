@@ -1,0 +1,32 @@
+---
+import Logo from "./Logo.astro";
+
+/**
+ * The opening: the mark sweeps into view, turning back on itself like its arrow, then settles into the bar
+ * (motion/intro.ts). It stays hidden unless the intro plays.
+ */
+---
+
+<div class="intro" aria-hidden="true" data-intro>
+  <Logo mark />
+</div>
+
+<style>
+  .intro {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    z-index: 60;
+    font-size: clamp(72px, 9vw, 112px);
+    line-height: 0;
+    translate: -50% -50%;
+    visibility: hidden;
+    pointer-events: none;
+    --sweep: 0deg;
+    mask-image: conic-gradient(
+      from 90deg,
+      transparent calc(360deg - var(--sweep)),
+      #000 calc(360deg - var(--sweep) + 24deg)
+    );
+  }
+</style>

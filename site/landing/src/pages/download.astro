@@ -1,0 +1,563 @@
+---
+import ArrowDown from "@lucide/astro/icons/arrow-down";
+import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
+import Aurora from "../components/Aurora.astro";
+import BrandIcon from "../components/BrandIcon.astro";
+import Button from "../components/Button.astro";
+import Countdown from "../components/Countdown.astro";
+import Footer from "../components/Footer.astro";
+import Nav from "../components/Nav.astro";
+import Notify from "../components/Notify.astro";
+import Orbit from "../components/Orbit.astro";
+import Qr from "../components/Qr.astro";
+import { downloads } from "../content/downloads";
+import { links } from "../content/links";
+import { LAUNCH, launchDay, launchMoment } from "../launch/launch";
+import Page from "../layouts/Page.astro";
+
+/**
+ * Getting Rondo: the platforms' marks circle Rondo's and settle on the visitor's, whose app comes first; then every
+ * platform, a code to carry the page to a phone, and what's true everywhere. Until the launch, a countdown and the
+ * launch list take the apps' place.
+ */
+const day = launchDay(true);
+const page = new URL("/download", Astro.site).toString();
+const facts = [
+  { title: "Free", text: "Studying costs nothing, on every device." },
+  { title: "No account needed", text: "Everything works offline. Sign in only to sync." },
+  { title: "Your Anki decks", text: "Import .apkg and .colpkg files, review history and all." },
+];
+---
+
+<Page
+  title="Download Rondo"
+  description="Rondo for iPhone, iPad, Android, Mac, Windows, Linux and the web: free, open-source flashcards with everything you rely on in Anki."
+>
+  <Aurora />
+  <Nav />
+  <main class="download" id="main">
+    <section class="get" aria-labelledby="get-title">
+      <div class="container get__inner">
+        <h1 id="get-title" class="get__title" data-reveal="words">
+          Take Rondo <em>everywhere.</em>
+        </h1>
+        <p class="lead get__lead" data-reveal="lines">
+          Native apps for iPhone, iPad, Android, Mac, Windows and Linux, and Rondo on the web. Free, and in sync.
+        </p>
+
+        <div class="get__orbit" data-reveal="rise">
+          <Orbit />
+        </div>
+
+        <div class="get__pre" data-when="pre" data-reveal="fade">
+          <p class="get__when">
+            Opens to everyone{" "}
+            <time datetime={new Date(LAUNCH).toISOString()} data-launch-moment>
+              {launchMoment(true)}
+            </time>
+          </p>
+          <Countdown />
+          <div class="get__actions">
+            <Button href={links.source} label="Star on GitHub" icon="github" />
+            <Notify name="download" />
+          </div>
+        </div>
+
+        <div class="get__live" data-when="live" data-reveal="fade">
+          {downloads.map((download) => {
+            const channel = download.channels[0];
+            return (
+              <div class="get__yours" data-for={download.for.join(" ")}>
+                {channel?.url != null ? (
+                  <a class="button button--solid get__cta" href={channel.url} data-magnetic>
+                    <BrandIcon name={download.brand} class="button__icon" />
+                    <span class="button__label">
+                      <span>Get Rondo for {download.name}</span>
+                      <span aria-hidden="true">Get Rondo for {download.name}</span>
+                    </span>
+                  </a>
+                ) : (
+                  <>
+                    <span class="button button--solid get__cta is-soon">
+                      <BrandIcon name={download.brand} class="button__icon" />
+                      Rondo for {download.name} is coming soon
+                    </span>
+                    <a class="get__web link" href={links.app}>
+                      Meanwhile, use Rondo on the web
+                    </a>
+                  </>
+                )}
+              </div>
+            );
+          })}
+          <a class="get__all link" href="#platforms">
+            Every platform <ArrowDown aria-hidden="true" />
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section every" id="platforms" aria-labelledby="every-title">
+      <div class="container">
+        <h2 id="every-title" class="heading every__title" data-reveal="words">
+          Six native apps, <em>and the web.</em>
+        </h2>
+        <ul class="cards">
+          {downloads.map((download) => (
+            <li class="card" data-for={download.for.join(" ")} data-spotlight data-reveal="fade">
+              <span class="card__light" aria-hidden="true" />
+              <span class="card__top">
+                <span class="card__mark">
+                  <BrandIcon name={download.brand} />
+                </span>
+                <span class="card__yours">This device</span>
+              </span>
+              <h3 class="card__name">{download.name}</h3>
+              <p class="card__line">{download.line}</p>
+              <div class="card__get">
+                <span class="chip" data-when="pre">
+                  Arrives <time data-launch-day>{day}</time>
+                </span>
+                {download.channels.map((channel) =>
+                  channel.url != null ? (
+                    <a class="card__link" href={channel.url} data-when="live">
+                      {channel.label}
+                      <ArrowUpRight aria-hidden="true" />
+                    </a>
+                  ) : (
+                    <span class="chip" data-when="live">
+                      {channel.label} · Coming soon
+                    </span>
+                  ),
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p class="every__source" data-reveal="fade">
+          Rather build it yourself?{" "}
+          <a class="link" href={`${links.source}#run-your-own`}>
+            The source is on GitHub
+          </a>
+          .
+        </p>
+      </div>
+    </section>
+
+    <section class="carry" data-on="desktop" aria-labelledby="carry-title">
+      <div class="container">
+        <div class="carry__card glass" data-reveal="rise">
+          <div class="carry__text">
+            <h2 id="carry-title" class="carry__title">
+              On your phone?
+            </h2>
+            <p class="lead" data-when="live">
+              Scan to get Rondo on your iPhone, iPad or Android phone.
+            </p>
+            <p class="lead" data-when="pre">
+              Scan to take this page with you, and join the launch list from there.
+            </p>
+          </div>
+          <div class="carry__code">
+            <Qr url={page} label="A QR code for rondo.matthewsource.com/download" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="truths" aria-label="On every platform">
+      <ul class="container truths__list">
+        {facts.map((fact) => (
+          <li class="truth" data-reveal="fade">
+            <b>{fact.title}</b>
+            <span>{fact.text}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </main>
+  <Footer />
+</Page>
+
+<script>
+  import "../motion/download";
+</script>
+
+<style>
+  .download {
+    position: relative;
+    z-index: 1;
+    overflow-x: clip;
+  }
+
+  .get {
+    padding-top: calc(var(--nav) + clamp(48px, 9vh, 104px));
+  }
+
+  .get__inner {
+    display: grid;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .get__title {
+    font-size: clamp(3.25rem, 1.6rem + 6.4vw, 8.5rem);
+    font-weight: 360;
+    line-height: 0.92;
+    letter-spacing: -0.055em;
+  }
+
+  .get__title em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    letter-spacing: -0.035em;
+  }
+
+  .get__lead {
+    max-width: 32em;
+    margin-top: clamp(18px, 3vh, 28px);
+  }
+
+  .get__orbit {
+    display: grid;
+    justify-items: center;
+    width: 100%;
+    margin-top: clamp(20px, 5vh, 56px);
+  }
+
+  .get__pre,
+  .get__live {
+    display: grid;
+    justify-items: center;
+    gap: clamp(18px, 3vh, 28px);
+    margin-top: clamp(8px, 2vh, 24px);
+  }
+
+  .get__when {
+    font-size: var(--size-small);
+    color: var(--ink-2);
+  }
+
+  .get__actions {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .get__actions :global(.notify__note) {
+    padding: 0;
+    text-align: center;
+  }
+
+  /* The visitor's own platform's button, chosen by /launch.js's data-os. */
+  .get__yours {
+    display: none;
+  }
+
+  :global(html[data-os="ios"]) .get__yours[data-for~="ios"],
+  :global(html[data-os="ipados"]) .get__yours[data-for~="ipados"],
+  :global(html[data-os="android"]) .get__yours[data-for~="android"],
+  :global(html[data-os="macos"]) .get__yours[data-for~="macos"],
+  :global(html[data-os="windows"]) .get__yours[data-for~="windows"],
+  :global(html[data-os="linux"]) .get__yours[data-for~="linux"],
+  :global(html[data-os="web"]) .get__yours[data-for~="web"] {
+    display: block;
+  }
+
+  .get__cta {
+    --button-height: 58px;
+    padding-inline: 30px;
+    font-size: 16px;
+  }
+
+  .get__cta.is-soon {
+    opacity: 0.55;
+  }
+
+  .get__web {
+    display: table;
+    margin: 14px auto 0;
+    font-size: var(--size-small);
+    color: var(--ink-2);
+  }
+
+  .get__cta :global(.brand-icon) {
+    width: 19px;
+    height: 19px;
+  }
+
+  .get__all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--size-small);
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+
+  .get__all :global(svg) {
+    width: 15px;
+    height: 15px;
+  }
+
+  .every__title {
+    max-width: 10em;
+    margin: 0 auto clamp(40px, 7vh, 72px);
+    text-align: center;
+  }
+
+  /* The platforms, each a glass card lit from where the pointer is. */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    --x: 50%;
+    --y: 0%;
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 10px;
+    min-height: 260px;
+    padding: 26px;
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgb(255 255 255 / 78%), rgb(255 255 255 / 56%));
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 1px 0 var(--glass-edge) inset,
+      var(--shadow-1);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    backdrop-filter: blur(20px) saturate(1.4);
+    overflow: hidden;
+    isolation: isolate;
+    transition:
+      transform 0.8s var(--ease-out),
+      box-shadow 0.8s var(--ease-out);
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 0 0 1px var(--line-2),
+      0 1px 0 var(--glass-edge) inset,
+      var(--shadow-2);
+  }
+
+  .card__light {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(420px circle at var(--x) var(--y), rgb(169 202 255 / 34%), transparent 60%);
+    opacity: 0;
+    transition: opacity 0.6s var(--ease-out);
+  }
+
+  .card:hover .card__light {
+    opacity: 1;
+  }
+
+  .card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 26px;
+  }
+
+  .card__mark {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 10px 22px -14px rgb(30 40 80 / 40%);
+    font-size: 24px;
+    transition: transform 0.8s var(--ease-spring);
+  }
+
+  .card:hover .card__mark {
+    transform: translateY(-2px) rotate(-6deg);
+  }
+
+  .card__yours {
+    display: none;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgb(111 143 255 / 12%);
+    box-shadow: 0 0 0 1px rgb(111 143 255 / 30%) inset;
+    font-size: 12px;
+    font-weight: 500;
+    color: #3654c9;
+  }
+
+  /* The visitor's own platform's card. */
+  :global(html[data-os="ios"]) .card[data-for~="ios"],
+  :global(html[data-os="ipados"]) .card[data-for~="ipados"],
+  :global(html[data-os="android"]) .card[data-for~="android"],
+  :global(html[data-os="macos"]) .card[data-for~="macos"],
+  :global(html[data-os="windows"]) .card[data-for~="windows"],
+  :global(html[data-os="linux"]) .card[data-for~="linux"],
+  :global(html[data-os="web"]) .card[data-for~="web"] {
+    box-shadow:
+      0 0 0 1px rgb(111 143 255 / 40%),
+      0 0 0 6px rgb(111 143 255 / 8%),
+      0 1px 0 var(--glass-edge) inset,
+      var(--shadow-2);
+
+    & .card__yours {
+      display: block;
+    }
+  }
+
+  .card__name {
+    font-size: var(--size-h3);
+    font-weight: 400;
+    letter-spacing: -0.035em;
+  }
+
+  .card__line {
+    font-size: 15px;
+    color: var(--ink-2);
+  }
+
+  .card__get {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 22px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: rgb(11 11 13 / 5%);
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  .card__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .card__link :global(svg) {
+    width: 15px;
+    height: 15px;
+  }
+
+  .every__source {
+    margin-top: 32px;
+    font-size: var(--size-small);
+    text-align: center;
+    color: var(--ink-3);
+  }
+
+  .every__source a {
+    color: var(--ink);
+  }
+
+  .carry {
+    padding-block: 0 var(--section);
+  }
+
+  .carry__card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 48px;
+    padding: clamp(28px, 4vw, 56px);
+    border-radius: 36px;
+  }
+
+  .carry__text {
+    display: grid;
+    gap: 14px;
+  }
+
+  .carry__title {
+    font-size: var(--size-h2);
+    font-weight: 380;
+    line-height: 1;
+    letter-spacing: -0.045em;
+  }
+
+  .carry__text .lead {
+    max-width: 22em;
+  }
+
+  .carry__code {
+    width: 196px;
+    padding: 16px;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow:
+      0 0 0 1px var(--line),
+      var(--shadow-2);
+  }
+
+  .truths {
+    padding-bottom: var(--section);
+  }
+
+  .truths__list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  .truth {
+    display: grid;
+    gap: 8px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line-2);
+  }
+
+  .truth b {
+    font-size: var(--size-h3);
+    font-weight: 400;
+    letter-spacing: -0.035em;
+  }
+
+  .truth span {
+    font-size: var(--size-small);
+    color: var(--ink-3);
+  }
+
+  @media (width < 1000px) {
+    .cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (width < 640px) {
+    .cards,
+    .truths__list {
+      grid-template-columns: 1fr;
+    }
+
+    .card {
+      min-height: 0;
+    }
+  }
+</style>

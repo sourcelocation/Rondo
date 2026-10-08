@@ -1,0 +1,293 @@
+---
+import ArrowRight from "@lucide/astro/icons/arrow-right";
+import Mail from "@lucide/astro/icons/mail";
+import { LAUNCH, launchDay } from "../launch/launch";
+
+/**
+ * The launch list's form: an address, for one email on launch day and nothing else (launch/notify.ts). Every form on
+ * a page turns to "You're on the list" together, and stays so on later visits.
+ */
+interface Props {
+  /** Unique on the page. */
+  name: string;
+  /** A halo of light around the field, where the page invites the visitor in. */
+  invite?: boolean;
+}
+
+const { name, invite = false } = Astro.props;
+const id = `notify-${name}`;
+const day = launchDay(true);
+---
+
+<form class="notify" method="post" novalidate data-notify data-state="idle">
+  <div class="notify__stage">
+    <div class:list={["notify__field", { halo: invite }]}>
+      <Mail class="notify__mail" aria-hidden="true" stroke-width={1.75} />
+      <label class="visually-hidden" for={id}>
+        Email address
+      </label>
+      <input
+        id={id}
+        class="notify__input"
+        type="email"
+        name="email"
+        placeholder="Your email"
+        autocomplete="email"
+        inputmode="email"
+        autocapitalize="off"
+        spellcheck="false"
+        enterkeyhint="send"
+        maxlength="254"
+        required
+        aria-describedby={`${id}-note`}
+        data-notify-input
+      />
+      <button class="notify__send" type="submit" data-notify-send>
+        <span class="notify__send-label">Notify me</span>
+        <ArrowRight class="notify__send-arrow" aria-hidden="true" stroke-width={2} />
+        <span class="notify__spinner" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <div class="notify__done" hidden data-notify-done>
+      <svg class="notify__check" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10.5"></circle>
+        <path d="M7.5 12.4l3 3 6-6.4" data-notify-tick></path>
+      </svg>
+      <p>
+        <b>You’re on the list.</b>
+        <span data-notify-address>One email on launch day, then nothing.</span>
+      </p>
+    </div>
+  </div>
+
+  <p class="notify__note" id={`${id}-note`} data-notify-note>
+    One email on launch day,{" "}
+    <time datetime={new Date(LAUNCH).toISOString()} data-launch-day>
+      {day}
+    </time>
+    . Nothing else, ever.
+  </p>
+</form>
+
+<style>
+  /*
+   * 400px wide in a row of actions, which makes room for all of it rather than wrapping it under the rest (a minimum
+   * counts toward a row's size where a flex basis doesn't); on a phone it takes what the screen has.
+   */
+  .notify {
+    display: grid;
+    gap: 10px;
+    flex: 0 1 400px;
+    min-width: 0;
+  }
+
+  @media (width >= 640px) {
+    .notify {
+      min-width: 400px;
+    }
+  }
+
+  .notify__stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .notify__field,
+  .notify__done {
+    grid-area: 1 / 1;
+  }
+
+  /* A glass pill around the address, with the send button inside it. */
+  .notify__field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 54px;
+    padding: 5px 5px 5px 18px;
+    border-radius: 999px;
+    background: var(--glass);
+    box-shadow:
+      0 0 0 1px var(--line-2) inset,
+      0 1px 0 var(--glass-edge) inset,
+      var(--shadow-1);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
+    transition:
+      box-shadow 0.5s var(--ease-out),
+      background-color 0.5s var(--ease-out);
+  }
+
+  .notify__field:focus-within {
+    background: rgb(255 255 255 / 86%);
+    box-shadow:
+      0 0 0 1px rgb(111 143 255 / 55%) inset,
+      0 0 0 4px rgb(111 143 255 / 14%),
+      var(--shadow-1);
+  }
+
+  .notify[data-state="invalid"] .notify__field {
+    box-shadow:
+      0 0 0 1px rgb(214 92 64 / 55%) inset,
+      0 0 0 4px rgb(214 92 64 / 12%),
+      var(--shadow-1);
+  }
+
+  .notify__field :global(.notify__mail) {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    color: var(--ink-3);
+  }
+
+  /* No width of its own (an input's default is about 20 characters): it takes what the pill leaves it. */
+  .notify__input {
+    flex: 1;
+    width: 0;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    outline: none;
+  }
+
+  .notify__input::placeholder {
+    color: var(--ink-3);
+  }
+
+  /* Pale until the address looks complete, then ready in ink. */
+  .notify__send {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+    padding-inline: 18px 16px;
+    border-radius: 999px;
+    background: rgb(11 11 13 / 7%);
+    color: var(--ink-2);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition:
+      background-color 0.5s var(--ease-out),
+      color 0.5s var(--ease-out),
+      box-shadow 0.5s var(--ease-out);
+  }
+
+  .notify[data-ready="true"] .notify__send,
+  .notify[data-state="sending"] .notify__send {
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: 0 8px 20px -10px rgb(11 11 13 / 55%);
+  }
+
+  .notify__send :global(.notify__send-arrow) {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.6s var(--ease-out);
+  }
+
+  .notify__send:hover :global(.notify__send-arrow) {
+    transform: translateX(3px);
+  }
+
+  .notify__spinner {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgb(255 255 255 / 25%);
+    border-top-color: #fff;
+    opacity: 0;
+  }
+
+  .notify[data-state="sending"] .notify__spinner {
+    opacity: 1;
+    animation: notify-spin 0.8s linear infinite;
+  }
+
+  .notify[data-state="sending"] .notify__send-label,
+  .notify[data-state="sending"] :global(.notify__send-arrow) {
+    opacity: 0;
+  }
+
+  @keyframes notify-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /* On the list: a calm green-tinted pill in the field's place. */
+  .notify__done {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 54px;
+    padding: 8px 20px 8px 10px;
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgb(255 255 255 / 86%), rgb(240 250 245 / 80%));
+    box-shadow:
+      0 0 0 1px rgb(20 168 115 / 28%) inset,
+      0 1px 0 var(--glass-edge) inset,
+      var(--shadow-1);
+  }
+
+  .notify__done[hidden] {
+    display: none;
+  }
+
+  .notify__check {
+    width: 34px;
+    height: 34px;
+    flex: none;
+  }
+
+  .notify__check circle {
+    fill: var(--signal);
+  }
+
+  .notify__check path {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .notify__done p {
+    display: grid;
+    font-size: 14px;
+    line-height: 1.35;
+    color: var(--ink-2);
+  }
+
+  .notify__done b {
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .notify__note {
+    padding-left: 20px;
+    font-size: 13px;
+    color: var(--ink-3);
+    text-wrap: pretty;
+  }
+
+  .notify[data-state="invalid"] .notify__note,
+  .notify[data-state="failed"] .notify__note {
+    color: #b4532f;
+  }
+
+  .notify[data-state="done"] .notify__note {
+    display: none;
+  }
+</style>

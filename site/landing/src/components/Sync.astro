@@ -1,0 +1,571 @@
+---
+import Plane from "@lucide/astro/icons/plane";
+import Wifi from "@lucide/astro/icons/wifi";
+import Logo from "./Logo.astro";
+
+/**
+ * Sync, online or off, told by two devices (motion/sync.ts). Both lose the network and keep studying, each answer
+ * landing on that device's own pile. Back online, the two piles merge into one in the order the answers happened,
+ * and both devices count all of them. Nothing here is a control: it plays on its own.
+ */
+const answers = [
+  { device: "phone", word: "記憶", time: "9:41" },
+  { device: "laptop", word: "時間", time: "9:42" },
+  { device: "phone", word: "言葉", time: "9:44" },
+  { device: "laptop", word: "世界", time: "9:46" },
+  { device: "phone", word: "未来", time: "9:47" },
+];
+// What each screen shows: the card to answer, then the next ones.
+const queues = {
+  phone: ["記憶", "言葉", "未来", "季節"],
+  laptop: ["時間", "世界", "友達"],
+};
+---
+
+<section class="section sync" id="sync" aria-labelledby="sync-title" data-mood="sync">
+  <div class="container sync__grid">
+    <div class="sync__copy">
+      <p class="kicker" data-reveal="fade">
+        <span class="kicker__index">03</span>Sync
+      </p>
+      <h2 id="sync-title" class="heading" data-reveal="words">
+        Online or off. <em>Always in sync.</em>
+      </h2>
+      <p class="lead" data-reveal="lines">
+        Every device keeps your whole collection, so studying never waits for a connection. Changes sync quietly in the
+        background, and answers from two offline devices both count. There’s nothing to merge by hand, ever.
+      </p>
+    </div>
+
+    <div class="merge" aria-hidden="true" data-merge data-reveal="rise">
+      <svg class="merge__links">
+        {["phone", "laptop"].map((device) => (
+          <>
+            <path class="merge__route" data-route={device} />
+            <path class="merge__half" data-half={`${device}-near`} />
+            <path class="merge__half" data-half={`${device}-far`} />
+            <circle class="merge__spark" r="3" data-spark={device} />
+          </>
+        ))}
+      </svg>
+
+      <div class="merge__hub" data-hub>
+        <span class="merge__hub-ring" data-hub-ring></span>
+        <Logo mark class="merge__mark" />
+      </div>
+
+      <div class="device device--phone" data-device="phone" data-online="true">
+        <div class="device__screen">
+          <div class="device__status">
+            <span>9:41</span>
+            <span class="device__net">
+              <Wifi class="device__wifi" stroke-width={2} />
+              <Plane class="device__plane" stroke-width={2} />
+            </span>
+          </div>
+          <p class="device__deck">Japanese</p>
+          <p class="device__due">
+            <b data-due>24</b> due
+          </p>
+          <div class="device__card" data-card>
+            <span lang="ja" data-word data-queue={queues.phone.join(" ")}>
+              {queues.phone[0]}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="device device--laptop" data-device="laptop" data-online="true">
+        <div class="device__screen">
+          <div class="device__side">
+            <i></i>
+            <i></i>
+            <i></i>
+            <i></i>
+            <span class="device__net">
+              <Wifi class="device__wifi" stroke-width={2} />
+              <Plane class="device__plane" stroke-width={2} />
+            </span>
+          </div>
+          <div class="device__main">
+            <p class="device__deck">Japanese</p>
+            <p class="device__due">
+              <b data-due>24</b> due
+            </p>
+            <div class="device__card" data-card>
+              <span lang="ja" data-word data-queue={queues.laptop.join(" ")}>
+                {queues.laptop[0]}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div class="device__base"></div>
+      </div>
+
+      <i class="merge__spot merge__spot--phone" data-spot="phone"></i>
+      <i class="merge__spot merge__spot--account" data-spot="account"></i>
+      <i class="merge__spot merge__spot--laptop" data-spot="laptop"></i>
+
+      {answers.map((answer) => (
+        <div class={`answer answer--${answer.device}`} data-answer={answer.device}>
+          <span lang="ja">{answer.word}</span>
+          <small>{answer.time}</small>
+        </div>
+      ))}
+
+      <p class="merge__caption" data-caption>
+        Both devices are in sync.
+      </p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .sync__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(56px, 8vh, 96px);
+    justify-items: center;
+  }
+
+  .sync__copy {
+    display: grid;
+    justify-items: center;
+    gap: clamp(20px, 3vh, 32px);
+    text-align: center;
+  }
+
+  .sync__copy .heading {
+    max-width: 11em;
+  }
+
+  .sync__copy .lead {
+    max-width: 34em;
+  }
+
+  /*
+   * The stage: the phone and the laptop either side of your account, each with a spot below for its answers, and
+   * the account's spot below it where they all end up. Answers are placed by motion/sync.ts.
+   */
+  .merge {
+    --phone-width: 168px;
+    --laptop-width: 372px;
+    --answer-width: 76px;
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(120px, 1fr) auto;
+    grid-template-areas:
+      "phone hub laptop"
+      "phone-spot account-spot laptop-spot"
+      "caption caption caption";
+    align-items: center;
+    justify-items: center;
+    column-gap: clamp(24px, 5vw, 72px);
+    row-gap: 20px;
+    width: min(100%, 1040px);
+  }
+
+  .merge__links {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .merge__route {
+    fill: none;
+    stroke: none;
+  }
+
+  .merge__half {
+    fill: none;
+    stroke: rgb(11 11 13 / 20%);
+    stroke-width: 1.25;
+    stroke-linecap: round;
+  }
+
+  .merge__spark {
+    fill: #6f8fff;
+    opacity: 0;
+  }
+
+  .merge__links :global(.pulse) {
+    fill: #6f8fff;
+  }
+
+  .merge__links :global(.pulse-glow) {
+    fill: rgb(111 143 255 / 28%);
+  }
+
+  .merge__hub {
+    position: relative;
+    z-index: 2;
+    grid-area: hub;
+    display: grid;
+    place-items: center;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, rgb(255 255 255 / 92%), rgb(255 255 255 / 66%));
+    box-shadow:
+      0 0 0 1px var(--line),
+      0 1px 0 var(--glass-edge) inset,
+      var(--shadow-2);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+
+  .merge__hub-ring {
+    position: absolute;
+    inset: -1px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1.5px #6f8fff;
+    opacity: 0;
+  }
+
+  .merge__hub :global(.merge__mark) {
+    font-size: 30px;
+  }
+
+  .device {
+    position: relative;
+    z-index: 2;
+  }
+
+  .device--phone {
+    grid-area: phone;
+  }
+
+  .device--laptop {
+    grid-area: laptop;
+  }
+
+  .device__screen {
+    position: relative;
+    background: #fff;
+    box-shadow:
+      0 0 0 1px var(--line-2),
+      0 0 0 7px rgb(255 255 255 / 72%),
+      0 0 0 8px var(--line),
+      var(--shadow-2);
+    transition: box-shadow 0.8s var(--ease-out);
+  }
+
+  .device.is-updated .device__screen {
+    box-shadow:
+      0 0 0 1px rgb(111 143 255 / 55%),
+      0 0 0 7px rgb(255 255 255 / 72%),
+      0 0 0 8px rgb(111 143 255 / 25%),
+      0 0 40px -6px rgb(111 143 255 / 45%),
+      var(--shadow-2);
+  }
+
+  .device--phone .device__screen {
+    display: grid;
+    grid-template-rows: auto auto auto 1fr;
+    width: var(--phone-width);
+    aspect-ratio: 1 / 2;
+    padding: 12px 12px 14px;
+    border-radius: 26px;
+  }
+
+  .device--laptop .device__screen {
+    display: grid;
+    grid-template-columns: 22% 1fr;
+    width: var(--laptop-width);
+    aspect-ratio: 1.6;
+    border-radius: 12px 12px 4px 4px;
+    overflow: hidden;
+  }
+
+  .device__base {
+    width: calc(var(--laptop-width) * 1.16);
+    height: 11px;
+    margin: 7px 0 0 calc(var(--laptop-width) * -0.08);
+    border-radius: 2px 2px 14px 14px;
+    background: linear-gradient(180deg, #fff, var(--mist));
+    box-shadow:
+      0 0 0 1px var(--line-2),
+      0 14px 24px -14px rgb(30 40 80 / 40%);
+  }
+
+  .device__status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px 14px;
+    font-size: 11px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+  }
+
+  .device__net {
+    position: relative;
+    width: 13px;
+    height: 13px;
+  }
+
+  .device__net :global(svg) {
+    position: absolute;
+    inset: 0;
+    width: 13px;
+    height: 13px;
+    transition:
+      opacity 0.5s var(--ease-out),
+      transform 0.7s var(--ease-out);
+  }
+
+  .device__net :global(.device__plane) {
+    opacity: 0;
+    transform: translateX(-6px) rotate(45deg);
+  }
+
+  .device[data-online="false"] .device__net :global(.device__wifi) {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+
+  .device[data-online="false"] .device__net :global(.device__plane) {
+    opacity: 1;
+    transform: rotate(45deg);
+    color: #6f8fff;
+  }
+
+  .device__side {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    padding: 16px 12px;
+    background: var(--mist);
+    box-shadow: -1px 0 0 var(--line) inset;
+  }
+
+  .device__side i {
+    height: 5px;
+    border-radius: 3px;
+    background: var(--line-2);
+  }
+
+  .device__side i:first-child {
+    width: 70%;
+    margin-bottom: 6px;
+    background: var(--ink-4);
+  }
+
+  .device__side .device__net {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    color: var(--ink-3);
+  }
+
+  .device__main {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    padding: 16px 20px 18px;
+  }
+
+  .device__deck {
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+
+  .device__due {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+
+  .device__due b {
+    font-size: 36px;
+    font-weight: 380;
+    line-height: 1.15;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .device__card {
+    align-self: end;
+    display: grid;
+    place-items: center;
+    height: 86px;
+    border-radius: 12px;
+    background: linear-gradient(165deg, #fff, var(--mist));
+    box-shadow:
+      0 0 0 1px var(--line-2),
+      0 10px 22px -14px rgb(30 40 80 / 40%);
+    perspective: 400px;
+  }
+
+  .device--laptop .device__card {
+    width: min(170px, 100%);
+    height: 76px;
+    justify-self: center;
+  }
+
+  .device__card span {
+    display: block;
+    font-size: 24px;
+  }
+
+  .merge__spot {
+    width: 100%;
+    height: 118px;
+  }
+
+  .merge__spot--phone {
+    grid-area: phone-spot;
+  }
+
+  .merge__spot--account {
+    grid-area: account-spot;
+  }
+
+  .merge__spot--laptop {
+    grid-area: laptop-spot;
+  }
+
+  /* An answer: the card that was answered, when, and on which device (its edge's colour). */
+  .answer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 2px;
+    width: var(--answer-width);
+    aspect-ratio: 1.45;
+    border-radius: 10px;
+    background: linear-gradient(165deg, #fff, rgb(255 255 255 / 86%));
+    box-shadow:
+      0 0 0 1px var(--line-2),
+      0 12px 24px -14px rgb(30 40 80 / 40%);
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  .answer::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+  }
+
+  .answer--phone::before {
+    background: #6f8fff;
+  }
+
+  .answer--laptop::before {
+    background: #b08bff;
+  }
+
+  .answer span {
+    font-size: 19px;
+    line-height: 1.1;
+  }
+
+  .answer small {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-3);
+  }
+
+  .merge__caption {
+    grid-area: caption;
+    min-height: 1.5em;
+    margin-top: 8px;
+    font-size: var(--size-lead);
+    letter-spacing: -0.012em;
+    color: var(--ink-2);
+    text-align: center;
+  }
+
+  @media (width < 900px) {
+    .merge {
+      --phone-width: 112px;
+      --laptop-width: min(220px, 52vw);
+      --answer-width: 52px;
+      grid-template-columns: auto auto;
+      grid-template-areas:
+        "hub hub"
+        "phone laptop"
+        "phone-spot laptop-spot"
+        "account-spot account-spot"
+        "caption caption";
+      column-gap: 20px;
+      row-gap: 16px;
+      justify-content: center;
+    }
+
+    .merge__hub {
+      width: 68px;
+      height: 68px;
+      margin-bottom: 24px;
+    }
+
+    .merge__hub :global(.merge__mark) {
+      font-size: 24px;
+    }
+
+    .merge__spot {
+      height: 76px;
+    }
+
+    .device--phone .device__screen {
+      padding: 9px 9px 10px;
+      border-radius: 20px;
+    }
+
+    .device__status {
+      padding-bottom: 8px;
+      font-size: 9px;
+    }
+
+    .device__main {
+      padding: 10px 12px 12px;
+    }
+
+    .device__side {
+      padding: 10px 8px;
+      gap: 5px;
+    }
+
+    .device__due b {
+      font-size: 24px;
+    }
+
+    .device__deck,
+    .device__due {
+      font-size: 10px;
+    }
+
+    .device__card {
+      height: 58px;
+    }
+
+    .device--laptop .device__card {
+      height: 46px;
+    }
+
+    .device__card span {
+      font-size: 17px;
+    }
+
+    .answer span {
+      font-size: 13px;
+    }
+
+    .answer small {
+      font-size: 8px;
+    }
+  }
+</style>

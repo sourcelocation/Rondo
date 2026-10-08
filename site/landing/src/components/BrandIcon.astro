@@ -1,0 +1,15 @@
+---
+import type { Brand } from "../brands";
+
+/** A platform's mark from the sprite, 1em square, in the text colour. */
+interface Props {
+  name: Brand;
+  class?: string;
+}
+
+const { name, class: className } = Astro.props;
+---
+
+<svg class:list={["brand-icon", className]} width="1em" height="1em" aria-hidden="true" focusable="false">
+  <use href={`#brand-${name}`}></use>
+</svg>

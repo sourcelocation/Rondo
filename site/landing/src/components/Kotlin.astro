@@ -1,0 +1,15 @@
+---
+import Prism from "prismjs";
+import "prismjs/components/prism-kotlin.js";
+
+/** Kotlin source, highlighted at build time into Prism's token classes (the site's CSP allows no inline styles). */
+interface Props {
+  code: string;
+}
+
+const { code } = Astro.props;
+const grammar = Prism.languages.kotlin;
+const html = grammar == null ? null : Prism.highlight(code, grammar, "kotlin");
+---
+
+<pre class="language-kotlin">{html == null ? <code>{code}</code> : <code set:html={html} />}</pre>

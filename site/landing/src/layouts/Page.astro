@@ -1,23 +1,62 @@
 ---
-/** A page of the site: plain HTML until the landing page is designed. */
+import "@fontsource-variable/host-grotesk/wght.css";
+import "@fontsource-variable/newsreader/opsz-italic.css";
+import "@fontsource/fragment-mono/latin-400.css";
+import "lenis/dist/lenis.css";
+import "../styles/base.css";
+import grotesk from "@fontsource-variable/host-grotesk/files/host-grotesk-latin-wght-normal.woff2?url";
+import newsreader from "@fontsource-variable/newsreader/files/newsreader-latin-opsz-italic.woff2?url";
+import Sprite from "../components/Sprite.astro";
+import { releaseAt } from "../launch/launch";
+
+/**
+ * A page of the site: its head, the type and the base styles, and the artwork for the page to use. It's built as
+ * Rondo is at build time, on a computer; /launch.js corrects both before it paints.
+ */
 interface Props {
   title: string;
   description?: string;
 }
 
-const { title, description = "Rondo — spaced repetition that comes back around." } = Astro.props;
+const {
+  title,
+  description = "Rondo is a free, open-source flashcard app with everything you rely on in Anki: native on every device, in sync online or off.",
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-release={releaseAt(Date.now())} data-os="web" data-device="desktop">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={description} />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <script is:inline src="/launch.js"></script>
     <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#ffffff" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Rondo" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL("/og.png", Astro.site)} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The Rondo logo on soft, pastel light" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href={grotesk} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={newsreader} as="font" type="font/woff2" crossorigin />
+    <noscript>
+      <link rel="stylesheet" href="/noscript.css" />
+    </noscript>
   </head>
   <body>
+    <a class="skip" href="#main">
+      Skip to content
+    </a>
+    <Sprite />
     <slot />
   </body>
 </html>

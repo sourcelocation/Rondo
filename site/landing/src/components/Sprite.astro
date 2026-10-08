@@ -1,0 +1,26 @@
+---
+import { ART, artwork } from "../brand";
+import { brands } from "../brands";
+
+/** Artwork drawn once per page for everything else to reference: Rondo's logo, and the platforms' marks. */
+---
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <defs>
+    <g id={ART} set:html={artwork} />
+    {Object.entries(brands).map(([name, brand]) => (
+      <symbol id={`brand-${name}`} viewBox={brand.viewBox}>
+        <path d={brand.path} fill="currentColor" />
+      </symbol>
+    ))}
+  </defs>
+</svg>
+
+<style>
+  .sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+  }
+</style>

@@ -1,10 +1,9 @@
 ---
-import Page from "../layouts/Page.astro";
+import Button from "../components/Button.astro";
+import Document from "../layouts/Document.astro";
 ---
 
-<Page title="Not found · Rondo">
-  <h1>Nothing here</h1>
-  <p>
-    <a href="/">Rondo</a>
-  </p>
-</Page>
+<Document title="Not found · Rondo" heading="Nothing here.">
+  <p>This page doesn’t exist, or it has moved.</p>
+  <Button href="/" label="Back to Rondo" />
+</Document>

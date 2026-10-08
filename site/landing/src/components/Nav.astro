@@ -1,0 +1,171 @@
+---
+import { links } from "../content/links";
+import Actions from "./Actions.astro";
+import Logo from "./Logo.astro";
+
+/**
+ * The bar over every page: the downloads, the docs and the source on one side, the site's two actions on the other
+ * (Actions.astro), and the logo in the middle. On the landing page (`animated`) the motion brings them in after its
+ * intro, whose mark lands in the logo's. It loads the launch's script, which every page with a bar needs for its
+ * launch list.
+ */
+interface Props {
+  animated?: boolean;
+}
+
+const { animated = false } = Astro.props;
+const reveal = animated ? { "data-reveal": "fade", "data-reveal-manual": "" } : {};
+const revealLogo = animated ? { "data-reveal": "logo", "data-reveal-manual": "" } : {};
+---
+
+<header class="nav" data-nav>
+  <div class="nav__blur" aria-hidden="true">
+    <i></i>
+    <i></i>
+    <i></i>
+    <i></i>
+    <i></i>
+  </div>
+  <nav class="nav__bar container" aria-label="Main">
+    <div class="nav__side" {...reveal}>
+      <a class="nav__link link" href="/download">
+        Download
+      </a>
+      <a class="nav__link link" href={links.docs}>
+        Docs
+      </a>
+      <a class="nav__link link" href={links.source} data-when="live">
+        GitHub
+      </a>
+    </div>
+    <a class="nav__home" href="/" aria-label="Rondo home" {...revealLogo}>
+      <Logo />
+    </a>
+    <div class="nav__side nav__side--end" {...reveal}>
+      <Actions name="nav" compact />
+    </div>
+  </nav>
+</header>
+
+<script>
+  import "../launch/client";
+</script>
+
+<style>
+  .nav {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 50;
+    height: calc(var(--nav) + 36px);
+    pointer-events: none;
+  }
+
+  /*
+   * A progressive blur: layers blurred more and more strongly, each kept to a shorter band at the top, so what
+   * scrolls under the bar softens into it instead of being cut off.
+   */
+  .nav__blur {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.8s var(--ease-out);
+  }
+
+  .nav.is-scrolled .nav__blur {
+    opacity: 1;
+  }
+
+  .nav__blur i {
+    position: absolute;
+    inset: 0;
+  }
+
+  .nav__blur i:nth-child(1) {
+    -webkit-backdrop-filter: blur(1px);
+    backdrop-filter: blur(1px);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%);
+  }
+
+  .nav__blur i:nth-child(2) {
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 40%, transparent 80%);
+  }
+
+  .nav__blur i:nth-child(3) {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 62%);
+  }
+
+  .nav__blur i:nth-child(4) {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    mask-image: linear-gradient(to bottom, #000 0%, #000 20%, transparent 46%);
+  }
+
+  .nav__blur i:nth-child(5) {
+    background: linear-gradient(to bottom, rgb(255 255 255 / 72%), rgb(255 255 255 / 0%));
+  }
+
+  .nav__bar {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    height: var(--nav);
+  }
+
+  .nav__side {
+    display: flex;
+    align-items: center;
+    gap: clamp(16px, 2.4vw, 32px);
+    grid-column: 1;
+    font-size: 15px;
+    font-weight: 450;
+    pointer-events: auto;
+  }
+
+  .nav__side--end {
+    grid-column: 3;
+    justify-content: flex-end;
+  }
+
+  .nav__home {
+    grid-column: 2;
+    display: block;
+    font-size: var(--logo-bar);
+    line-height: 0;
+    text-decoration: none;
+    border-radius: 6px;
+    pointer-events: auto;
+  }
+
+  .nav__link {
+    color: var(--ink-2);
+    transition: color 0.4s var(--ease-out);
+  }
+
+  .nav__link:hover {
+    color: var(--ink);
+  }
+
+  /* Phones: the logo at the start, the actions taking the rest. */
+  @media (width < 640px) {
+    .nav__bar {
+      grid-template-columns: auto 1fr;
+    }
+
+    .nav__side:not(.nav__side--end) {
+      display: none;
+    }
+
+    .nav__home {
+      grid-column: 1;
+    }
+
+    .nav__side--end {
+      grid-column: 2;
+    }
+  }
+</style>

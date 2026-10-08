@@ -1,0 +1,523 @@
+/*
+ * The site's foundation: its colours, type, spacing and motion curves, a reset, and the patterns every section
+ * shares (containers, headings, buttons, glass, and the states the motion reveals things from).
+ */
+
+:root {
+  color-scheme: light;
+
+  --paper: #fff;
+  --mist: #f4f5f7;
+  --ink: #0b0b0d;
+  --ink-2: #4a4b52;
+  /* Secondary text stays above 4.5:1 even over the light; --ink-4 is for lines and ornament, never for words. */
+  --ink-3: #66676e;
+  --ink-4: #c4c5ca;
+  --line: rgb(11 11 13 / 7%);
+  --line-2: rgb(11 11 13 / 12%);
+
+  /* The light behind the page (motion/aurora.ts draws it; .aurora paints it without WebGL). */
+  --sky: #a9caff;
+  --lilac: #cfbfff;
+  --peach: #ffcbb4;
+  --mint: #b4ead9;
+  /* Online, synced, done. */
+  --signal: #14a873;
+
+  --glass: rgb(255 255 255 / 62%);
+  --glass-edge: rgb(255 255 255 / 90%);
+  --shadow-1: 0 1px 2px rgb(18 22 40 / 5%), 0 6px 16px -6px rgb(18 22 40 / 9%);
+  --shadow-2:
+    0 1px 2px rgb(18 22 40 / 4%), 0 14px 32px -14px rgb(18 22 40 / 16%), 0 44px 88px -36px rgb(18 22 40 / 20%);
+
+  --sans:
+    "Host Grotesk Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP",
+    "Apple SD Gothic Neo", sans-serif;
+  --serif: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
+  --mono: "Fragment Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);
+  /* A damped spring (ζ 0.8, ω 9.5) that overshoots by 1.5%. */
+  --ease-spring: linear(
+    0,
+    0.0376,
+    0.128,
+    0.2449,
+    0.3702,
+    0.492,
+    0.6032,
+    0.6999,
+    0.781,
+    0.8466,
+    0.8981,
+    0.9373,
+    0.966,
+    0.9862,
+    0.9997,
+    1.0082,
+    1.0129,
+    1.0149,
+    1.0151,
+    1.0142,
+    1.0126,
+    1.0108,
+    1.0089,
+    1.0071,
+    1.0055,
+    1.0041,
+    1.0029,
+    1.002,
+    1.0013,
+    1.0008,
+    1.0004,
+    1.0001,
+    1
+  );
+
+  --gutter: clamp(16px, 4.4vw, 64px);
+  --wide: 1400px;
+  --section: clamp(96px, 15vh, 176px);
+  --nav: 72px;
+  /* The logo's height in the bar. */
+  --logo-bar: 28px;
+
+  --size-hero: clamp(4.25rem, 1.9rem + 9.4vw, 12.25rem);
+  --size-h2: clamp(2.75rem, 1.7rem + 3.6vw, 5.5rem);
+  --size-h3: clamp(1.375rem, 1.1rem + 0.9vw, 1.875rem);
+  --size-lead: clamp(1.0625rem, 0.99rem + 0.32vw, 1.3125rem);
+  --size-small: 0.875rem;
+  --size-micro: 0.75rem;
+}
+
+@media (width < 640px) {
+  :root {
+    --logo-bar: 24px;
+  }
+}
+
+/* Reset */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--paper);
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  letter-spacing: -0.006em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+img,
+svg,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: rgb(169 202 255 / 55%);
+  color: var(--ink);
+}
+
+/* The way past the bar for keyboards: hidden until it has focus. */
+.skip {
+  position: fixed;
+  left: 16px;
+  top: 12px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform 0.4s var(--ease-out);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+/*
+ * What shows depends on whether Rondo is out (data-release) and on the device (data-device), which /launch.js puts on
+ * <html> before the page paints: [data-when] marks what belongs to a release, [data-on] what belongs to a device.
+ */
+html[data-release="pre"] [data-when="live"],
+html[data-release="live"] [data-when="pre"],
+html[data-device="mobile"] [data-on="desktop"],
+html[data-device="desktop"] [data-on="mobile"] {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Layout */
+
+.container {
+  width: min(100% - 2 * var(--gutter), var(--wide));
+  margin-inline: auto;
+}
+
+.section {
+  position: relative;
+  padding-block: var(--section);
+}
+
+/* Type */
+
+/* A section's number and name, a hairline between them. */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  font-size: var(--size-small);
+  font-weight: 450;
+  line-height: 1;
+  letter-spacing: -0.005em;
+  color: var(--ink-2);
+}
+
+.kicker__index {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.kicker__index::after {
+  content: "";
+  width: 36px;
+  height: 1px;
+  background: var(--ink-4);
+}
+
+.heading {
+  font-size: var(--size-h2);
+  font-weight: 380;
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.heading em {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 340;
+  letter-spacing: -0.025em;
+  font-optical-sizing: auto;
+}
+
+.lead {
+  font-size: var(--size-lead);
+  line-height: 1.5;
+  letter-spacing: -0.012em;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.mono {
+  font-family: var(--mono);
+  letter-spacing: 0;
+}
+
+/* Buttons: a pill whose label rolls over to a copy of itself on hover. */
+
+.button {
+  --button-height: 50px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: var(--button-height);
+  padding-inline: 24px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  isolation: isolate;
+  transition:
+    background-color 0.5s var(--ease-out),
+    box-shadow 0.5s var(--ease-out);
+}
+
+.button--solid {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 18%) inset,
+    0 10px 30px -10px rgb(11 11 13 / 45%);
+}
+
+.button--solid:hover {
+  background: #232328;
+}
+
+.button--glass {
+  background: var(--glass);
+  color: var(--ink);
+  box-shadow:
+    0 0 0 1px var(--line-2) inset,
+    0 1px 0 var(--glass-edge) inset,
+    var(--shadow-1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+}
+
+.button--glass:hover {
+  background: rgb(255 255 255 / 85%);
+}
+
+.button__label {
+  display: inline-grid;
+  overflow: hidden;
+  line-height: 1.25;
+}
+
+.button__label > span {
+  grid-area: 1 / 1;
+  transition: transform 0.7s var(--ease-out);
+}
+
+.button__label > span + span {
+  transform: translateY(105%);
+}
+
+.button:hover .button__label > span:first-child {
+  transform: translateY(-105%);
+}
+
+.button:hover .button__label > span + span {
+  transform: none;
+}
+
+.button svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+
+.button__icon {
+  display: grid;
+  margin-left: -4px;
+}
+
+.button__icon > * {
+  grid-area: 1 / 1;
+}
+
+.button__arrow {
+  margin-right: -4px;
+  transition: transform 0.7s var(--ease-out);
+}
+
+.button:hover .button__arrow {
+  transform: translate(2px, -2px);
+}
+
+/* A squeezed button keeps only its icon on narrow screens. */
+@media (width < 520px) {
+  .button--squeeze {
+    width: var(--button-height);
+    padding: 0;
+  }
+
+  .button--squeeze .button__label {
+    display: none;
+  }
+
+  .button--squeeze .button__icon,
+  .button--squeeze .button__arrow {
+    margin: 0;
+  }
+}
+
+/* The install button's mark: the visitor's platform's (from /launch.js), or a plain download arrow. */
+.os-icon {
+  display: none;
+}
+
+html[data-os="ios"] .os-icon--apple,
+html[data-os="ipados"] .os-icon--apple,
+html[data-os="macos"] .os-icon--apple,
+html[data-os="android"] .os-icon--android,
+html[data-os="windows"] .os-icon--windows,
+html[data-os="linux"] .os-icon--linux,
+html[data-os="web"] .os-icon--any {
+  display: block;
+}
+
+/*
+ * A halo: a band of light circling a pill's edge, slowly, with a soft glow outside it — for the one thing a screen
+ * invites you into. Both are the same conic gradient, turning: the band masked to the edge, the glow blurred and
+ * masked to outside the pill, so neither ever tints what's inside.
+ */
+@property --halo-turn {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.halo::before,
+.halo::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: conic-gradient(
+    from var(--halo-turn),
+    transparent 0turn 0.42turn,
+    rgb(143 180 255) 0.66turn,
+    rgb(196 176 255) 0.8turn,
+    rgb(255 196 170) 0.9turn,
+    transparent 1turn
+  );
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  animation: halo-turn 6s linear infinite;
+  pointer-events: none;
+}
+
+.halo::after {
+  inset: -1px;
+  padding: 1.5px;
+}
+
+.halo::before {
+  inset: -12px;
+  padding: 12px;
+  filter: blur(8px);
+  opacity: 0.42;
+}
+
+@keyframes halo-turn {
+  to {
+    --halo-turn: 1turn;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .halo::before,
+  .halo::after {
+    animation: none;
+  }
+}
+
+/* A link whose underline draws in from the left. */
+
+.link {
+  position: relative;
+  text-decoration: none;
+  background: linear-gradient(currentcolor, currentcolor) left bottom / 0 1px no-repeat;
+  transition: background-size 0.6s var(--ease-out);
+}
+
+.link:hover {
+  background-size: 100% 1px;
+}
+
+/* Frosted glass: a translucent panel with a bright edge. */
+
+.glass {
+  background: linear-gradient(180deg, rgb(255 255 255 / 78%), rgb(255 255 255 / 56%));
+  box-shadow:
+    0 0 0 1px rgb(11 11 13 / 6%),
+    0 1px 0 var(--glass-edge) inset,
+    var(--shadow-2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  backdrop-filter: blur(24px) saturate(1.5);
+}
+
+/*
+ * Reveals. What the motion brings in starts hidden; it then animates each element into place (motion/reveal.ts).
+ * If the motion never starts, everything appears after a moment, and without JavaScript at once
+ * (public/noscript.css).
+ */
+
+[data-reveal] {
+  opacity: 0;
+  animation: reveal-fallback 0.8s var(--ease-out) 3.2s forwards;
+}
+
+@keyframes reveal-fallback {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1;
+    animation: none;
+  }
+}

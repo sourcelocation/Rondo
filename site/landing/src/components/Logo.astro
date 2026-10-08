@@ -1,0 +1,38 @@
+---
+import { ART, crops } from "../brand";
+
+/**
+ * Rondo's logo in the text colour, sized by its height: the mark and the wordmark as two crops of the artwork, so
+ * the motion can move them separately. `mark` draws the mark alone.
+ */
+interface Props {
+  mark?: boolean;
+  class?: string;
+}
+
+const { mark = false, class: className } = Astro.props;
+---
+
+<span class:list={["logo", className]} role="img" aria-label="Rondo">
+  <svg class="logo__mark" viewBox={crops.mark} aria-hidden="true" focusable="false" data-logo-mark>
+    <use href={`#${ART}`}></use>
+  </svg>
+  {!mark && (
+    <svg class="logo__word" viewBox={crops.word} aria-hidden="true" focusable="false" data-logo-word>
+      <use href={`#${ART}`} />
+    </svg>
+  )}
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    height: 1em;
+    color: inherit;
+  }
+
+  .logo svg {
+    height: 100%;
+    width: auto;
+  }
+</style>
