@@ -481,7 +481,7 @@ paths:
         an hour from one address (IPv6: one /64).
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/LaunchListJoin" } } } }
       responses:
-        "202": { description: Asked to confirm, unless the address was there already. }
+        "202": { description: "Asked to confirm, unless the address was there already." }
         default: { $ref: "#/components/responses/Problem" }
   /api/staff/team:
     get:
