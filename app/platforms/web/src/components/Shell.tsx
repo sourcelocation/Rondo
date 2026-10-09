@@ -20,7 +20,7 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
-import { Link, Outlet, useLocation } from "react-router";
+import { Link, Outlet } from "react-router";
 import { DeckTree, HomeContext, NewDeckDialog, SmartDecks } from "@/components/decks";
 import { Avatar, confirm, docs, Wordmark } from "@/components/kit";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { app, s, useApp, useScreen } from "@/rondo";
-import { placeLink, placeOf, useOverlay } from "@/routing";
+import { placeLink, useOverlay, usePlace } from "@/routing";
 import { cn } from "cn";
 
 /** The places; Settings is in the account menu, at the foot of the sidebar or the top of a phone's screen. */
@@ -56,10 +56,9 @@ const staffPlace = { to: "/staff", label: s.staff, icon: Shield };
 /** Places, your decks and the account in a sidebar (tabs on phones), around every screen. */
 export function Shell() {
   const home = useScreen(() => app.home());
-  const { pathname } = useLocation();
   const st = useApp();
   const created = useOverlay("new");
-  const place = placeOf(pathname);
+  const place = usePlace();
   const places = st?.staff && st.roles.length > 0 ? [...nav, staffPlace] : nav;
   return (
     <HomeContext value={home}>
@@ -72,7 +71,7 @@ export function Shell() {
             {places.map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
-                to={placeLink(to, pathname)}
+                to={placeLink(to, place)}
                 aria-current={place === to ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
@@ -152,7 +151,7 @@ export function Shell() {
           {nav.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
-              to={placeLink(to, pathname)}
+              to={placeLink(to, place)}
               aria-current={place === to ? "page" : undefined}
               className={cn(
                 "flex flex-1 flex-col items-center gap-1 py-2 text-[11px]",
@@ -194,11 +193,11 @@ function SyncLine() {
 
 /** Settings and the docs: in the account menu, signed in or not. */
 function SettingsAndDocs() {
-  const { pathname } = useLocation();
+  const place = usePlace();
   return (
     <>
       <DropdownMenuItem asChild>
-        <Link to={placeLink("/settings", pathname)}>
+        <Link to={placeLink("/settings", place)}>
           <SettingsIcon /> {s.settings}
         </Link>
       </DropdownMenuItem>
@@ -218,7 +217,7 @@ function SettingsAndDocs() {
  */
 function AccountMenu({ compact }: { compact?: boolean }) {
   const st = useApp();
-  const { pathname } = useLocation();
+  const place = usePlace();
   const side = compact ? "bottom" : "top";
   if (!st) return null;
   if (!st.signedIn)
@@ -240,7 +239,7 @@ function AccountMenu({ compact }: { compact?: boolean }) {
       </div>
     );
   const name = st.name?.trim() || st.email || s.account;
-  const here = placeOf(pathname) === "/settings";
+  const here = place === "/settings";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

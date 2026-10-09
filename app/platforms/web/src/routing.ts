@@ -10,26 +10,52 @@ import { useLocation, useNavigate, useNavigationType, useSearchParams, type Loca
 
 const at = (l: Pick<Location, "pathname" | "search">) => l.pathname + l.search;
 
-/** This tab's history inside the app, as the router moved through it. */
-const visited: { key: string; url: string }[] = [];
+/** This tab's history inside the app, as the router moved through it, with the place each page was in. */
+const visited: { key: string; url: string; place: string | null }[] = [];
 
 /** The places: roots of the sidebar, the tab bar and the account menu. Each remembers where it was left. */
 export const places = ["/", "/browse", "/discover", "/progress", "/settings", "/staff"] as const;
 const lastIn = new Map<string, string>();
 
-/** The place an address belongs to. */
-export function placeOf(path: string): string {
+/**
+ * Pages in no place of their own, which take the place they were opened from: the ones anyone can
+ * link to (profiles, deck previews, invitations), and signing in, which returns to where it began.
+ */
+const borrows = (path: string) => /^\/(u|d|i)\//.test(path) || path === "/sign-in" || path === "/oauth/consent";
+
+/** The place an address belongs to, or null for a page that borrows the place it was opened from. */
+export function placeOf(path: string): string | null {
+  if (borrows(path)) return null;
   if (path.startsWith("/browse")) return "/browse";
-  if (path.startsWith("/discover") || path.startsWith("/d/") || path.startsWith("/u/")) return "/discover";
+  if (path.startsWith("/discover")) return "/discover";
   if (path.startsWith("/progress")) return "/progress";
   if (path.startsWith("/settings")) return "/settings";
   if (path.startsWith("/staff")) return "/staff";
   return "/";
 }
 
+/**
+ * The place of the page being shown: its own, or the place of the page it was opened from (none
+ * when it was opened directly, so a link from outside highlights nothing and isn't remembered).
+ */
+const placeByKey = new Map<string, string | null>();
+function placeAt(l: Pick<Location, "key" | "pathname">): string | null {
+  const known = placeByKey.get(l.key);
+  if (known !== undefined) return known;
+  // Rendered before tracking catches up, the last page visited is the one this was opened from.
+  const place = borrows(l.pathname) ? (visited[visited.length - 1]?.place ?? null) : placeOf(l.pathname);
+  placeByKey.set(l.key, place);
+  return place;
+}
+
+/** The place the current page is in. */
+export function usePlace(): string | null {
+  return placeAt(useLocation());
+}
+
 /** Where a place's link goes: back to where you left it, or to its root when you're already there. */
-export function placeLink(place: string, current: string): string {
-  return placeOf(current) === place ? place : (lastIn.get(place) ?? place);
+export function placeLink(place: string, current: string | null): string {
+  return current === place ? place : (lastIn.get(place) ?? place);
 }
 
 /** Keeps [visited] and the places' memory up to date. Mounted once, inside the router. */
@@ -37,13 +63,29 @@ export function useHistoryTracking() {
   const location = useLocation();
   const type = useNavigationType();
   useEffect(() => {
-    const entry = { key: location.key, url: at(location) };
+    const entry = { key: location.key, url: at(location), place: placeAt(location) };
     const known = visited.findIndex((v) => v.key === location.key);
     if (type === "POP" && known >= 0) visited.splice(known + 1);
     else if (type === "REPLACE" && visited.length) visited[visited.length - 1] = entry;
     else visited.push(entry);
-    lastIn.set(placeOf(location.pathname), entry.url);
+    if (entry.place) lastIn.set(entry.place, entry.url);
   }, [location, type]);
+}
+
+/**
+ * The way up from a page anyone can link to: the page it was opened from (passing over signing in
+ * and the page itself before it), or [fallback] when it was opened directly.
+ */
+export function useOpener(fallback: string): string {
+  const location = useLocation();
+  const url = at(location);
+  let i = visited.findIndex((v) => v.key === location.key);
+  if (i < 0) i = visited.length;
+  while (--i >= 0) {
+    const v = visited[i];
+    if (v.url !== url && !v.url.startsWith("/sign-in") && !v.url.startsWith("/oauth/")) return v.url;
+  }
+  return fallback;
 }
 
 /**

@@ -23,7 +23,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
-/** Why signing in stopped. [code]: no_account, wrong_code, expired, cancelled, reauthenticate or failed. */
+/**
+ * Why signing in stopped. [code]: no_account, wrong_code, expired, cancelled, reauthenticate,
+ * no_server (choosing one) or failed.
+ */
 class SignInError(val code: String, message: String) : Exception(message)
 
 /** A sign-in waiting for its email code. */

@@ -94,12 +94,16 @@ private object WebPush : PushChannel {
     }
 }
 
-/** Rondo in a browser: SQLite in a worker over OPFS, the session in localStorage. */
+/**
+ * Rondo in a browser: SQLite in a worker over OPFS, the session in localStorage. Its server is the
+ * one serving it: another origin's would need CORS, which Rondo's servers don't have.
+ */
 private class WebPlatform(
     override val apiUrl: String,
     override val kratosUrl: String,
     private val worker: () -> Worker,
 ) : Platform {
+    override val serverChoice get() = false
     override val push: PushChannel? = WebPush.takeIf { it.supported }
 
     override suspend fun driver(): SqlDriver = Booleans(WebWorkerDriver(worker()))

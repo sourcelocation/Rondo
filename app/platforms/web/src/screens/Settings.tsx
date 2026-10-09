@@ -7,6 +7,7 @@ import {
   Download,
   Monitor,
   Moon,
+  Server,
   Shapes,
   ShieldCheck,
   SlidersHorizontal,
@@ -212,7 +213,36 @@ export function General() {
           <Row to="/import" icon={Download} title={s.importDecks} hint={s.importDecksHint} />
         </Rows>
       </Section>
+      {st.server != null && <ServerChoice st={st} settings={settings} />}
     </>
+  );
+}
+
+/** The server signing in reaches, where the app may choose one: changed only while signed out. */
+function ServerChoice({ st, settings }: { st: SettingsState; settings: SettingsScreen }) {
+  const server = st.server ?? "";
+  const [address, setAddress] = useState(server);
+  useEffect(() => setAddress(server), [server]);
+  return (
+    <Section title={s.sync}>
+      <Rows>
+        <Row icon={Server} title={s.server} hint={st.signedIn ? s.serverSignedIn : s.serverHint}>
+          <form className="flex max-w-md gap-2" onSubmit={(e) => (e.preventDefault(), settings.setServer(address))}>
+            <Input
+              aria-label={s.server}
+              inputMode="url"
+              autoComplete="url"
+              value={address}
+              disabled={st.signedIn}
+              onChange={(e) => setAddress(e.target.value)}
+            />
+            <Button type="submit" variant="outline" disabled={st.signedIn || !!st.busy || address.trim() === server}>
+              {st.busy === "server" && <Spinner />} {s.useServer}
+            </Button>
+          </form>
+        </Row>
+      </Rows>
+    </Section>
   );
 }
 

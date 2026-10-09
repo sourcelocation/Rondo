@@ -44,9 +44,12 @@ import kotlinx.serialization.json.Json
 
 /** What each platform provides. */
 interface Platform {
-    /** The origin `/api`, `/sync` and `/media` are served from. */
+    /** The origin `/api`, `/sync` and `/media` are served from, unless Settings chose another. */
     val apiUrl: String
     val kratosUrl: String
+
+    /** Whether people may choose a server of their own: not where that server serves the app (the web). */
+    val serverChoice: Boolean get() = true
 
     suspend fun driver(): SqlDriver
 

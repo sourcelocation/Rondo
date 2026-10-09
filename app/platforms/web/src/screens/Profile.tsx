@@ -8,6 +8,7 @@ import { Empty, Header, Loading, Section } from "@/components/kit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { app, date, s, useApp, useScreen, useTheme, type ActivityItem } from "@/rondo";
+import { useOpener } from "@/routing";
 import { DeckRow } from "@/screens/Discover";
 
 const Stat = ({ label, value }: { label: string; value: string | number }) => (
@@ -72,6 +73,7 @@ export function Profile() {
   const { username } = useParams();
   const signedIn = useApp()?.signedIn ?? false;
   const [st, profile] = useScreen(() => app.profile(username!, null), [username]);
+  const up = useOpener("/discover");
   if (!st) return <Loading />;
   if (st.missing)
     return (
@@ -82,7 +84,7 @@ export function Profile() {
   return (
     <>
       <Header
-        up="/discover"
+        up={up}
         title={
           <span className="flex items-center gap-2">
             {st.name ?? `@${st.username}`} <Flag code={st.flag} />

@@ -14,7 +14,7 @@ class AgentItem internal constructor(val clientId: String, val name: String, val
 /**
  * What Settings' tabs show; who you are is in [AppState]. [provider]: stripe, app-store,
  * google-play, promo or grant. [busy]: what's under way, which can't be asked again until it ends:
- * checkout (back from paying, until Pro shows), portal, redeem, disconnect, export or delete.
+ * checkout (back from paying, until Pro shows), portal, redeem, disconnect, export, delete or server.
  */
 @JsExport
 class SettingsState internal constructor(
@@ -31,6 +31,8 @@ class SettingsState internal constructor(
     val agents: Array<AgentItem>,
     /** The hosted MCP server, for agents' settings. */
     val mcpUrl: String,
+    /** The server signing in reaches, changed only while signed out; null where it can't be chosen. */
+    val server: String?,
     /** Deleting the account waits for the code just sent. */
     val confirming: Boolean,
     val busy: String?,
@@ -71,7 +73,7 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
         return SettingsState(
             account.signedIn, account.email, me?.activityHidden == true, pro, proUntil, billing?.provider?.value,
             billing?.renews == true, s.grading, s.theme, s.textSize, connected.toTypedArray(),
-            "${rondo.platform.apiUrl}/mcp", reauth != null, busy,
+            "${rondo.net.apiUrl}/mcp", rondo.net.apiUrl.takeIf { rondo.platform.serverChoice }, reauth != null, busy,
         )
     }
 
@@ -140,6 +142,9 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
     fun setTheme(theme: Int) = prefer { it.copy(theme = theme) }
 
     fun setTextSize(percent: Int) = prefer { it.copy(textSize = percent.coerceIn(50, 200)) }
+
+    /** Signs in to the Rondo server at [address] from now on; blank is the app's own. Only signed out. */
+    fun setServer(address: String) = work("server") { rondo.net.useServer(address) }
 
     /** Starts a Stripe checkout for [plan] (monthly or yearly); [open] goes to its page. */
     fun checkout(plan: String, open: (String) -> Unit) = work("checkout") { open(app.checkoutPage(plan)) }

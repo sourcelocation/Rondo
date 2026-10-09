@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { app, languageName, s, useScreen, type PublicItem } from "@/rondo";
+import { useOpener } from "@/routing";
 
 /** Who made a deck, its language, size and followers; [linked]: the author leads to their profile. */
 const Meta = ({ item, linked }: { item: PublicItem; linked?: boolean }) => (
@@ -155,8 +156,8 @@ export function Preview() {
   useEffect(() => {
     if (st?.opening) navigate(`/decks/${st.opening}`, { replace: true });
   }, [st?.opening, navigate]);
+  const up = useOpener(token ? "/" : "/discover");
   if (!st) return <Loading />;
-  const up = token ? "/" : "/discover";
   if (!st.item)
     return (
       <>
