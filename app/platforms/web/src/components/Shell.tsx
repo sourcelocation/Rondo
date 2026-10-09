@@ -21,7 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router";
-import { DeckTree, HomeContext, NewDeckDialog } from "@/components/decks";
+import { DeckTree, HomeContext, NewDeckDialog, SmartDecks } from "@/components/decks";
 import { Avatar, confirm, docs, Wordmark } from "@/components/kit";
 import { Button } from "@/components/ui/button";
 import {
@@ -98,6 +98,14 @@ export function Shell() {
                   {s.sharedWithYou}
                 </div>
                 <DeckTree items={home[0].shared} compact />
+              </>
+            )}
+            {home[0] && home[0].smart.length > 0 && (
+              <>
+                <div className="mt-5 mb-1 px-2 text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                  {s.smartDecks}
+                </div>
+                <SmartDecks items={home[0].smart} compact />
               </>
             )}
           </div>

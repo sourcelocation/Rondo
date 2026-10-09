@@ -1,12 +1,14 @@
 ---
 import Plane from "@lucide/astro/icons/plane";
 import Wifi from "@lucide/astro/icons/wifi";
+import { links } from "../content/links";
 import Logo from "./Logo.astro";
 
 /**
  * Sync, online or off, told by two devices (motion/sync.ts). Both lose the network and keep studying, each answer
  * landing on that device's own pile. Back online, the two piles merge into one in the order the answers happened,
- * and both devices count all of them. Nothing here is a control: it plays on its own.
+ * and both devices count all of them. Nothing here is a control: it plays on its own. Under the words, where to read
+ * more: how sync behaves, in the docs, and how it's built, in the architecture.
  */
 const answers = [
   { device: "phone", word: "記憶", time: "9:41" },
@@ -34,6 +36,14 @@ const queues = {
       <p class="lead" data-reveal="lines">
         Every device keeps your whole collection, so studying never waits for a connection. Changes sync quietly in the
         background, and answers from two offline devices both count. There’s nothing to merge by hand, ever.
+      </p>
+      <p class="sync__more" data-reveal="fade">
+        <a class="link" href={`${links.docs}sync`}>
+          How sync works
+        </a>
+        <a class="link" href={links.architecture}>
+          How it’s built
+        </a>
       </p>
     </div>
 
@@ -141,6 +151,15 @@ const queues = {
 
   .sync__copy .lead {
     max-width: 34em;
+  }
+
+  .sync__more {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 28px;
+    font-size: var(--size-small);
+    color: var(--ink-2);
   }
 
   /*

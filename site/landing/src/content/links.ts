@@ -6,5 +6,8 @@ export const links = {
   docs: PUBLIC_RONDO_DOCS_URL,
   source: "https://github.com/sourcelocation/Rondo",
   license: "https://github.com/sourcelocation/Rondo/blob/HEAD/LICENSE",
-  maker: "https://github.com/sourcelocation",
+  architecture: "https://github.com/sourcelocation/Rondo/blob/HEAD/ARCHITECTURE.md#data",
+  discord: "https://discord.gg/GfftwYzbdV",
+  /** The maker, where they post. */
+  x: "https://x.com/sourceloc",
 } as const;

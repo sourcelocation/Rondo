@@ -3,6 +3,7 @@ package app.rondo.core
 import app.rondo.core.model.Deck
 import app.rondo.core.model.ErrorCode
 import app.rondo.core.model.Event
+import app.rondo.core.model.Filter
 import app.rondo.core.model.Note
 import app.rondo.core.model.Settings
 import kotlin.test.Test
@@ -88,6 +89,28 @@ class RulesTest {
         val anki = basic.copy(id = Ids.new(), ownerId = alice, kind = Templates.ANKI)
         assertEquals(ErrorCode.READ_ONLY, Rules.note(access(alice), n, n.copy(fields = mapOf("1" to "changed")), anki))
         assertEquals(null, Rules.note(access(alice), n, n.copy(deckId = course.id), anki))
+        // Tags change on Anki's notes too: they aren't fields.
+        assertEquals(null, Rules.note(access(alice), n, n.copy(tags = "Cardio::Arrhythmia pathoma"), anki))
+        assertEquals(ErrorCode.INVALID, Rules.note(access(alice), null, n.copy(tags = "two  spaces"), basic))
+        assertEquals(ErrorCode.INVALID, Rules.note(access(alice), null, n.copy(tags = "a::::b"), basic))
+        assertEquals(ErrorCode.INVALID, Rules.note(access(alice), null, n.copy(tags = "x".repeat(201)), basic))
+    }
+
+    @Test
+    fun smartDecks() {
+        val filter = Filter(deckIds = listOf(course.id), tags = listOf("Cardio"), state = "review")
+        val mine = SmartDecks.new("Cardio", filter, "V", 1, alice)
+        assertEquals(null, Rules.smartDeck(access(alice), null, mine))
+        assertEquals(ErrorCode.FORBIDDEN, Rules.smartDeck(access(bob, mapOf(course.id to 2)), null, mine))
+        assertEquals(ErrorCode.OWNER_MISMATCH, Rules.smartDeck(access(bob), mine, mine.copy(ownerId = bob)))
+        assertEquals(ErrorCode.INVALID, Rules.smartDeck(access(alice), null, mine.copy(name = " ")))
+        assertEquals(ErrorCode.INVALID, Rules.smartDeck(access(alice), null, mine.copy(newPerDay = -1)))
+        val strange = listOf(
+            filter.copy(state = "lost"),
+            filter.copy(tags = listOf("two words")),
+            filter.copy(deckIds = listOf("x")),
+        )
+        for (f in strange) assertEquals(ErrorCode.INVALID, Rules.smartDeck(access(alice), null, mine.copy(filter = f)))
     }
 
     @Test

@@ -268,11 +268,12 @@ func (e PushDevicePlatform) Valid() bool {
 
 // Defines values for RejectionEntity.
 const (
-	RejectionEntityDeck     RejectionEntity = "deck"
-	RejectionEntityEvent    RejectionEntity = "event"
-	RejectionEntityNote     RejectionEntity = "note"
-	RejectionEntitySettings RejectionEntity = "settings"
-	RejectionEntityTemplate RejectionEntity = "template"
+	RejectionEntityDeck      RejectionEntity = "deck"
+	RejectionEntityEvent     RejectionEntity = "event"
+	RejectionEntityNote      RejectionEntity = "note"
+	RejectionEntitySettings  RejectionEntity = "settings"
+	RejectionEntitySmartDeck RejectionEntity = "smart_deck"
+	RejectionEntityTemplate  RejectionEntity = "template"
 )
 
 // Valid indicates whether the value is a known member of the RejectionEntity enum.
@@ -285,6 +286,8 @@ func (e RejectionEntity) Valid() bool {
 	case RejectionEntityNote:
 		return true
 	case RejectionEntitySettings:
+		return true
+	case RejectionEntitySmartDeck:
 		return true
 	case RejectionEntityTemplate:
 		return true
@@ -669,6 +672,20 @@ type FieldDef struct {
 // FieldDefKind defines model for FieldDef.Kind.
 type FieldDefKind string
 
+// Filter Browse's filters as picked: a deck stands for it and its sub-decks, a tag for it and the tags under it.
+type Filter struct {
+	DeckIds *[]openapi_types.UUID `json:"deck_ids,omitempty"`
+	Marked  *bool                 `json:"marked,omitempty"`
+
+	// State new, learning, review or suspended.
+	State *string `json:"state,omitempty"`
+
+	// Tags Any of them.
+	Tags        *[]string             `json:"tags,omitempty"`
+	TemplateIds *[]openapi_types.UUID `json:"template_ids,omitempty"`
+	Text        *string               `json:"text,omitempty"`
+}
+
 // IPUse defines model for IPUse.
 type IPUse struct {
 	FirstAt time.Time `json:"first_at"`
@@ -807,11 +824,15 @@ type Note struct {
 	DeletedAt *int64             `json:"deleted_at,omitempty"`
 
 	// Fields Field id to content.
-	Fields     map[string]string   `json:"fields"`
-	Id         openapi_types.UUID  `json:"id"`
-	OwnerId    *openapi_types.UUID `json:"owner_id,omitempty"`
-	TemplateId openapi_types.UUID  `json:"template_id"`
-	V          int64               `json:"v"`
+	Fields  map[string]string   `json:"fields"`
+	Id      openapi_types.UUID  `json:"id"`
+	OwnerId *openapi_types.UUID `json:"owner_id,omitempty"`
+
+	// Tags Space-separated, sorted, without repeats; `::` nests them ("Cardio::Arrhythmia"). Absent
+	// on a push from an app that predates tags: the stored ones stay.
+	Tags       *string            `json:"tags,omitempty"`
+	TemplateId openapi_types.UUID `json:"template_id"`
+	V          int64              `json:"v"`
 }
 
 // Notification Written by the server, shown once on whichever device opens next.
@@ -1049,11 +1070,12 @@ type RoleUpdate struct {
 
 // Rows defines model for Rows.
 type Rows struct {
-	Decks     *[]Deck     `json:"decks,omitempty"`
-	Events    *[]Event    `json:"events,omitempty"`
-	Notes     *[]Note     `json:"notes,omitempty"`
-	Settings  *[]Settings `json:"settings,omitempty"`
-	Templates *[]Template `json:"templates,omitempty"`
+	Decks      *[]Deck      `json:"decks,omitempty"`
+	Events     *[]Event     `json:"events,omitempty"`
+	Notes      *[]Note      `json:"notes,omitempty"`
+	Settings   *[]Settings  `json:"settings,omitempty"`
+	SmartDecks *[]SmartDeck `json:"smart_decks,omitempty"`
+	Templates  *[]Template  `json:"templates,omitempty"`
 }
 
 // Settings defines model for Settings.
@@ -1086,6 +1108,25 @@ type Share struct {
 	Role     int                `json:"role"`
 	UserId   openapi_types.UUID `json:"user_id"`
 	Username *string            `json:"username,omitempty"`
+}
+
+// SmartDeck A learner's own saved filter, studied like a deck. Never lent or published.
+type SmartDeck struct {
+	Color     int    `json:"color"`
+	DeletedAt *int64 `json:"deleted_at,omitempty"`
+
+	// Filter Browse's filters as picked: a deck stands for it and its sub-decks, a tag for it and the tags under it.
+	Filter    Filter             `json:"filter"`
+	Icon      *string            `json:"icon,omitempty"`
+	Id        openapi_types.UUID `json:"id"`
+	Name      string             `json:"name"`
+	NewPerDay int                `json:"new_per_day"`
+	OwnerId   openapi_types.UUID `json:"owner_id"`
+
+	// Position A fractional index among the owner's smart decks.
+	Position      string `json:"position"`
+	ReviewsPerDay int    `json:"reviews_per_day"`
+	V             int64  `json:"v"`
 }
 
 // StaffAction defines model for StaffAction.

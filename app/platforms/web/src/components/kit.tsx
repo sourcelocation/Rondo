@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { TagInput } from "@/components/tags";
 import { s } from "@/rondo";
 import { useUp } from "@/routing";
 import { cn } from "cn";
@@ -129,9 +130,10 @@ export function Tabs({
   const nav = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   const count = tabs.length;
-  // Keep the current tab in view, also once more tabs show (after signing in, say).
+  // Keep the current tab in view, also once more tabs show (after signing in, say). Newer browsers'
+  // scrollIntoView returns a promise, which an effect mustn't.
   useEffect(
-    () => nav.current?.querySelector("[aria-current=page]")?.scrollIntoView({ block: "nearest" }),
+    () => void nav.current?.querySelector("[aria-current=page]")?.scrollIntoView({ block: "nearest" }),
     [pathname, count],
   );
   return (
@@ -361,7 +363,8 @@ export const DeckLook = ({ icon, color, className }: { icon?: string | null; col
 type Request =
   | { kind: "ask"; title: string; value: string; done: (v: string | null) => void }
   | { kind: "confirm"; title: string; body?: string; action: string; destructive: boolean; done: (v: boolean) => void }
-  | { kind: "pick"; title: string; options: { id: string; label: string }[]; done: (v: string | null) => void };
+  | { kind: "pick"; title: string; options: { id: string; label: string }[]; done: (v: string | null) => void }
+  | { kind: "tags"; title: string; action: string; done: (v: string[] | null) => void };
 
 let show: (r: Request | null) => void = () => {};
 
@@ -377,18 +380,24 @@ export const confirm = (title: string, body?: string, action = s.delete, destruc
 export const pick = (title: string, options: { id: string; label: string }[]) =>
   new Promise<string | null>((done) => show({ kind: "pick", title, options, done }));
 
-/** Shows what [ask], [confirm] and [pick] ask for. Mounted once. */
+/** Asks for tags, typed or picked from the notes' tags: to add to notes, or take off them. */
+export const askTags = (title: string, action: string) =>
+  new Promise<string[] | null>((done) => show({ kind: "tags", title, action, done }));
+
+/** Shows what [ask], [confirm], [pick] and [askTags] ask for. Mounted once. */
 export function Dialogs() {
   const [r, setR] = useState<Request | null>(null);
   const [text, setText] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   useEffect(() => {
     show = (next) => {
       setR(next);
       if (next?.kind === "ask") setText(next.value);
       if (next?.kind === "pick") setText("");
+      if (next?.kind === "tags") setTags([]);
     };
   }, []);
-  const end = (value: string | boolean | null) => {
+  const end = (value: string | string[] | boolean | null) => {
     if (!r) return;
     (r.done as (v: typeof value) => void)(value);
     setR(null);
@@ -429,6 +438,25 @@ export function Dialogs() {
               </Button>
               <Button type="submit" disabled={!text.trim()}>
                 {s.save}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
+        {r?.kind === "tags" && (
+          <form onSubmit={(e) => (e.preventDefault(), tags.length && end(tags))} className="contents">
+            <TagInput
+              autoFocus
+              value={tags}
+              onAdd={(t) => setTags([...new Set([...tags, ...t.split(/\s+/).filter(Boolean)])])}
+              onRemove={(t) => setTags(tags.filter((x) => x !== t))}
+            />
+            <p className="text-xs text-muted-foreground">{s.tagHint}</p>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => end(null)}>
+                {s.cancel}
+              </Button>
+              <Button type="submit" disabled={!tags.length}>
+                {r.action}
               </Button>
             </DialogFooter>
           </form>

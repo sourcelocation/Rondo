@@ -4,16 +4,11 @@ import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.rondo.client.db.Notes
 import app.rondo.core.Access
-import app.rondo.core.Ids
-import app.rondo.core.Markup
 import app.rondo.core.Role
-import app.rondo.core.Templates
 import app.rondo.core.Tree
 import app.rondo.core.model.Deck
-import app.rondo.core.model.ErrorCode
-import app.rondo.core.model.InviteRequest
-import app.rondo.core.model.Note
-import app.rondo.core.model.RoleUpdate
+import app.rondo.core.model.Filter
+import app.rondo.core.model.SmartDeck
 import kotlin.js.JsExport
 
 /** A deck in a list: its place in the tree, its ring and level, and today's counts. */
@@ -63,6 +58,12 @@ internal fun Overview.item(d: Deck, depth: Int, access: Access, from: Map<String
     )
 }
 
+internal suspend fun SmartDeck.item(store: Store, day: Day): SmartDeckItem {
+    val c = FilterScope.of(store, this).counts(day)
+    val detail = if (c.total > 0) strings.due(c.total) else strings.nothingDue
+    return SmartDeckItem(id, name, icon, color, c.new, c.learning, c.review, detail)
+}
+
 internal fun Overview.items(
     roots: List<Deck>,
     access: Access,
@@ -77,6 +78,20 @@ internal fun Overview.items(
     return out.toTypedArray()
 }
 
+/** A smart deck in a list: its look and what it offers today. */
+@JsExport
+class SmartDeckItem internal constructor(
+    val id: String,
+    val name: String,
+    val icon: String?,
+    val color: Int,
+    val newCount: Int,
+    val learning: Int,
+    val review: Int,
+    /** Today's counts as a line, or that nothing is due. */
+    val detail: String,
+)
+
 @JsExport
 class Removed internal constructor(val id: String, val deck: Boolean, val label: String, val deletedAt: Double)
 
@@ -84,6 +99,8 @@ class Removed internal constructor(val id: String, val deck: Boolean, val label:
 class HomeState internal constructor(
     val mine: Array<DeckItem>,
     val shared: Array<DeckItem>,
+    /** Cards they pick are in the decks above too, so they don't add to [due]. */
+    val smart: Array<SmartDeckItem>,
     val deleted: Array<Removed>,
     /** Cards due today across every deck. */
     val due: Int,
@@ -123,6 +140,8 @@ class Home internal constructor(override val app: App) : Screen<HomeState>() {
         val deleted = decks.map { Removed(it.id, true, it.name, it.deletedAt!!.toDouble()) } +
             notes.filter { !o.tree.dead(it.deckId) }.map { Removed(it.id, false, label(it), it.deletedAt!!.toDouble()) }
         val activity = store.activity()
+        val day = Day.of(store, o)
+        val smart = store.smartDecks().map { it.item(store, day) }
         val due = o.tree.roots.sumOf { o.counts(it.id).total }
         val studied = activity.days.last()
         val (headline, summary) = when {
@@ -135,6 +154,7 @@ class Home internal constructor(override val app: App) : Screen<HomeState>() {
         return HomeState(
             o.items(mine, access),
             o.items(shared, access, from),
+            smart.toTypedArray(),
             deleted.sortedByDescending { it.deletedAt }.toTypedArray(),
             due, studied, activity.tomorrow, activity.streak, activity.days.takeLast(7).toTypedArray(),
             headline, summary,
@@ -189,12 +209,6 @@ class Home internal constructor(override val app: App) : Screen<HomeState>() {
     fun leave(id: String) = act { leave(app, id) }
 }
 
-/** Stops borrowing [id], a deck lent to you. */
-internal suspend fun leave(app: App, id: String) {
-    online { app.rondo.net.api.removeShare(id, app.rondo.store.me).ok() }
-    app.rondo.syncNow()
-}
-
 /** The language [id] is in: its own, or the nearest deck above it that has one. */
 internal fun Tree.language(id: String): String? =
     (listOfNotNull(get(id)) + ancestors(id)).firstNotNullOfOrNull { it.language }
@@ -203,12 +217,6 @@ internal fun Tree.language(id: String): String? =
 private fun Tree.after(id: String): Deck? {
     val siblings = get(id)?.parentId?.let { children(it) } ?: roots
     return siblings.getOrNull(siblings.indexOfFirst { it.id == id } + 1)
-}
-
-/** A note as lists name it: its first field, as plain text. */
-internal fun label(n: Note): String {
-    val first = n.fields.entries.minByOrNull { it.key.toIntOrNull() ?: 0 }?.value.orEmpty()
-    return Markup.plain(first).take(80).ifBlank { "…" }
 }
 
 @JsExport
@@ -315,134 +323,84 @@ class DeckScreen internal constructor(override val app: App, val id: String) : S
 }
 
 @JsExport
-class Member internal constructor(val userId: String, val name: String?, val role: Int)
-
-@JsExport
-class InviteItem internal constructor(val id: String, val email: String?, val role: Int, val expires: String)
-
-@JsExport
-class ShareState internal constructor(
-    val members: Array<Member>,
-    val invites: Array<InviteItem>,
-    /** A link just made, shown until the sheet closes. */
-    val link: String?,
-    val published: Boolean,
-    val slug: String?,
-    val followers: Int,
-    val pro: Boolean,
-    val offline: Boolean,
-    /** Moderators took it off Discover; it can't be listed again. */
-    val removed: Boolean,
-    /** Until when sharing is restricted for you (ISO), or null. */
-    val restrictedUntil: String?,
+class SmartDeckState internal constructor(
+    val item: SmartDeckItem,
+    val newPerDay: Int,
+    val reviewsPerDay: Int,
+    /** Its rules in words, one a line. */
+    val rules: Array<String>,
+    /** Its rules as Browse's filters, to open Browse with them: see [BrowseScreen.filter]. */
+    val text: String,
+    val deckId: String?,
+    val templateId: String?,
+    val tags: Array<String>,
+    val cardState: String?,
+    val marked: Boolean,
+    val gone: Boolean,
 )
 
-/** Who a deck is shared with, invitations, a link, and Discover. Needs a connection. */
+/**
+ * One smart deck: what it offers today, its rules (changed in Browse), and its settings. Its cards
+ * stay in their decks, scheduled by them.
+ */
 @JsExport
-class ShareScreen internal constructor(override val app: App, val deckId: String) : Screen<ShareState>() {
-    override val live get() = false
-    private val api get() = app.rondo.net.api
-    private var link: String? = null
-
-    override suspend fun load(): ShareState = try {
-        online {
-            val shares = api.listShares(deckId).ok()
-            val invites = api.listInvites(deckId).ok()
-            val publication = api.getPublication(deckId).takeIf { it.success }?.body()
-            ShareState(
-                members = shares.map { Member(it.userId, it.name, it.role) }.toTypedArray(),
-                invites = invites.map { InviteItem(it.id, it.email, it.role, it.expiresAt.toString()) }.toTypedArray(),
-                link = link,
-                published = publication != null && publication.removed != true,
-                slug = publication?.slug,
-                followers = publication?.followers ?: 0,
-                pro = app.rondo.account.me?.pro == true,
-                offline = false,
-                removed = publication?.removed == true,
-                restrictedUntil = app.rondo.account.me?.restrictedUntil?.toString(),
-            )
-        }
-    } catch (e: ApiError) {
-        if (e.status != 0) app.notice(e)
-        ShareState(emptyArray(), emptyArray(), null, false, null, 0, false, true, false, null)
-    }
-
-    private fun change(block: suspend () -> Unit) = act {
-        online { block() }
-        show(load())
-    }
-
-    fun invite(email: String, role: Int) = change { api.createInvite(deckId, InviteRequest(role, email.trim())).ok() }
-
-    fun createLink(role: Int) = change { link = api.createInvite(deckId, InviteRequest(role)).ok().url }
-
-    fun revoke(inviteId: String) = change { api.revokeInvite(inviteId).ok() }
-
-    fun setRole(userId: String, role: Int) = change { api.setShareRole(deckId, userId, RoleUpdate(role)).ok() }
-
-    fun remove(userId: String) = change { api.removeShare(deckId, userId).ok() }
-
-    fun publish() = change { api.publishDeck(deckId).ok() }
-
-    fun unpublish() = change { api.unpublishDeck(deckId).ok() }
-}
-
-@JsExport
-class Issue internal constructor(
-    val id: String,
-    val entity: String,
-    val label: String,
-    val reason: String,
-    val at: Double,
-    val canCopy: Boolean,
-)
-
-@JsExport
-class IssuesState internal constructor(val items: Array<Issue>)
-
-/** Edits the server refused: save your version as a copy, or let it go. */
-@JsExport
-class IssuesScreen internal constructor(override val app: App) : Screen<IssuesState>() {
+class SmartDeckScreen internal constructor(override val app: App, val id: String) : Screen<SmartDeckState>() {
+    private val library get() = app.rondo.library
     private val store get() = app.rondo.store
 
-    override suspend fun load() = IssuesState(
-        store.q.rejects().awaitAsList().map {
-            val canCopy = it.code != "quota_exceeded" && it.code != "too_large"
-            Issue(it.id, it.entity, it.label, strings.error(it.code), it.at.toDouble(), canCopy)
-        }.toTypedArray(),
-    )
-
-    fun discard(id: String, entity: String) = act { store.q.dropReject(id, entity) }
-
-    /** Your refused version as something of your own: a note in a deck you own, or a new deck. */
-    fun keepCopy(id: String, entity: String) = act {
-        val reject = store.q.rejects().awaitAsList().firstOrNull { it.id == id && it.entity == entity } ?: return@act
-        val library = app.rondo.library
-        when (entity) {
-            "note" -> {
-                val mine = json.decodeFromString<Note>(reject.body)
-                val access = library.access()
-                val deck = mine.deckId.takeIf { access.canWrite(it) == null && store.tree()[it]?.ownerId == store.me }
-                    ?: store.tree().roots.firstOrNull { it.ownerId == store.me && it.name == strings.recovered }?.id
-                    ?: library.createDeck(strings.recovered).id
-                var template = store.template(mine.templateId) ?: throw Refused(ErrorCode.NOT_FOUND)
-                // Someone else's note type comes along as a copy of your own.
-                if (!Templates.isBuiltin(template.id) && template.ownerId != store.me) {
-                    template = library.saveTemplate(template.copy(id = Ids.new(), deletedAt = null))
-                }
-                library.newNote(deck, template.id, mine.fields)
-            }
-
-            "deck" -> {
-                val mine = json.decodeFromString<Deck>(reject.body)
-                val d = library.createDeck(mine.name)
-                library.updateDeck(d.id) {
-                    mine.copy(id = d.id, ownerId = d.ownerId, parentId = null, position = d.position, deletedAt = null)
-                }
-            }
-
-            else -> Unit
+    override suspend fun load(): SmartDeckState {
+        val smart = store.smartDeck(id)?.takeIf { it.deletedAt == null }
+        val day = Day.of(store, library.overview())
+        if (smart == null) {
+            val none = SmartDeckItem(id, "", null, 0, 0, 0, 0, "")
+            return SmartDeckState(none, 0, 0, emptyArray(), "", null, null, emptyArray(), null, false, true)
         }
-        store.q.dropReject(id, entity)
+        val f = smart.filter
+        return SmartDeckState(
+            smart.item(store, day), smart.newPerDay, smart.reviewsPerDay, rules(f, day.tree).toTypedArray(),
+            f.text.orEmpty(), f.deckIds?.firstOrNull(), f.templateIds?.firstOrNull(), f.tags.orEmpty().toTypedArray(),
+            f.state, f.marked == true, false,
+        )
+    }
+
+    /** [f] in words: where its cards come from, then what they must be. */
+    private suspend fun rules(f: Filter, tree: Tree): List<String> {
+        val templates = store.templates()
+        val out = ArrayList<String>()
+        for (deck in f.deckIds.orEmpty()) {
+            out += if (tree.dead(deck)) strings.ruleGoneDeck else strings.ruleDeck(tree.path(deck).joinToString(" › "))
+        }
+        f.templateIds.orEmpty().mapNotNull { templates[it]?.name }.forEach { out += strings.ruleType(it) }
+        f.tags?.takeIf { it.isNotEmpty() }?.let { out += strings.ruleTags(it.joinToString(", ")) }
+        f.state?.let { out += strings.ruleState(it) }
+        if (f.marked == true) out += strings.marked
+        f.text?.let { out += strings.ruleText(it) }
+        return out.ifEmpty { listOf(strings.ruleEverything) }
+    }
+
+    fun save(name: String, icon: String?, color: Int, newPerDay: Int, reviewsPerDay: Int) = act {
+        library.updateSmartDeck(id) {
+            it.copy(
+                name = name.trim(),
+                icon = icon?.ifBlank { null },
+                color = color,
+                newPerDay = newPerDay,
+                reviewsPerDay = reviewsPerDay,
+            )
+        }
+        app.rondo.syncSoon()
+    }
+
+    /** Deletes the smart deck alone: its cards stay where they are. */
+    fun delete() = act {
+        library.deleteSmartDeck(id)
+        app.rondo.syncSoon()
     }
 }
+
+/** Languages a deck can be in, as BCP 47 codes; UIs show their names in the reader's language. */
+@JsExport
+val languages: Array<String> = arrayOf(
+    "ar", "cs", "da", "de", "el", "en", "es", "fa", "fi", "fr", "he", "hi", "hu", "id", "it", "ja", "ko", "la",
+    "nl", "no", "pl", "pt", "ro", "ru", "sv", "th", "tr", "uk", "vi", "zh",
+)

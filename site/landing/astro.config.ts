@@ -12,8 +12,12 @@ export default defineConfig({
   build: { inlineStylesheets: "never" },
   vite: {
     build: { assetsInlineLimit: 0 },
-    // The launch list's sign-ups go to the Go server, which the ingress puts under /api on the same host.
-    server: { proxy: { "/api": "http://localhost:23901" } },
+    server: {
+      // The launch list's sign-ups go to the Go server, which the ingress puts under /api on the same host.
+      proxy: { "/api": "http://localhost:23901" },
+      // The brand's fonts live beside the site.
+      fs: { allow: ["..", "../../brand"] },
+    },
   },
   env: {
     schema: {

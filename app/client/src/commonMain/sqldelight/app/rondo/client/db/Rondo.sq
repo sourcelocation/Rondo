@@ -41,7 +41,8 @@ CREATE TABLE notes (
   search_text TEXT NOT NULL,
   v INTEGER NOT NULL,
   deleted_at INTEGER,
-  dirty INTEGER AS kotlin.Boolean NOT NULL
+  dirty INTEGER AS kotlin.Boolean NOT NULL,
+  tags TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX notes_deck ON notes (deck_id);
 
@@ -74,6 +75,21 @@ CREATE TABLE settings (
   dirty INTEGER AS kotlin.Boolean NOT NULL,
   reminder_at INTEGER,
   reminder_email INTEGER AS kotlin.Boolean
+);
+
+CREATE TABLE smart_decks (
+  id BLOB AS kotlin.String NOT NULL PRIMARY KEY,
+  owner_id BLOB AS kotlin.String NOT NULL,
+  name TEXT NOT NULL,
+  position TEXT NOT NULL,
+  icon TEXT,
+  color INTEGER NOT NULL,
+  filter TEXT NOT NULL,
+  new_per_day INTEGER NOT NULL,
+  reviews_per_day INTEGER NOT NULL,
+  v INTEGER NOT NULL,
+  deleted_at INTEGER,
+  dirty INTEGER AS kotlin.Boolean NOT NULL
 );
 
 CREATE TABLE card_state (
@@ -129,6 +145,7 @@ notesUsing: SELECT count(*) FROM notes WHERE template_id = ? AND deleted_at IS N
 templateUse: SELECT template_id, count(*) AS notes FROM notes WHERE deleted_at IS NULL GROUP BY template_id;
 ankiNotes: SELECT count(*) FROM notes n JOIN templates t ON t.id = n.template_id WHERE t.kind = 2 AND n.deck_id IN ? AND n.deleted_at IS NULL;
 putNote: INSERT OR REPLACE INTO notes VALUES ?;
+noteTags: SELECT DISTINCT tags FROM notes WHERE deleted_at IS NULL AND tags <> '' AND instr(lower(tags), lower(?)) > 0 LIMIT 20000;
 dirtyNotes: SELECT * FROM notes WHERE dirty LIMIT 500;
 cleanNote: UPDATE notes SET dirty = 0 WHERE id = ? AND v = ?;
 dropNotesIn: DELETE FROM notes WHERE deck_id IN ?;
@@ -146,10 +163,17 @@ dropUnpushedEvent: DELETE FROM events WHERE id = ? AND pushed = 0;
 pending:
 SELECT (SELECT count(*) FROM decks WHERE dirty) + (SELECT count(*) FROM templates WHERE dirty)
   + (SELECT count(*) FROM notes WHERE dirty) + (SELECT count(*) FROM events WHERE pushed = 0)
-  + (SELECT count(*) FROM settings WHERE dirty);
+  + (SELECT count(*) FROM settings WHERE dirty) + (SELECT count(*) FROM smart_decks WHERE dirty);
 unlocked: SELECT subject_id FROM events WHERE kind = 9;
 reviewsSince: SELECT at, value, subject_id, card, duration_ms FROM events WHERE kind = 1 AND at >= ? ORDER BY at;
 allReviews: SELECT * FROM events WHERE kind = 1 AND id NOT IN (SELECT subject_id FROM events WHERE kind = 8) ORDER BY subject_id, card, at;
+
+smartDecks: SELECT * FROM smart_decks WHERE deleted_at IS NULL ORDER BY position, id;
+smartDeck: SELECT * FROM smart_decks WHERE id = ?;
+putSmartDeck: INSERT OR REPLACE INTO smart_decks VALUES ?;
+dirtySmartDecks: SELECT * FROM smart_decks WHERE dirty;
+cleanSmartDeck: UPDATE smart_decks SET dirty = 0 WHERE id = ? AND v = ?;
+adoptSmartDecks: UPDATE smart_decks SET owner_id = :owner, dirty = 1 WHERE owner_id IS :placeholder;
 
 putSettings: INSERT OR REPLACE INTO settings VALUES ?;
 settings: SELECT * FROM settings;
@@ -161,6 +185,7 @@ dropCardsOf: DELETE FROM card_state WHERE note_id = ? AND card NOT IN ?;
 dropCards: DELETE FROM card_state WHERE note_id IN ?;
 cardsDue: SELECT * FROM card_state WHERE deck_id IN ? AND suspended = 0 AND state > 0 AND due < ?;
 newCards: SELECT * FROM card_state WHERE deck_id = ? AND state = 0 AND suspended = 0 AND (buried_at IS NULL OR buried_at < ?) ORDER BY note_id, card LIMIT ?;
+cardsAhead: SELECT * FROM card_state WHERE deck_id IN ? AND suspended = 0 AND state = 2 AND due >= ?;
 load:
 SELECT deck_id,
   total(state = 0 AND suspended = 0 AND (buried_at IS NULL OR buried_at < :dayStart)) AS new_available,
@@ -205,6 +230,7 @@ wipe {
   DELETE FROM notes;
   DELETE FROM events;
   DELETE FROM settings;
+  DELETE FROM smart_decks;
   DELETE FROM card_state;
   DELETE FROM streams;
   DELETE FROM lends;

@@ -4,7 +4,7 @@ import Actions from "./Actions.astro";
 import Logo from "./Logo.astro";
 
 /**
- * The bar over every page: the downloads, the docs and the source on one side, the site's two actions on the other
+ * The bar over every page: the downloads, the docs and the Discord on one side, the site's two actions on the other
  * (Actions.astro), and the logo in the middle. On the landing page (`animated`) the motion brings them in after its
  * intro, whose mark lands in the logo's. It loads the launch's script, which every page with a bar needs for its
  * launch list.
@@ -34,8 +34,8 @@ const revealLogo = animated ? { "data-reveal": "logo", "data-reveal-manual": "" 
       <a class="nav__link link" href={links.docs}>
         Docs
       </a>
-      <a class="nav__link link" href={links.source} data-when="live">
-        GitHub
+      <a class="nav__link link" href={links.discord} data-when="live">
+        Discord
       </a>
     </div>
     <a class="nav__home" href="/" aria-label="Rondo home" {...revealLogo}>

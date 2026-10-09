@@ -2,7 +2,7 @@ import { ChevronDown, Compass, Download, Layers, Play, Plus } from "lucide-react
 import { useEffect } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import { DeckTree, useHome } from "@/components/decks";
+import { DeckTree, SmartDecks, useHome } from "@/components/decks";
 import { Empty, Header, Loading, Ring, Section } from "@/components/kit";
 import { Button } from "@/components/ui/button";
 import { app, date, s, type HomeState } from "@/rondo";
@@ -122,6 +122,11 @@ export function Home() {
       {st.shared.length > 0 && (
         <Section title={s.sharedWithYou}>
           <DeckTree items={st.shared} />
+        </Section>
+      )}
+      {st.smart.length > 0 && (
+        <Section title={s.smartDecks}>
+          <SmartDecks items={st.smart} />
         </Section>
       )}
       <div className="mb-10 flex flex-wrap gap-3">

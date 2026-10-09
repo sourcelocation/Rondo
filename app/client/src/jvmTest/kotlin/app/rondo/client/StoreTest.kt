@@ -6,7 +6,7 @@ import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import app.rondo.core.Templates
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 
 class StoreTest {
@@ -21,17 +21,20 @@ class StoreTest {
     fun aDatabaseFromTheFirstVersionMovesForward() = runBlocking {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         val first = Store.open(driver)
-        // As the first version left it: notes with tags, settings without reminders, and no schema version recorded.
-        driver.execute(null, "ALTER TABLE notes ADD COLUMN tags TEXT NOT NULL DEFAULT ''", 0)
+        // As the first version left it: notes with tags (as now), settings without reminders, no smart decks,
+        // and no schema version recorded.
+        driver.execute(null, "DROP TABLE smart_decks", 0)
         driver.execute(null, "ALTER TABLE settings DROP COLUMN reminder_at", 0)
         driver.execute(null, "ALTER TABLE settings DROP COLUMN reminder_email", 0)
         driver.execute(null, "DELETE FROM meta WHERE key = 'schema'", 0)
         val deck = Library(first).createDeck("Spanish")
 
         val store = Store.open(driver)
-        assertFalse("tags" in driver.columns("notes"))
+        // Tags went (1.sqm) and came back (3.sqm), last, as Rondo.sq has them.
+        assertEquals("tags", driver.columns("notes").last())
         assertEquals(listOf("reminder_at", "reminder_email"), driver.columns("settings").takeLast(2))
-        assertEquals("3", store.meta("schema"))
+        assertTrue("filter" in driver.columns("smart_decks"))
+        assertEquals("4", store.meta("schema"))
         Library(store).newNote(deck.id, Templates.BASIC, mapOf("1" to "hola", "2" to "hello"))
         assertEquals(1, store.q.allNotes().awaitAsList().size)
     }
@@ -40,6 +43,6 @@ class StoreTest {
     fun aDatabaseOpensAgainAfterSigningOut() = runBlocking {
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         Store.open(driver).q.wipe()
-        assertEquals("3", Store.open(driver).meta("schema"))
+        assertEquals("4", Store.open(driver).meta("schema"))
     }
 }

@@ -3,6 +3,46 @@
  * shares (containers, headings, buttons, glass, and the states the motion reveals things from).
  */
 
+/* The brand's type (brand/fonts): Geist, Geist Mono and Juana. */
+@font-face {
+  font-family: Geist;
+  src: url("../../../../brand/fonts/geist/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("../../../../brand/fonts/geist/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: Juana;
+  src: url("../../../../brand/fonts/juana/Juana-Light.otf") format("opentype");
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: Juana;
+  src: url("../../../../brand/fonts/juana/Juana-LightIt.otf") format("opentype");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: Juana;
+  src: url("../../../../brand/fonts/juana/Juana-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: Juana;
+  src: url("../../../../brand/fonts/juana/Juana-RegularIt.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
 :root {
   color-scheme: light;
 
@@ -31,10 +71,10 @@
     0 1px 2px rgb(18 22 40 / 4%), 0 14px 32px -14px rgb(18 22 40 / 16%), 0 44px 88px -36px rgb(18 22 40 / 20%);
 
   --sans:
-    "Host Grotesk Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP",
-    "Apple SD Gothic Neo", sans-serif;
-  --serif: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
-  --mono: "Fragment Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    Geist, ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", "Apple SD Gothic Neo",
+    sans-serif;
+  --serif: Juana, "Iowan Old Style", Georgia, serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.76, 0, 0.24, 1);

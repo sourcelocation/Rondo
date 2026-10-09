@@ -6,13 +6,13 @@ import BrandIcon from "./BrandIcon.astro";
 /**
  * A pill link. Its label rolls over to a copy of itself on hover, and it leans toward the pointer (Magnetic). Its
  * icon: `open` (an arrow after the label, for what leaves the page), `install` (the mark of the visitor's platform,
- * which the styles pick by /launch.js's data-os), or `github`.
+ * which the styles pick by /launch.js's data-os), or `discord`.
  */
 interface Props {
   href: string;
   label: string;
   variant?: "solid" | "glass";
-  icon?: "open" | "install" | "github";
+  icon?: "open" | "install" | "discord";
   /** Shows only the icon on narrow screens; the label stays for screen readers. */
   squeeze?: boolean;
   class?: string;
@@ -27,7 +27,7 @@ const { href, label, variant = "solid", icon, squeeze = false, class: className 
   aria-label={squeeze ? label : undefined}
   data-magnetic
 >
-  {icon === "github" && <BrandIcon name="github" class="button__icon" />}
+  {icon === "discord" && <BrandIcon name="discord" class="button__icon" />}
   {icon === "install" && (
     <span class="button__icon os-icons" aria-hidden="true">
       <BrandIcon name="apple" class="os-icon os-icon--apple" />

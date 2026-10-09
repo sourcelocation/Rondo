@@ -1,0 +1,17 @@
+-- Notes have tags again, and learners keep smart decks: saved filters, studied like a deck.
+ALTER TABLE notes ADD COLUMN tags TEXT NOT NULL DEFAULT '';
+
+CREATE TABLE smart_decks (
+  id BLOB NOT NULL PRIMARY KEY,
+  owner_id BLOB NOT NULL,
+  name TEXT NOT NULL,
+  position TEXT NOT NULL,
+  icon TEXT,
+  color INTEGER NOT NULL,
+  filter TEXT NOT NULL,
+  new_per_day INTEGER NOT NULL,
+  reviews_per_day INTEGER NOT NULL,
+  v INTEGER NOT NULL,
+  deleted_at INTEGER,
+  dirty INTEGER NOT NULL
+);

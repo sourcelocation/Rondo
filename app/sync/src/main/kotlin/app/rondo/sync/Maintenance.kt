@@ -31,8 +31,10 @@ class Maintenance(private val db: Db) {
             "UPDATE counters SET purged_seq = seq, seq = seq + 1 WHERE owner_id IN (" +
                 "SELECT owner_id FROM decks WHERE id = ANY(?::uuid[]) " +
                 "UNION SELECT owner_id FROM notes WHERE deleted_at < ? " +
-                "UNION SELECT owner_id FROM templates WHERE deleted_at < ?)",
+                "UNION SELECT owner_id FROM templates WHERE deleted_at < ? " +
+                "UNION SELECT owner_id FROM smart_decks WHERE deleted_at < ?)",
             purged,
+            cutoff,
             cutoff,
             cutoff,
         )
@@ -43,6 +45,7 @@ class Maintenance(private val db: Db) {
         )
         c.exec("DELETE FROM decks WHERE id = ANY(?::uuid[])", purged)
         c.exec("DELETE FROM templates WHERE deleted_at < ?", cutoff)
+        c.exec("DELETE FROM smart_decks WHERE deleted_at < ?", cutoff)
         c.exec(
             "WITH RECURSIVE kept AS (SELECT deck_id AS id FROM shares " +
                 "UNION SELECT d.id FROM decks d JOIN kept ON d.parent_id = kept.id) " +

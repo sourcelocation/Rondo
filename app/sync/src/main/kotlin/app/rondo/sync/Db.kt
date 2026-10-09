@@ -52,7 +52,7 @@ class Db(url: String, poolSize: Int = 10) {
     fun close() = pool.close()
 
     companion object {
-        val SYNCED = listOf("decks", "templates", "notes", "events", "settings")
+        val SYNCED = listOf("decks", "templates", "notes", "events", "settings", "smart_decks")
         val json = Json {
             ignoreUnknownKeys = true
             explicitNulls = false

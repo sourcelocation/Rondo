@@ -12,9 +12,6 @@
     "typecheck": "astro check"
   },
   "dependencies": {
-    "@fontsource-variable/host-grotesk": "5.3.0",
-    "@fontsource-variable/newsreader": "5.3.0",
-    "@fontsource/fragment-mono": "5.3.0",
     "@lucide/astro": "1.52.0",
     "@mdi/js": "7.4.47",
     "astro": "7.3.5",

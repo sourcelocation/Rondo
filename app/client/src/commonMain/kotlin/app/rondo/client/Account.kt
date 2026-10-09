@@ -448,6 +448,7 @@ class Account(private val platform: Platform, private val store: Store, private 
             store.q.adoptDecks(identity, placeholder)
             store.q.adoptTemplates(identity, placeholder)
             store.q.adoptNotes(identity, placeholder)
+            store.q.adoptSmartDecks(identity, placeholder)
             store.putMeta("account", identity)
         }
         store.becomes(identity)

@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { createContext, use, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { ask, confirm, DECK_COLORS, DeckLook, deckColor, pick, Ring } from "@/components/kit";
+import { ask, confirm, Counts as CountsOf, DECK_COLORS, DeckLook, deckColor, pick, Ring } from "@/components/kit";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import {
@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { languageName, languages, s, type DeckItem, type Home, type HomeState } from "@/rondo";
+import { languageName, languages, s, type DeckItem, type Home, type HomeState, type SmartDeckItem } from "@/rondo";
 import { useOverlay } from "@/routing";
 import { cn } from "cn";
 
@@ -389,6 +389,63 @@ function CompactRow({ d, items, open, toggle }: RowProps) {
         <DropHint hint={hint} />
       </div>
     </DeckContextMenu>
+  );
+}
+
+/** Smart decks, as Home lists them ([compact]: as the sidebar does). */
+export function SmartDecks({ items, compact = false }: { items: SmartDeckItem[]; compact?: boolean }) {
+  const { pathname } = useLocation();
+  if (compact)
+    return (
+      <div className="grid gap-px">
+        {items.map((d) => {
+          const due = d.newCount + d.learning + d.review;
+          return (
+            <Link
+              key={d.id}
+              to={`/smart/${d.id}`}
+              className={cn(
+                "flex items-center gap-2 rounded-md py-1.5 pr-2 pl-6 text-sm",
+                pathname.startsWith(`/smart/${d.id}`) ? "bg-accent font-medium" : "text-subtle hover:bg-accent/60",
+              )}
+            >
+              <DeckLook icon={d.icon} color={d.color} />
+              <span className="min-w-0 flex-1 truncate">{d.name}</span>
+              {due > 0 && <span className="text-xs text-muted-foreground tabular-nums">{due}</span>}
+            </Link>
+          );
+        })}
+      </div>
+    );
+  return (
+    <div className="grid gap-0.5">
+      {items.map((d) => {
+        const due = d.newCount + d.learning + d.review;
+        return (
+          <div key={d.id} className="relative flex items-center gap-3 rounded-lg py-2 pr-2 pl-9 hover:bg-accent/60">
+            <DeckLook icon={d.icon} color={d.color} className="text-xl" />
+            <Link to={`/smart/${d.id}`} className="min-w-0 flex-1 after:absolute after:inset-0">
+              <div className="truncate font-medium">{d.name}</div>
+              <div className="truncate text-xs text-muted-foreground">{d.detail}</div>
+            </Link>
+            <div className="relative flex items-center gap-3">
+              {due > 0 && (
+                <>
+                  <span className="hidden sm:flex">
+                    <CountsOf n={d.newCount} l={d.learning} r={d.review} />
+                  </span>
+                  <Button size="icon-sm" variant="secondary" asChild aria-label={`${s.study}: ${d.name}`}>
+                    <Link to={`/smart/${d.id}/study`}>
+                      <Play />
+                    </Link>
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

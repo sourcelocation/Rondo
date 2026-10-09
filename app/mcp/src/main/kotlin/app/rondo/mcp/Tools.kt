@@ -9,6 +9,7 @@ import app.rondo.core.Learning
 import app.rondo.core.Memory
 import app.rondo.core.NoteFilter
 import app.rondo.core.Positions
+import app.rondo.core.Tags
 import app.rondo.core.Templates
 import app.rondo.core.Tree
 import app.rondo.core.Workspace
@@ -44,7 +45,8 @@ private const val INSTRUCTIONS = """Rondo is a flashcard app. Decks nest; notes 
 whose fields they fill; each note makes one or more cards. Field text is Rondo markup: **bold**, *italic*, __underline__,
 ==highlight==, `code`, ~sub~, ^sup^, ${'$'}inline math${'$'}, ${'$'}${'$'} display math ${'$'}${'$'} on its own lines,
 {{c1::cloze answer::hint}}, {base|ruby reading}, lines starting with "- " or "1. " for lists, pipe tables.
-Escape a special character with a backslash. Image and audio fields hold a media hash."""
+Escape a special character with a backslash. Image and audio fields hold a media hash. Notes can have tags: words
+without spaces, "::" nesting them (Cardio::Valves); a tag also finds the tags under it."""
 
 /** The MCP server for one [Workspace]: the same tools hosted and on the command line. */
 fun rondoServer(ws: Workspace): Server = Server(
@@ -109,10 +111,11 @@ private fun Server.tools(ws: Workspace) {
 
     addTool(
         "search_notes",
-        "Find notes by text and deck (including its sub-decks).",
+        "Find notes by text, deck (including its sub-decks) and tags.",
         schema(
             "text" to prop("string", "Words the note contains."),
             "deck_id" to prop("string", "Look only in this deck."),
+            "tags" to array("Notes with any of these tags, or a tag under one."),
             "limit" to prop("integer", "At most this many (default 20, up to 200)."),
         ),
     ) { call ->
@@ -120,7 +123,7 @@ private fun Server.tools(ws: Workspace) {
         val tree = Tree(ws.decks().map { it.deck })
         val decks = a.str("deck_id")?.let { id -> tree.subtree(id).map { it.id } }.orEmpty()
         val notes = ws.notes(
-            NoteFilter(a.str("text").orEmpty(), decks),
+            NoteFilter(a.str("text").orEmpty(), decks, tags = a.list("tags")),
             (a.int("limit") ?: 20).coerceIn(1, 200),
         )
         ok(notes(ws, notes, tree))
@@ -196,6 +199,11 @@ private fun Server.tools(ws: Workspace) {
                 put("type", "object")
                 put("description", "Field name (or id) to markup.")
             }
+            putJsonObject("tags") {
+                put("type", "array")
+                put("description", "Its tags; when changing a note, they replace the ones it has.")
+                putJsonObject("items") { put("type", "string") }
+            }
         }
     }
     addTool(
@@ -221,6 +229,7 @@ private fun Server.tools(ws: Workspace) {
                 fields(template, n["fields"]?.jsonObject),
                 ws.clock(),
                 deck.ownerId,
+                tags = Tags.of(n.list("tags")).text,
             )
         }
         val rejected = ws.commit(Rows(notes = notes))
@@ -234,7 +243,7 @@ private fun Server.tools(ws: Workspace) {
 
     addTool(
         "update_notes",
-        "Changes notes' fields (by name).",
+        "Changes notes' fields (by name) or tags.",
         schema(
             "notes" to array("Notes with their id and the fields to change.", noteItem),
             required = listOf("notes"),
@@ -247,7 +256,8 @@ private fun Server.tools(ws: Workspace) {
             val n = stored[c.str("id")] ?: return@mapNotNull null
             val template = templates.getValue(n.templateId)
             val fields = c["fields"]?.jsonObject?.let { n.fields + fields(template, it) } ?: n.fields
-            n.copy(fields = fields, v = ws.clock())
+            val tags = if ("tags" in c) Tags.of(c.list("tags")).text else n.tags
+            n.copy(fields = fields, tags = tags, v = ws.clock())
         }
         val rejected = ws.commit(Rows(notes = notes))
         ok(buildJsonObject { put("updated", notes.size - rejected.size) })
@@ -317,6 +327,7 @@ private suspend fun notes(ws: Workspace, notes: List<Note>, tree: Tree) = buildJ
             put("id", n.id)
             put("deck", tree.path(n.deckId).joinToString(" / "))
             put("template", t?.name ?: n.templateId)
+            putJsonArray("tags") { Tags.of(n).list.forEach { add(it) } }
             putJsonObject("fields") {
                 for ((id, value) in n.fields) {
                     val name = t?.def?.fields?.firstOrNull { it.id.toString() == id }?.name

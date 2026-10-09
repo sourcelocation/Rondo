@@ -1,0 +1,236 @@
+# Rondo on a server of your own: the released images behind Caddy, which gets the certificate and
+# routes by path as rondo.matthewsource.com does. Copy .env.example to .env, fill it in, then
+# `docker compose up -d`. The docs' "Self-hosting" page walks through it.
+#
+# Everything that depends on your hostname or a secret is written below from .env; the Go server
+# also reads .env itself, so any of its settings (S3, Web Push, media quotas) can go there.
+name: rondo-self-hosted
+
+x-postgres: &postgres
+  depends_on: { postgres: { condition: service_healthy } }
+x-database: &database "postgres://rondo:${POSTGRES_PASSWORD:?set it in .env}@postgres:5432/rondo?sslmode=disable"
+x-kratos-database: &kratos-database "postgres://rondo:${POSTGRES_PASSWORD}@postgres:5432/kratos?sslmode=disable"
+x-hydra-database: &hydra-database "postgres://rondo:${POSTGRES_PASSWORD}@postgres:5432/hydra?sslmode=disable"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment: { POSTGRES_USER: rondo, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}", POSTGRES_DB: rondo }
+    configs: [{ source: databases, target: /docker-entrypoint-initdb.d/databases.sql }]
+    volumes: ["database:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U rondo"], interval: 2s, retries: 30 }
+
+  kratos-migrate:
+    <<: *postgres
+    image: oryd/kratos:v26.2.0
+    command: migrate sql -e --yes
+    environment: { DSN: *kratos-database }
+
+  kratos:
+    image: oryd/kratos:v26.2.0
+    restart: unless-stopped
+    command: serve -c /etc/kratos/kratos.yml --watch-courier --sqa-opt-out
+    environment:
+      DSN: *kratos-database
+      SECRETS_COOKIE: "${KRATOS_COOKIE_SECRET:?set it in .env}"
+      SECRETS_CIPHER: "${KRATOS_CIPHER_SECRET:?set it in .env}"
+    configs:
+      - { source: kratos, target: /etc/kratos/kratos.yml }
+      - { source: kratos-schema, target: /etc/kratos/identity.schema.json }
+      - { source: kratos-courier, target: /etc/kratos/courier.jsonnet }
+    depends_on: { kratos-migrate: { condition: service_completed_successfully } }
+
+  hydra-migrate:
+    <<: *postgres
+    image: oryd/hydra:v26.2.0
+    command: migrate sql up -e --yes
+    environment: { DSN: *hydra-database }
+
+  hydra:
+    image: oryd/hydra:v26.2.0
+    restart: unless-stopped
+    command: serve all -c /etc/hydra/hydra.yml --sqa-opt-out
+    environment:
+      DSN: *hydra-database
+      SECRETS_SYSTEM: "${HYDRA_SYSTEM_SECRET:?set it in .env}"
+    configs: [{ source: hydra, target: /etc/hydra/hydra.yml }]
+    depends_on: { hydra-migrate: { condition: service_completed_successfully } }
+
+  migrate:
+    <<: *postgres
+    image: ghcr.io/sourcelocation/rondo-api:${RONDO_VERSION:?set it in .env}
+    command: migrate
+    environment: { RONDO_DATABASE_URL: *database }
+
+  api:
+    image: ghcr.io/sourcelocation/rondo-api:${RONDO_VERSION}
+    restart: unless-stopped
+    command: serve
+    env_file: .env
+    environment:
+      RONDO_DATABASE_URL: *database
+      RONDO_PUBLIC_URL: "https://${RONDO_HOST:?set it in .env}"
+      RONDO_KRATOS_PUBLIC_URL: http://kratos:4433
+      RONDO_KRATOS_ADMIN_URL: http://kratos:4434
+      RONDO_HYDRA_ADMIN_URL: http://hydra:4445
+      RONDO_HOOK_SECRET: "${RONDO_HOOK_SECRET:?set it in .env}"
+      # The image runs as "nonroot", whose home the volume takes over (and its owner with it).
+      RONDO_MEDIA_DIR: /home/nonroot/media
+    volumes: ["media:/home/nonroot"]
+    depends_on: { migrate: { condition: service_completed_successfully } }
+
+  sync:
+    image: ghcr.io/sourcelocation/rondo-sync:${RONDO_VERSION}
+    restart: unless-stopped
+    environment:
+      RONDO_DATABASE_URL: *database
+      RONDO_PUBLIC_URL: "https://${RONDO_HOST}"
+      RONDO_KRATOS_PUBLIC_URL: http://kratos:4433
+      RONDO_HYDRA_ADMIN_URL: http://hydra:4445
+    depends_on: { migrate: { condition: service_completed_successfully } }
+
+  web:
+    image: ghcr.io/sourcelocation/rondo-web:${RONDO_VERSION}
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    configs: [{ source: caddy, target: /etc/caddy/Caddyfile }]
+    volumes: ["caddy-data:/data", "caddy-config:/config"]
+    depends_on: [api, sync, web, kratos, hydra]
+
+volumes:
+  database: {}
+  media: {}
+  caddy-data: {}
+  caddy-config: {}
+
+configs:
+  # Kratos and Hydra keep their own databases beside Rondo's.
+  databases:
+    content: |
+      CREATE DATABASE kratos;
+      CREATE DATABASE hydra;
+
+  # Kratos signs people in: email codes and passkeys, with an authenticator app as an optional
+  # second step. It tells the Go server about each new account and hands it the mail to send.
+  kratos:
+    content: |
+      serve:
+        public: { base_url: "https://${RONDO_HOST}/auth/" }
+        admin: { base_url: "http://kratos:4434/" }
+      selfservice:
+        default_browser_return_url: "https://${RONDO_HOST}/app/"
+        allowed_return_urls: ["https://${RONDO_HOST}"]
+        methods:
+          code: { enabled: true, passwordless_enabled: true, config: { lifespan: 15m } }
+          passkey:
+            enabled: true
+            config: { rp: { display_name: Rondo, id: "${RONDO_HOST}", origins: ["https://${RONDO_HOST}"] } }
+          totp: { enabled: true, config: { issuer: Rondo } }
+          lookup_secret: { enabled: true }
+          password: { enabled: false }
+          link: { enabled: false }
+        flows:
+          error: { ui_url: "https://${RONDO_HOST}/app/sign-in" }
+          login: { ui_url: "https://${RONDO_HOST}/app/sign-in", lifespan: 30m }
+          registration:
+            ui_url: "https://${RONDO_HOST}/app/sign-in"
+            lifespan: 30m
+            after:
+              code: { hooks: [{ hook: web_hook, config: &registered { url: "http://api:8080/api/hooks/kratos/registration", method: POST, body: "base64://ZnVuY3Rpb24oY3R4KSB7IGlkZW50aXR5X2lkOiBjdHguaWRlbnRpdHkuaWQgfQ==", response: { ignore: true }, auth: &auth { type: api_key, config: { name: Authorization, value: "${RONDO_HOOK_SECRET}", in: header } } } }, { hook: session }] }
+              passkey: { hooks: [{ hook: web_hook, config: *registered }, { hook: session }] }
+          settings: { ui_url: "https://${RONDO_HOST}/app/settings", privileged_session_max_age: 10m, required_aal: highest_available }
+          verification: { enabled: true, use: code, ui_url: "https://${RONDO_HOST}/app/sign-in" }
+          recovery: { enabled: false }
+      session:
+        lifespan: 2160h
+        earliest_possible_extend: 720h
+        whoami: { required_aal: highest_available }
+      identity:
+        default_schema_id: user
+        schemas: [{ id: user, url: "file:///etc/kratos/identity.schema.json" }]
+      courier:
+        delivery_strategy: http
+        http:
+          request_config:
+            url: "http://api:8080/api/hooks/kratos/courier"
+            method: POST
+            body: "file:///etc/kratos/courier.jsonnet"
+            auth: *auth
+      ciphers: { algorithm: xchacha20-poly1305 }
+      log: { level: info, format: json }
+  kratos-schema:
+    file: ../dev/kratos/identity.schema.json
+  kratos-courier:
+    file: ../dev/kratos/courier.jsonnet
+
+  # Hydra is the OAuth server AI assistants sign in through, to reach /mcp.
+  hydra:
+    content: |
+      serve:
+        public: { cors: { enabled: true, allowed_origins: ["*"] } }
+      urls:
+        self: { issuer: "https://${RONDO_HOST}/" }
+        login: "https://${RONDO_HOST}/app/sign-in"
+        consent: "https://${RONDO_HOST}/app/oauth/consent"
+        error: "https://${RONDO_HOST}/app/oauth/consent"
+      oidc:
+        dynamic_client_registration:
+          enabled: true
+          default_scope: [openid, offline, offline_access, rondo]
+      webfinger:
+        oidc_discovery:
+          client_registration_url: "https://${RONDO_HOST}/oauth2/register"
+          supported_scope: [rondo]
+      strategies:
+        access_token: opaque
+      ttl:
+        access_token: 1h
+        refresh_token: 2160h
+      log: { level: info, format: json }
+
+  # One hostname, routed by path. Kratos gets /auth without the prefix, and without the Origin and
+  # Cookie headers browsers add, as the apps' sign-in is headless. The docs stay on Rondo's site.
+  caddy:
+    content: |
+      ${RONDO_HOST} {
+      	encode zstd gzip
+
+      	redir / /app/
+      	redir /d/* /app{uri}
+      	redir /i/* /app{uri}
+      	redir /u/* /app{uri}
+      	redir /redeem /app{uri}
+      	redir /redeem/* /app{uri}
+      	redir /docs* https://rondo.matthewsource.com{uri}
+
+      	@web path /app /app/*
+      	handle @web {
+      		reverse_proxy web:8080
+      	}
+      	@api path /api/* /media/* /blobs/*
+      	handle @api {
+      		reverse_proxy api:8080
+      	}
+      	@sync path /sync/* /mcp /.well-known/oauth-protected-resource*
+      	handle @sync {
+      		reverse_proxy sync:8081
+      	}
+      	handle_path /auth/* {
+      		reverse_proxy kratos:4433 {
+      			header_up -Origin
+      			header_up -Cookie
+      		}
+      	}
+      	@hydra path /oauth2/* /userinfo /.well-known/openid-configuration /.well-known/oauth-authorization-server /.well-known/jwks.json
+      	handle @hydra {
+      		reverse_proxy hydra:4444
+      	}
+      	handle {
+      		respond 404
+      	}
+      }

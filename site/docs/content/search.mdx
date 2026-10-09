@@ -1,30 +1,42 @@
 ---
 title: Find notes
 icon: Search
-description: Browse notes with text and filters, and change many at once.
+description: Browse notes with text, filters and tags, change many at once, and study what you find.
 ---
 
 Open **Browse**. Type to search the notes' text; case and accents don't matter. Narrow it down with the filters:
 
-| Filter | Shows                                                             |
-| ------ | ----------------------------------------------------------------- |
-| Deck   | Notes in a deck or its sub-decks.                                 |
-| Type   | Notes of one note type.                                           |
-| State  | Notes with cards that are new, learning, in review, or suspended. |
-| Marked | Notes with a marked card.                                         |
+| Filter | Shows                                                                                                  |
+| ------ | ------------------------------------------------------------------------------------------------------ |
+| Deck   | Notes in a deck or its sub-decks.                                                                      |
+| Type   | Notes of one note type.                                                                                |
+| Tags   | Notes with any of the tags picked. A tag finds the ones under it too: `Cardio` finds `Cardio::Valves`. |
+| State  | Notes with cards that are new, learning, in review, or suspended.                                      |
+| Marked | Notes with a marked card.                                                                              |
 
 Sort them by newest, recently changed, due soonest, or A–Z. The filters stay in the address, so going back or sharing the link keeps them.
 
-Each note shows its deck, type, and when its next card is due. Choose a note to edit it; the list stays where it was.
+Each note shows its deck, type, tags, and when its next card is due. Choose a note to edit it; the list stays where it was.
+
+## Tags
+
+A tag is a word on a note, without spaces; `::` nests them, as in `Cardio::Valves`. A note can have many, so tags group notes in ways decks can't: by resource, by system, by lecture. Add them under the card in the note editor, or to many notes at once below. Decks shared with you keep their author's tags: filter by them and suspend or unsuspend what they find, which is how big shared decks are usually studied a lecture at a time.
+
+## Study what you find
+
+**Study these** studies the cards the filters find now, from any deck, with no daily limit: what you asked for is the limit. Each card is still scheduled by its own deck. With nothing due, you can still go on with the reviews not due yet, the most at risk first, before an exam say.
+
+**Keep as smart deck** saves the filters as a [smart deck](/organizing#smart-decks).
 
 ## Change many notes
 
 Select notes with their checkboxes (or **Select all**), then:
 
-| Action   | Does                                                     |
-| -------- | -------------------------------------------------------- |
-| Move to… | Moves them to another deck.                              |
-| Suspend  | Keeps their cards out of study; **Unsuspend** undoes it. |
-| Mark     | Marks their cards for later; **Remove mark** clears it.  |
-| Forget   | Makes their cards new again.                             |
-| Delete   | Moves them to Recently deleted for 30 days.              |
+| Action    | Does                                                                      |
+| --------- | ------------------------------------------------------------------------- |
+| Move to…  | Moves them to another deck.                                               |
+| Add tags… | Adds tags to them; **Remove tags…** takes tags off (the ones under stay). |
+| Suspend   | Keeps their cards out of study; **Unsuspend** undoes it.                  |
+| Mark      | Marks their cards for later; **Remove mark** clears it.                   |
+| Forget    | Makes their cards new again.                                              |
+| Delete    | Moves them to Recently deleted for 30 days.                               |

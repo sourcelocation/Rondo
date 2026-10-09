@@ -5,7 +5,7 @@ import Notify from "./Notify.astro";
 
 /**
  * The site's two actions, wherever it asks something of the visitor (the bar, the hero, the close). Until the launch:
- * a star on GitHub and the launch list. From then on: open Rondo and install it — opening first on computers,
+ * the Discord and the launch list. From then on: open Rondo and install it — opening first on computers,
  * installing first on phones and tablets. The styles choose by /launch.js's data-release and data-device.
  */
 interface Props {
@@ -32,7 +32,7 @@ const halo = invite ? { class: "halo" } : {};
     <Button href={links.app} label="Open Rondo" icon="open" variant="glass" squeeze={compact} />
   </div>
   <div class="actions__set" data-when="pre">
-    <Button href={links.source} label="Star on GitHub" icon="github" squeeze={compact} />
+    <Button href={links.discord} label="Join the Discord" icon="discord" squeeze={compact} />
     <Notify name={name} mode={compact ? "popover" : "inline"} invite={invite} />
   </div>
 </div>

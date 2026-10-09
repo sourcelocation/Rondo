@@ -16,6 +16,8 @@
   &nbsp;·&nbsp;
   <a href="https://rondo.matthewsource.com/docs/">Docs</a>
   &nbsp;·&nbsp;
+  <a href="https://discord.gg/GfftwYzbdV">Discord</a>
+  &nbsp;·&nbsp;
   <a href="#coming-from-anki">Coming from Anki</a>
   &nbsp;·&nbsp;
   <a href="#run-your-own">Run your own</a>
@@ -88,6 +90,8 @@ Your review history comes along, so cards continue on their current schedule. An
 
 The backend is a Go server and a Kotlin sync server over one PostgreSQL, with [Ory Kratos](https://www.ory.sh/kratos/) for sign-in, [Ory Hydra](https://www.ory.sh/hydra/) for assistants' OAuth, and any S3-compatible store (or a folder).
 
+To host Rondo on a server of your own, [`server/self-host`](server/self-host) runs the released images behind Caddy with one Compose file: [Run your own server](https://rondo.matthewsource.com/docs/self-hosting) walks through it. What follows runs Rondo from source, for development.
+
 ```bash
 git clone https://github.com/sourcelocation/rondo.git
 cd rondo/server
@@ -103,7 +107,7 @@ cd app/platforms/web && pnpm install && pnpm dev    # the web app, http://localh
 
 The web app builds the Kotlin client with Gradle, rebuilds it as you edit, and proxies the servers, Kratos and Hydra, so it is one origin as in production. Sign-in codes arrive in Mailpit at http://localhost:23908. `docker compose --profile full up` runs the servers in containers too. Rondo keeps to ports 23900–23912 ([`server/compose.yaml`](server/compose.yaml) lists them), so it runs beside other projects.
 
-The compose file is for development, and its secrets are public. Releases build four images (`server/Dockerfile`; `app/Dockerfile`, targets `sync` and `web`; `site/Dockerfile`); production runs them on k3s behind one hostname, routed by path.
+`server/compose.yaml` is for development, and its secrets are public. Releases build four images (`server/Dockerfile`; `app/Dockerfile`, targets `sync` and `web`; `site/Dockerfile`); production runs them on k3s behind one hostname, routed by path.
 
 ## Repository
 

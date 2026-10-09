@@ -11,9 +11,9 @@ const rules = "/docs/rules"
 func date(t time.Time) string { return t.Format("2 January 2006") }
 
 func ProStarted(until *time.Time) Message {
-	body := "Editors on your shared decks, agents and more room for media are yours."
+	body := "Editors on your shared decks and more room for media are yours."
 	if until != nil && until.Before(time.Now().AddDate(50, 0, 0)) {
-		body = "Until " + date(*until) + ": editors on your shared decks, agents and more room for media."
+		body = "Until " + date(*until) + ": editors on your shared decks and more room for media."
 	}
 	return Message{Kind: "pro_started", Presentation: Modal, Title: "Welcome to Pro", Body: body, LinkLabel: "What's in Pro", LinkPath: "/docs/plans"}
 }

@@ -2,6 +2,7 @@ package app.rondo.client
 
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.db.QueryResult
+import app.cash.sqldelight.db.SqlCursor
 import app.rondo.core.DeckView
 import app.rondo.core.NoteFilter
 import app.rondo.core.Role
@@ -31,23 +32,29 @@ suspend fun Store.search(filter: NoteFilter, limit: Int, sort: String = "added")
         else -> "n.id DESC"
     }
     val sql = "SELECT n.id FROM notes n WHERE ${where.where} ORDER BY $order LIMIT ?"
-    val ids = driver.executeQuery(null, sql, { c ->
-        val ids = ArrayList<String>()
-        while (c.next().value) ids += Uuid.fromByteArray(c.getBytes(0)!!).toString()
-        QueryResult.Value(ids)
-    }, where.args.size + 1) {
-        where.args.forEachIndexed { i, a ->
+    val ids = select(sql, where.args + limit.toLong()) { it.id(0) }
+    val notes = ids.chunked(500).flatMap { q.notesById(it).awaitAsList() }.map { it.model() }.associateBy { it.id }
+    return ids.mapNotNull(notes::get)
+}
+
+/** Rows of [sql], with [args] bound as a [SqlFilter]'s are: ids as bytes, numbers as numbers. */
+internal suspend fun <T> Store.select(sql: String, args: List<Any>, row: (SqlCursor) -> T): List<T> =
+    driver.executeQuery(null, sql, { c ->
+        val out = ArrayList<T>()
+        while (c.next().value) out += row(c)
+        QueryResult.Value(out)
+    }, args.size) {
+        args.forEachIndexed { i, a ->
             when (a) {
                 is SqlFilter.Id -> bindBytes(i, Uuid.parse(a.value).toByteArray())
                 is Long -> bindLong(i, a)
                 else -> bindString(i, a.toString())
             }
         }
-        bindLong(where.args.size, limit.toLong())
     }.await()
-    val notes = ids.chunked(500).flatMap { q.notesById(it).awaitAsList() }.map { it.model() }.associateBy { it.id }
-    return ids.mapNotNull(notes::get)
-}
+
+/** The id in column [i]. */
+internal fun SqlCursor.id(i: Int): String = Uuid.fromByteArray(getBytes(i)!!).toString()
 
 /** The command-line MCP client's view: this device's copy, synced like any other device. */
 class LocalWorkspace(private val rondo: Rondo) : Workspace {
