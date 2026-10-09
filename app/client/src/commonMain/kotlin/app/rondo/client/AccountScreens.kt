@@ -5,6 +5,8 @@ import app.rondo.core.CardSide
 import app.rondo.core.Templates
 import app.rondo.core.Tree
 import app.rondo.core.model.ActionRequest
+import app.rondo.core.model.Agent
+import app.rondo.core.model.Billing
 import app.rondo.core.model.CheckoutRequest
 import app.rondo.core.model.ConsentDecision
 import app.rondo.core.model.DiscoverItem
@@ -28,13 +30,15 @@ val languages: Array<String> = arrayOf(
 @JsExport
 class AgentItem internal constructor(val clientId: String, val name: String, val since: String)
 
+/**
+ * What Settings' tabs show; who you are is in [AppState]. [provider]: stripe, app-store,
+ * google-play, promo or grant. [busy]: what's under way, which can't be asked again until it ends:
+ * checkout, portal, redeem, disconnect, export or delete.
+ */
 @JsExport
 class SettingsState internal constructor(
     val signedIn: Boolean,
     val email: String?,
-    val name: String?,
-    val username: String?,
-    val flag: String?,
     val activityHidden: Boolean,
     val pro: Boolean,
     val proUntil: String?,
@@ -48,47 +52,55 @@ class SettingsState internal constructor(
     val mcpUrl: String,
     /** Deleting the account waits for the code just sent. */
     val confirming: Boolean,
+    val busy: String?,
 )
 
-/** Account, subscription, preferences, agents and your data. */
+/** Preferences, the account, the plan and agents: the screen Settings' tabs share. */
 @JsExport
 class SettingsScreen internal constructor(override val app: App) : Screen<SettingsState>() {
     override val live get() = false
     private val rondo get() = app.rondo
     private var reauth: CodeFlow? = null
+    private var busy: String? = null
+
+    /** The subscription and the agents as the server tells them, asked until it does. */
+    private var billing: Billing? = null
+    private var agents: List<Agent>? = null
 
     override suspend fun load(): SettingsState {
         val s = rondo.store.settings()
         val account = rondo.account
-        val billing = if (account.signedIn) {
-            runCatching {
-                online { rondo.net.api.getBilling().ok() }
-            }.getOrNull()
-        } else {
-            null
+        if (account.signedIn) {
+            if (billing == null) billing = runCatching { online { rondo.net.api.getBilling().ok() } }.getOrNull()
+            if (agents == null) agents = runCatching { online { rondo.net.api.listAgents().ok() } }.getOrNull()
         }
-        val agents = if (account.signedIn) {
-            runCatching {
-                online { rondo.net.api.listAgents().ok() }
-            }.getOrNull().orEmpty()
-        } else {
-            emptyList()
-        }
-        val pro = billing?.pro ?: (account.me?.pro == true)
-        val proUntil = (billing?.proUntil ?: account.me?.proUntil)?.toString()
-        val connected = agents.map { AgentItem(it.clientId, it.clientName, it.grantedAt.toString()) }
         val me = account.me
-        val hidden = me?.activityHidden == true
+        val pro = billing?.pro ?: (me?.pro == true)
+        val proUntil = (billing?.proUntil ?: me?.proUntil)?.toString()
+        val connected = agents.orEmpty().map { AgentItem(it.clientId, it.clientName, it.grantedAt.toString()) }
         return SettingsState(
-            account.signedIn, account.email, me?.name, me?.username, me?.flag, hidden, pro, proUntil,
-            billing?.provider?.value, billing?.renews == true, s.grading, s.theme, s.textSize, connected.toTypedArray(),
-            "${rondo.platform.apiUrl}/mcp", reauth != null,
+            account.signedIn, account.email, me?.activityHidden == true, pro, proUntil, billing?.provider?.value,
+            billing?.renews == true, s.grading, s.theme, s.textSize, connected.toTypedArray(),
+            "${rondo.platform.apiUrl}/mcp", reauth != null, busy,
         )
     }
 
     private fun change(block: suspend () -> Unit) = act {
         block()
         show(load())
+    }
+
+    /** Runs [block] as [what], shown as under way until it ends; meanwhile, asking again does nothing. */
+    private fun work(what: String, block: suspend () -> Unit) = act {
+        if (busy != null) return@act
+        busy = what
+        show(load())
+        try {
+            block()
+        } finally {
+            busy = null
+            show(load())
+        }
     }
 
     fun setName(name: String) = change { rondo.account.setName(name) }
@@ -112,28 +124,35 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
 
     fun setTextSize(percent: Int) = prefer { it.copy(textSize = percent.coerceIn(50, 200)) }
 
-    fun addPasskey() = change {
-        val flow = rondo.account.addPasskey()
-        rondo.account.finishPasskey(flow, rondo.platform.passkey(flow.options, register = true))
-    }
-
     /** Starts a Stripe checkout for [plan] (monthly or yearly); [open] goes to its page. */
-    fun checkout(plan: String, open: (String) -> Unit) = act {
+    fun checkout(plan: String, open: (String) -> Unit) = work("checkout") {
         val request = CheckoutRequest(CheckoutRequest.Plan.entries.first { it.value == plan })
         open(online { rondo.net.api.stripeCheckout(request).ok() }.url)
     }
 
-    fun manage(open: (String) -> Unit) = act { open(online { rondo.net.api.stripePortal().ok() }.url) }
+    fun manage(open: (String) -> Unit) = work("portal") { open(online { rondo.net.api.stripePortal().ok() }.url) }
 
-    fun revokeAgent(clientId: String) = change { online { rondo.net.api.revokeAgent(clientId).ok() } }
+    /** Redeems a promo code for Pro, from when the Pro there is ends. */
+    fun redeem(code: String) = work("redeem") {
+        billing = online { rondo.net.api.redeem(RedeemRequest(code.trim())).ok() }
+        rondo.account.refresh()
+        app.reload()
+        app.say(strings.redeemed)
+    }
 
-    fun export() = act {
+    /** Disconnects an agent: it can't use the account until it's allowed again. */
+    fun revokeAgent(clientId: String) = work("disconnect") {
+        online { rondo.net.api.revokeAgent(clientId).ok() }
+        agents = agents?.filter { it.clientId != clientId }
+    }
+
+    fun export() = work("export") {
         online { rondo.net.api.requestExport().ok() }
         app.say(strings.exportSent)
     }
 
     /** Deletes the account; when the sign-in is too old, sends a code to confirm first. */
-    fun deleteAccount() = change {
+    fun deleteAccount() = work("delete") {
         try {
             rondo.account.deleteAccount()
             app.reload()
@@ -143,8 +162,8 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
         }
     }
 
-    fun confirmDelete(code: String) = change {
-        val flow = reauth ?: return@change
+    fun confirmDelete(code: String) = work("delete") {
+        val flow = reauth ?: return@work
         rondo.account.confirm(flow, code)
         reauth = null
         rondo.account.deleteAccount()

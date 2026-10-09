@@ -61,6 +61,7 @@
   --color-subtle: var(--rd-color-text-secondary);
   --color-link: var(--rd-color-text-link);
   --color-warning: var(--rd-color-bg-warning-subtle);
+  --color-success: var(--rd-color-bg-success-subtle);
   --color-new: var(--rd-color-state-new);
   --color-learning: var(--rd-color-state-learning);
   --color-review: var(--rd-color-state-review);

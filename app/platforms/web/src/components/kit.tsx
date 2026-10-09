@@ -1,6 +1,6 @@
-import { ArrowLeft, Loader2, Lock, type LucideIcon } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
-import { Link } from "react-router";
+import { ArrowLeft, ChevronRight, ExternalLink, Loader2, Lock, type LucideIcon } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link, NavLink, useLocation } from "react-router";
 import mark from "../../../../../brand/dist/svg/mark.svg";
 import markOnDark from "../../../../../brand/dist/svg/mark-on-dark.svg";
 import {
@@ -87,6 +87,135 @@ export const Section = ({
     {children}
   </section>
 );
+
+/** Someone's initials in a circle: the account, in the sidebar and in Settings. */
+export function Avatar({ name, className }: { name: string; className?: string }) {
+  const initials = name
+    .split(/[\s@]+/)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("")
+    .toUpperCase();
+  return (
+    <span
+      aria-hidden
+      className={cn("grid size-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-medium", className)}
+    >
+      {initials}
+    </span>
+  );
+}
+
+/** A page of the docs, which open beside the app. */
+export const docs = (page = "") => `${location.origin}/docs/${page}`;
+
+/** A link to the docs [page] about what's shown: beside a section's title. */
+export const LearnMore = ({ page }: { page: string }) => (
+  <Button variant="ghost" size="sm" asChild>
+    <a href={docs(page)} target="_blank" rel="noopener noreferrer">
+      {s.learnMore} <ExternalLink />
+    </a>
+  </Button>
+);
+
+/** Pages that share a header, as tabs: each an address of its own. On phones they scroll sideways. */
+export function Tabs({
+  label,
+  tabs,
+}: {
+  label: string;
+  tabs: { to: string; label: string; icon?: LucideIcon; end?: boolean }[];
+}) {
+  const nav = useRef<HTMLElement>(null);
+  const { pathname } = useLocation();
+  const count = tabs.length;
+  // Keep the current tab in view, also once more tabs show (after signing in, say).
+  useEffect(
+    () => nav.current?.querySelector("[aria-current=page]")?.scrollIntoView({ block: "nearest" }),
+    [pathname, count],
+  );
+  return (
+    <nav
+      ref={nav}
+      aria-label={label}
+      className="-mx-4 mb-8 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0"
+    >
+      <div className="flex w-max min-w-full gap-1 border-b">
+        {tabs.map(({ to, label, icon: Icon, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            className={({ isActive }) =>
+              cn(
+                "-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap",
+                isActive ? "border-foreground" : "border-transparent text-subtle hover:text-foreground",
+              )
+            }
+          >
+            {Icon && <Icon className="size-4" />}
+            {label}
+          </NavLink>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+/** A list on a card, one row under another: settings, devices, assistants. */
+export const Rows = ({ children, className }: { children: ReactNode; className?: string }) => (
+  <div className={cn("divide-y overflow-hidden rounded-lg bg-card shadow-sm", className)}>{children}</div>
+);
+
+/**
+ * One row of [Rows]: what it is and a line about it, then what to do with it ([action]), which
+ * moves under it when there's no room. [children] open below. A row with a switch is a [label],
+ * so the whole row flips it; a row with [to] leads to that page.
+ */
+export function Row({
+  title,
+  hint,
+  icon: Icon,
+  action,
+  children,
+  label,
+  to,
+}: {
+  title: ReactNode;
+  hint?: ReactNode;
+  icon?: LucideIcon;
+  action?: ReactNode;
+  children?: ReactNode;
+  label?: boolean;
+  to?: string;
+}) {
+  // Spans, not divs: a label holds only phrasing content.
+  const line = (
+    <span className="flex flex-wrap items-center gap-x-4 gap-y-3">
+      {Icon && <Icon className="size-5 shrink-0 text-muted-foreground" />}
+      <span className="block min-w-0 flex-[1_1_12rem]">
+        <span className="block font-medium">{title}</span>
+        {hint && <span className="block text-sm text-subtle">{hint}</span>}
+      </span>
+      {action && <span className="flex shrink-0 flex-wrap items-center gap-2">{action}</span>}
+      {to && <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
+    </span>
+  );
+  const box = "grid gap-4 px-4 py-3.5";
+  if (to)
+    return (
+      <Link to={to} className={cn(box, "hover:bg-accent/50 focus-visible:bg-accent/50 focus-visible:outline-none")}>
+        {line}
+      </Link>
+    );
+  const Box = label ? "label" : "div";
+  return (
+    <Box className={box}>
+      {line}
+      {children}
+    </Box>
+  );
+}
 
 /** Nothing here yet, and what to do about it. */
 export const Empty = ({

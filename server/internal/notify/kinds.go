@@ -104,7 +104,7 @@ func Lifted() Message {
 func Renamed() Message {
 	return Message{
 		Kind: "renamed", Presentation: Toast, Title: "A moderator reset your name",
-		Body: "Pick a new one whenever you like.", LinkLabel: "Edit profile", LinkPath: "/app/profile",
+		Body: "Pick a new one whenever you like.", LinkLabel: "Edit profile", LinkPath: "/app/settings/account",
 	}
 }
 
@@ -137,6 +137,6 @@ func Reviewed() Message {
 func RemindersPaused() Message {
 	return Message{
 		Kind: "reminders_paused", Presentation: Toast, Title: "Reminders are paused",
-		Body: "You haven't studied after the last few, so they stop until you do.", LinkLabel: "Reminders", LinkPath: "/app/profile",
+		Body: "You haven't studied after the last few, so they stop until you do.", LinkLabel: "Reminders", LinkPath: "/app/settings/reminders",
 	}
 }

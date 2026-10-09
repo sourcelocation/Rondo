@@ -17,7 +17,8 @@ import { app, s, useApp, useScreen } from "@/rondo";
 import { useOverlay, useUp } from "@/routing";
 import { cn } from "cn";
 
-const GRADE = [
+/** Each answer's colours, by rating (1 Again to 4 Easy): here, and in Settings' preview of them. */
+export const GRADE = [
   "",
   "text-again border-again/40",
   "text-hard border-hard/40",
