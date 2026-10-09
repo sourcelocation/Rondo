@@ -200,7 +200,7 @@ class Account(private val platform: Platform, private val store: Store, private 
         val flow = parse(response)
         val id = flow["id"]!!.jsonPrimitive.content
         val options = node(flow, "passkey_challenge")
-            ?: throw SignInError("no_passkey", "Add a passkey in your profile first.")
+            ?: throw SignInError("no_passkey", "Add a passkey in Settings › Security first.")
         val credential = platform.passkey(options, register = false)
         val body = buildJsonObject {
             put("method", "passkey")

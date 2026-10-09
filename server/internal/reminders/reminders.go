@@ -154,7 +154,7 @@ func (w *Worker) remind(ctx context.Context, q *store.Queries, r store.Reminding
 		return err
 	}
 	_, err = w.Jobs.Insert(ctx, jobs.Mail{Message: mail.Message{
-		To: who.Email, Subject: title, Heading: title, Text: body + " Turn these emails off in Profile › Reminders.",
+		To: who.Email, Subject: title, Heading: title, Text: body + " Turn these emails off in Settings › Reminders.",
 		Link: w.PublicURL + "/app/study", LinkLabel: "Study now",
 	}}, nil)
 	return err

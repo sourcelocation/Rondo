@@ -14,7 +14,7 @@ export function Redeem() {
   if (!st) return <Loading />;
   return (
     <>
-      <Header up="/profile" title={s.redeemTitle} sub={s.redeemHint} />
+      <Header up="/settings/plan" title={s.redeemTitle} sub={s.redeemHint} />
       {st.until ? (
         <p className="flex items-center gap-3 rounded-lg border p-4">
           <Gift className="size-5 shrink-0" /> {s.proFrom(date(st.until))}

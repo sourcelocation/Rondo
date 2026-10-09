@@ -198,16 +198,16 @@ export function Templates() {
   if (!st) return <Loading />;
   return (
     <>
-      <Header up="/profile" title={s.templates} sub={choosing ? s.startFrom : undefined} />
+      <Header up="/settings" title={s.templates} sub={choosing ? s.startFrom : undefined} />
       {choosing ? (
         <TemplateGrid
           items={st.items.filter((t) => !t.anki)}
-          onChoose={(t) => navigate(`/profile/templates/new?from=${t.id}`)}
+          onChoose={(t) => navigate(`/settings/templates/new?from=${t.id}`)}
         />
       ) : (
         <TemplateGrid
           items={st.items}
-          onChoose={(t) => navigate(`/profile/templates/${t.id}`)}
+          onChoose={(t) => navigate(`/settings/templates/${t.id}`)}
           onAdd={() => setChoosing(true)}
         />
       )}
@@ -467,7 +467,7 @@ export function TemplateEditor({
   );
 }
 
-/** A note type as a page: from Profile › Templates. */
+/** A note type as a page: from Settings › General › Note types. */
 export function TemplatePage() {
   const { id = "" } = useParams();
   const [params] = useSearchParams();
@@ -475,8 +475,8 @@ export function TemplatePage() {
   const isNew = id === "new";
   return (
     <>
-      <Header up="/profile/templates" title={isNew ? s.newTemplate : s.editType} />
-      <TemplateEditor id={isNew ? null : id} from={params.get("from")} onDone={() => goUp("/profile/templates")} />
+      <Header up="/settings/templates" title={isNew ? s.newTemplate : s.editType} />
+      <TemplateEditor id={isNew ? null : id} from={params.get("from")} onDone={() => goUp("/settings/templates")} />
     </>
   );
 }

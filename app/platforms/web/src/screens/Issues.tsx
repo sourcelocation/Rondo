@@ -8,7 +8,7 @@ export function Issues() {
   if (!st) return <Loading />;
   return (
     <>
-      <Header up="/profile" title={s.syncIssues} sub={s.issuesHint} />
+      <Header up="/settings/account" title={s.syncIssues} sub={s.issuesHint} />
       {st.items.length === 0 && <Empty>{s.noIssues}</Empty>}
       {st.items.map((i) => (
         <div key={`${i.entity}:${i.id}`} className="flex flex-wrap items-center gap-3 border-b py-3">

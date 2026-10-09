@@ -264,7 +264,7 @@ func stores(ctx context.Context, cfg Config, h *handlers.Server) error {
 	if cfg.StripeKey != "" {
 		h.Stripe = stripe.New(stripe.Config{
 			SecretKey: cfg.StripeKey, WebhookSecret: cfg.StripeWebhook, AccountMetadataKey: "rondo_account", IdempotencyPrefix: "rondo-",
-			SuccessURL: cfg.PublicURL + "/app/settings?paid=1", CancelURL: cfg.PublicURL + "/app/settings", PortalReturnURL: cfg.PublicURL + "/app/settings",
+			SuccessURL: cfg.PublicURL + "/app/settings/plan?paid=1", CancelURL: cfg.PublicURL + "/app/settings/plan", PortalReturnURL: cfg.PublicURL + "/app/settings/plan",
 		})
 	}
 	if cfg.AppStoreKey != "" {
