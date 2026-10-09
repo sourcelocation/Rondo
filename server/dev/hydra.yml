@@ -12,7 +12,13 @@ urls:
 oidc:
   dynamic_client_registration:
     enabled: true
-    default_scope: [openid, offline_access, rondo]
+    # Everything discovery lists, so a client that asks for all of it isn't refused.
+    default_scope: [openid, offline, offline_access, rondo]
+# Agents find /oauth2/register only through discovery: Hydra leaves it out unless named here.
+webfinger:
+  oidc_discovery:
+    client_registration_url: http://localhost:23900/oauth2/register
+    supported_scope: [rondo]
 strategies:
   access_token: opaque
 ttl:
