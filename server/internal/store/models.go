@@ -124,6 +124,7 @@ type Note struct {
 	V          int64
 	Seq        int64
 	DeletedAt  *int64
+	Tags       string
 }
 
 type NoteMedium struct {
@@ -231,6 +232,21 @@ type Share struct {
 	UserID    uuid.UUID
 	Role      int16
 	CreatedAt time.Time
+}
+
+type SmartDeck struct {
+	ID            uuid.UUID
+	OwnerID       uuid.UUID
+	Name          string
+	Position      string
+	Icon          *string
+	Color         int16
+	Filter        json.RawMessage
+	NewPerDay     int16
+	ReviewsPerDay int32
+	V             int64
+	Seq           int64
+	DeletedAt     *int64
 }
 
 type StaffAction struct {

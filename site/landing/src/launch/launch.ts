@@ -1,7 +1,7 @@
 import { PUBLIC_RONDO_RELEASE } from "astro:env/client";
 
 /**
- * Rondo's launch. Until it, the site offers a star on GitHub and one email on launch day in place of the apps; from
+ * Rondo's launch. Until it, the site offers its Discord and one email on launch day in place of the apps; from
  * then on, the apps. The clock decides, unless PUBLIC_RONDO_RELEASE holds the site at "pre" or "live" (a launch that
  * slips, or a preview). /launch.js puts the answer on <html> before a page paints, and the styles read it.
  */

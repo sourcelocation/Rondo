@@ -4,12 +4,12 @@ icon: Bot
 description: Connect Claude, ChatGPT or a coding agent to your Rondo decks.
 ---
 
-Rondo is an MCP (Model Context Protocol) server, so assistants like Claude and ChatGPT can work with your decks: search your notes, turn what you're reading into cards, and tell you what's due. There are two ways in:
+Rondo is an MCP (Model Context Protocol) server, so assistants like Claude and ChatGPT can work with your decks: search your notes, turn what you're reading into cards, and tell you what's due. There are two ways in, both on any plan:
 
 <Tabs items={['Through Rondo', 'On your computer']}>
 <Tab value="Through Rondo">
 
-Add this server to your assistant. It signs you in to Rondo, and you choose **Allow**. Needs [Pro](/plans).
+Add this server to your assistant. It signs you in to Rondo, and you choose **Allow**.
 
 ```text title="Server URL"
 https://rondo.matthewsource.com/mcp
@@ -18,7 +18,7 @@ https://rondo.matthewsource.com/mcp
 </Tab>
 <Tab value="On your computer">
 
-`rondo-mcp` keeps a copy of your decks on your computer, syncs it like any other device, and serves the same tools over stdio to assistants on that computer. Any plan. Download it from the [latest release](https://github.com/sourcelocation/rondo/releases/latest) (it needs Java 17 or newer), then:
+`rondo-mcp` keeps a copy of your decks on your computer, syncs it like any other device, and serves the same tools over stdio to assistants on that computer. Download it from the [latest release](https://github.com/sourcelocation/rondo/releases/latest) (it needs Java 17 or newer), then:
 
 ```bash
 rondo-mcp sign-in

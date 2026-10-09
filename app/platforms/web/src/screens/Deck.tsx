@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { ColorSwatches, EmojiPicker, LanguagePicker } from "@/components/decks";
 import { confirm, DeckLook, Empty, Header, Loading, Ring, Section } from "@/components/kit";
+import { Locked } from "@/components/Pro";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -197,7 +198,7 @@ function SubDeck({ st, deck, i }: { st: DeckState; deck: DeckScreen; i: number }
 
 /** The deck's first notes, each opening the editor. */
 function Notes({ id }: { id: string }) {
-  const [st] = useScreen(() => app.browse(id), [id]);
+  const [st] = useScreen(() => app.browse(id, null), [id]);
   const note = useOverlay("note");
   if (!st || st.notes.length === 0) return null;
   const shown = st.notes.slice(0, 20);
@@ -390,14 +391,20 @@ function ShareSheet({ deckId, onClose }: { deckId: string; onClose: () => void }
   const [email, setEmail] = useState("");
   const [role, setRole] = useState(1);
   useEffect(() => setRole(1), [deckId]);
+  const pro = useOverlay("pro");
+  // Editors need the owner's Pro: without it, Editor is shown locked, and choosing it offers Pro.
+  const locked = !st?.pro;
   const roles = (
     <SelectContent>
       <SelectItem value="1">{s.viewer}</SelectItem>
-      <SelectItem value="2" disabled={!st?.pro}>
-        {s.editor}
-      </SelectItem>
+      <Locked locked={locked} reason={s.editorsNeedPro}>
+        <SelectItem value="2">
+          {s.editor} {locked && <Lock />}
+        </SelectItem>
+      </Locked>
     </SelectContent>
   );
+  const choose = (r: string, set: (role: number) => void) => (r === "2" && locked ? pro.open("editors") : set(+r));
   const copyLink = async (link: string) => {
     await navigator.clipboard.writeText(link);
     toast(s.copied);
@@ -429,14 +436,13 @@ function ShareSheet({ deckId, onClose }: { deckId: string; onClose: () => void }
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
-                  <Select value={String(role)} onValueChange={(r) => setRole(+r)}>
+                  <Select value={String(role)} onValueChange={(r) => choose(r, setRole)}>
                     <SelectTrigger className="w-36">
                       <SelectValue />
                     </SelectTrigger>
                     {roles}
                   </Select>
                 </div>
-                {!st.pro && <p className="text-xs text-muted-foreground">{s.editorsNeedPro}</p>}
                 <Button type="submit" disabled={!email}>
                   {s.invite}
                 </Button>
@@ -475,7 +481,10 @@ function ShareSheet({ deckId, onClose }: { deckId: string; onClose: () => void }
                       <span className={cn("min-w-0 flex-1 truncate", !m.name && "text-muted-foreground")}>
                         {m.name ?? s.someone}
                       </span>
-                      <Select value={String(m.role)} onValueChange={(r) => share.setRole(m.userId, +r)}>
+                      <Select
+                        value={String(m.role)}
+                        onValueChange={(r) => choose(r, (to) => share.setRole(m.userId, to))}
+                      >
                         <SelectTrigger className="w-32">
                           <SelectValue />
                         </SelectTrigger>

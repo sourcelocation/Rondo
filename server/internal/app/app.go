@@ -72,7 +72,7 @@ type Config struct {
 	S3AccessKey string `env:"RONDO_S3_ACCESS_KEY"`
 	S3SecretKey string `env:"RONDO_S3_SECRET_KEY"`
 	FreeMediaMB int64  `env:"RONDO_FREE_MEDIA_MB" envDefault:"200"`
-	ProMediaMB  int64  `env:"RONDO_PRO_MEDIA_MB" envDefault:"5000"`
+	ProMediaMB  int64  `env:"RONDO_PRO_MEDIA_MB" envDefault:"10000"`
 
 	SMTPHost     string `env:"RONDO_SMTP_HOST" envDefault:"localhost"`
 	SMTPPort     int    `env:"RONDO_SMTP_PORT" envDefault:"23909"`

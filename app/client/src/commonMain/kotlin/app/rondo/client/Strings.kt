@@ -210,6 +210,9 @@ open class Strings {
     open val missingMedia = "This file isn't on this device yet."
     fun studied(n: Int) = if (n == 1) "1 card studied" else "$n cards studied"
     fun left(n: Int) = "$n left"
+    open val goAhead = "Keep going with the weakest"
+    fun aheadHint(n: Int) = (if (n == 1) "1 card isn't" else "$n cards aren't") +
+        " due yet. Reviewing them early helps before an exam; the most at risk come first."
 
     /** How long until a card comes back, short: 10m, 4h, 3d, 2.5mo, 1.2y. */
     fun interval(ms: Double): String {
@@ -362,6 +365,41 @@ open class Strings {
         else -> "Newest"
     }
     fun selected(n: Int) = "$n selected"
+    open val tags = "Tags"
+    open val anyTag = "Any tag"
+    open val addTags = "Add tags…"
+    open val removeTags = "Remove tags…"
+    open val addTag = "Add a tag"
+    open val tagHint = "Separate tags with spaces; :: nests them, as in Cardio::Valves."
+    open val noTags = "No tags yet."
+    open val studyThese = "Study these"
+    fun studyTheseCounts(due: Int, new: Int) = "$due due · $new new"
+    open val keepAsSmartDeck = "Keep as smart deck"
+    open val smartDeckName = "Name the smart deck"
+    fun rulesOf(name: String) = "The rules of “$name”"
+    open val saveRules = "Save rules"
+
+    // Smart decks
+    open val smartDecks = "Smart decks"
+    open val smartDeckSettings = "Smart deck settings"
+    open val smartDeckHint =
+        "The cards these rules pick, from any deck. Each is still scheduled by its own deck, and what you " +
+            "study here counts there too."
+    open val smartRules = "Rules"
+    open val editRules = "Edit rules"
+    open val deleteSmartDeckHint = "Only the smart deck goes; its cards stay in their decks."
+    open val ruleEverything = "Every card"
+    open val ruleGoneDeck = "A deck that's gone: nothing"
+    fun ruleDeck(path: String) = "In $path"
+    fun ruleType(name: String) = "$name notes"
+    fun ruleTags(tags: String) = "Tagged $tags"
+    fun ruleText(text: String) = "Containing “$text”"
+    fun ruleState(state: String) = when (state) {
+        "new" -> "New cards"
+        "learning" -> "Cards in learning"
+        "review" -> "Cards in review"
+        else -> "Suspended cards"
+    }
 
     // Import
     open val importTitle = "Import from Anki"
@@ -433,10 +471,15 @@ open class Strings {
     open val yearly = "Yearly"
     open val manage = "Manage subscription"
     open val currentPlan = "Current plan"
-    open val freePlan = "Everything for studying on your own and with others: sync, Anki import, sharing and Discover."
+    open val freePlan =
+        "Everything for studying on your own and with others: sync, Anki import, sharing, Discover and AI assistants."
     open val proEditors = "Let people edit decks you share"
-    open val proAgents = "Connect AI assistants through Rondo"
-    open val proStorage = "5 GB for pictures and sounds, instead of 200 MB"
+    open val proStorage = "10 GB for pictures and sounds, instead of 200 MB"
+
+    /** What Pro adds, as Settings › Plan and the Pro dialog list it. */
+    val proFeatures: Array<String> get() = arrayOf(proEditors, proStorage)
+    open val proTitle = "Rondo Pro"
+    open val proPitch = "Pro lets people edit the decks you share, with more room for pictures and sounds."
     open val redeemed = "Code redeemed."
     open val grading = "Answer buttons"
     open val gradingHint = "Four say how well you knew it; two are quicker."
@@ -454,13 +497,12 @@ open class Strings {
     open val throughRondo = "Through Rondo"
     open val serverUrl = "Server URL"
     open val serverUrlHint = "Add it to Claude, ChatGPT or another MCP client, then sign in and allow it."
-    open val agentsNeedPro = "Connecting through Rondo needs Pro."
     open val connected = "Connected"
     open val noAgents = "No assistants connected yet."
     open val disconnect = "Disconnect"
     open val disconnectHint = "It can't read or change your decks until you connect it again."
     open val onYourComputer = "On your computer"
-    open val localAgent = "Keeps a copy of your decks on your computer and serves it to assistants there, on any plan."
+    open val localAgent = "Keeps a copy of your decks on your computer and serves it to assistants there."
     open val privacySettings = "Privacy"
     open val data = "Your data"
     open val export = "Export everything"

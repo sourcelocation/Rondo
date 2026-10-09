@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router";
 import { toast } from "sonner";
 import { Dialogs, NotFound } from "@/components/kit";
 import { Notifications, useRefreshOnFocus } from "@/components/Notifications";
+import { ProOverlay } from "@/components/Pro";
 import { ProfileSetup } from "@/components/ProfileSetup";
 import { Shell } from "@/components/Shell";
 import { Toaster } from "@/components/ui/sonner";
@@ -23,6 +24,7 @@ import { Account, Assistants, General, Plan, Reminders, Settings } from "@/scree
 import { Batch, CasePage, Cases, Promo, StaffEntry, StaffLog, StaffSearch, Team } from "@/screens/Staff";
 import { Redeem } from "@/screens/Redeem";
 import { Security } from "@/screens/Security";
+import { SmartDeck } from "@/screens/Smart";
 import { Study } from "@/screens/Study";
 import { TemplatePage, Templates } from "@/screens/Templates";
 
@@ -35,7 +37,7 @@ function Moved() {
 
 /**
  * The app's addresses. Each page sits one level below the one its Up button leads to; studying,
- * signing in and agents' consent take the whole window; the note editor opens over any page.
+ * signing in and agents' consent take the whole window; the note editor and Pro open over any page.
  */
 export function App() {
   const theme = useTheme();
@@ -47,11 +49,14 @@ export function App() {
       <Routes>
         <Route path="study" element={<Study />} />
         <Route path="decks/:id/study" element={<Study />} />
+        <Route path="smart/:id/study" element={<Study source="smart" />} />
+        <Route path="browse/study" element={<Study source="these" />} />
         <Route path="sign-in" element={<SignInPage />} />
         <Route path="oauth/consent" element={<Consent />} />
         <Route element={<Shell />}>
           <Route index element={<Home />} />
           <Route path="decks/:id" element={<Deck />} />
+          <Route path="smart/:id" element={<SmartDeck />} />
           <Route path="notes/:id" element={<NotePage />} />
           <Route path="import" element={<Import />} />
           <Route path="browse" element={<Browse />} />
@@ -92,6 +97,7 @@ export function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <NoteOverlay />
+      <ProOverlay />
       <Toaster position="bottom-right" theme={theme} />
       <Dialogs />
       <Notifications />

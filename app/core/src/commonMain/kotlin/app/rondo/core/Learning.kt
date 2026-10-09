@@ -114,6 +114,16 @@ object Learning {
     }
 
     /**
+     * What a set of cards picked by a filter offers today, from its [load] (new cards in open levels
+     * only): the cards answered today count wherever they were studied.
+     */
+    fun counts(load: DeckLoad, newPerDay: Int, reviewsPerDay: Int): Counts = Counts(
+        min(load.newAvailable, (newPerDay - load.newToday).coerceAtLeast(0)),
+        load.learningDue,
+        min(load.reviewDue, (reviewsPerDay - load.reviewsToday).coerceAtLeast(0)),
+    )
+
+    /**
      * Levels for every deck: under a gated parent, sub-decks open in order once the one before is
      * learned to the next one's requirement, or when [unlocked] says so. A locked level's ring is
      * its progress over all levels before it; an open deck's ring is how much of it is learned.

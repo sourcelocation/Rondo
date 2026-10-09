@@ -44,7 +44,8 @@ class McpTest : Harness() {
         val anonymous = mcp(null, call("list_decks", "{}"))
         assertEquals(HttpStatusCode.Unauthorized, anonymous.status)
         assertTrue(anonymous.headers["WWW-Authenticate"]!!.contains("oauth-protected-resource"))
-        assertEquals(HttpStatusCode.Forbidden, mcp(bob, call("list_decks", "{}")).status)
+        // Agents need no Pro.
+        assertEquals(HttpStatusCode.OK, mcp(bob, call("list_decks", "{}")).status)
 
         val created = mcp(alice, call("create_deck", """{"path":"Spanish/Verbs"}""")).bodyAsText()
         val deck = Regex("\\\\\"id\\\\\":\\\\\"([0-9a-f-]+)").find(created)!!.groupValues[1]

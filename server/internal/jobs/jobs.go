@@ -80,6 +80,7 @@ var exported = []struct{ file, query string }{
 	{"notes.json", "SELECT coalesce(json_agg(to_jsonb(x) - 'seq' - 'search_text'), '[]') FROM notes x WHERE owner_id = $1"},
 	{"events.json", "SELECT coalesce(json_agg(to_jsonb(x) - 'seq'), '[]') FROM events x WHERE user_id = $1"},
 	{"settings.json", "SELECT coalesce(json_agg(to_jsonb(x) - 'seq'), '[]') FROM settings x WHERE user_id = $1"},
+	{"smart_decks.json", "SELECT coalesce(json_agg(to_jsonb(x) - 'seq'), '[]') FROM smart_decks x WHERE owner_id = $1"},
 }
 
 func (w *ExportWorker) Work(ctx context.Context, job *river.Job[Export]) error {

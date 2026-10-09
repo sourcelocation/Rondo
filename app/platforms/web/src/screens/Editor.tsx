@@ -4,6 +4,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { CardSurface, Side } from "@/components/Card";
 import { AudioField, ImageField, OcclusionField } from "@/components/MediaField";
 import { RichText } from "@/components/RichText";
+import { TagInput } from "@/components/tags";
 import { confirm, Empty, Header, Loading, Spinner } from "@/components/kit";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -159,6 +160,7 @@ export function NoteEditor({ id, deck, onDone }: { id: string | null; deck: stri
           )}
         </CardSurface>
       )}
+      <TagInput value={st.tags} disabled={!st.canTag} onAdd={(t) => ed.addTags(t)} onRemove={(t) => ed.removeTag(t)} />
       <div className="grid gap-1 px-1 text-sm">
         {st.problem && (tried || st.fields.some((f) => f.value)) && (
           <p role="alert" className="text-destructive">
@@ -175,9 +177,9 @@ export function NoteEditor({ id, deck, onDone }: { id: string | null; deck: stri
         )}
         <CardsMade st={st} />
       </div>
-      {!st.readOnly && (
+      {(!st.readOnly || st.canTag) && (
         <div className="flex items-center justify-end gap-2">
-          {id && (
+          {id && !st.readOnly && (
             <Button
               variant="ghost"
               size="icon"

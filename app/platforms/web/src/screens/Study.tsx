@@ -1,6 +1,7 @@
 import { Flag, MoreHorizontal, Pencil, Undo2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
+import { readFilters } from "@/screens/Browse";
 import { toast } from "sonner";
 import { CardSurface, Side, speak, speechOf } from "@/components/Card";
 import { Button } from "@/components/ui/button";
@@ -35,19 +36,33 @@ const elsewhere = (e: KeyboardEvent) =>
   (e.target instanceof HTMLElement &&
     !!e.target.closest("input, textarea, [contenteditable=true], [role=menu], [role=dialog], [role=alertdialog]"));
 
-/**
- * Studying: the card, then the answer and the buttons. Space or Enter shows the answer (then
- * answers Good), 1–4 answer by button, Z undoes the last answer, E edits the card, Esc leaves.
- */
-export function Study() {
+/** What a study session opens on, and where leaving it goes. */
+function useSession(source: "deck" | "smart" | "these") {
   const { id } = useParams();
   const [params] = useSearchParams();
-  const [st, study] = useScreen(() => app.study(id ?? null), [id]);
+  if (source === "smart") return { make: () => app.studySmart(id!), key: id, up: `/smart/${id}` };
+  if (source === "these") {
+    const f = readFilters(params);
+    const up = `/browse?${params}`;
+    return { make: () => app.studyThese(f.q, f.deck, f.type, f.tags, f.state, f.marked), key: up, up };
+  }
+  return { make: () => app.study(id ?? null), key: id, up: id ? `/decks/${id}` : "/" };
+}
+
+/**
+ * Studying a deck, a smart deck ([source] smart) or what Browse found ([source] these): the card,
+ * then the answer and the buttons. Space or Enter shows the answer (then answers Good), 1–4 answer
+ * by button, Z undoes the last answer, E edits the card, Esc leaves.
+ */
+export function Study({ source = "deck" }: { source?: "deck" | "smart" | "these" }) {
+  const [params] = useSearchParams();
+  const session = useSession(source);
+  const [st, study] = useScreen(session.make, [session.key]);
   const settings = useApp();
   const note = useOverlay("note");
   const goUp = useUp();
   const [typed, setTyped] = useState("");
-  const leave = () => goUp(id ? `/decks/${id}` : "/");
+  const leave = () => goUp(session.up);
   const editing = params.has("note");
 
   const reveal = () => st && !st.back && study.reveal(typed);
@@ -172,9 +187,17 @@ export function Study() {
             ) : (
               <p className="text-subtle">{s.finishedHint}</p>
             )}
-            <Button size="lg" onClick={leave}>
-              {s.done}
-            </Button>
+            {st.ahead > 0 && <p className="max-w-sm text-sm text-subtle">{s.aheadHint(st.ahead)}</p>}
+            <div className="flex flex-wrap justify-center gap-2">
+              {st.ahead > 0 && (
+                <Button size="lg" variant="outline" onClick={() => study.goAhead()}>
+                  {s.goAhead}
+                </Button>
+              )}
+              <Button size="lg" onClick={leave}>
+                {s.done}
+              </Button>
+            </div>
           </div>
         ) : (
           <CardSurface

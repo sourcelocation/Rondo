@@ -42,17 +42,19 @@ class Syncer(private val store: Store, private val net: Net, private val media: 
             val notes = q.dirtyNotes().awaitAsList().map { it.model() }
             val events = q.unpushedEvents().awaitAsList().map { it.model(store.me) }
             val settings = store.settings().takeIf { q.settings().awaitAsOneOrNull()?.dirty == true }
-            if (listOf(decks, templates, notes, events).all { it.isEmpty() } && settings == null) return
+            val smart = q.dirtySmartDecks().awaitAsList().map { it.model() }
+            if (listOf(decks, templates, notes, events, smart).all { it.isEmpty() } && settings == null) return
             // Parents first, so the server knows a deck's parent before the deck.
             val tree = store.tree()
             val ordered = decks.sortedBy { tree.ancestors(it.id).size }
-            val rows = Rows(ordered, templates, notes, events, listOfNotNull(settings))
+            val rows = Rows(ordered, templates, notes, events, listOfNotNull(settings), smart)
             val result = net.sync.push(PushRequest(rows)).ok()
             for (d in decks) q.cleanDeck(d.id, d.v)
             for (t in templates) q.cleanTemplate(t.id, t.v)
             for (n in notes) q.cleanNote(n.id, n.v)
             if (events.isNotEmpty()) q.markPushed(events.map { it.id })
             settings?.let { store.save(it, dirty = false) }
+            for (sd in smart) q.cleanSmartDeck(sd.id, sd.v)
             val refetchDecks = HashSet<String>()
             val refetchTemplates = HashSet<String>()
             // A refused edit is kept, as this device had it, for the sync issues panel, and the server's
@@ -81,6 +83,11 @@ class Syncer(private val store: Store, private val net: Net, private val media: 
                     }
 
                     Rejection.Entity.SETTINGS -> "" to ""
+
+                    Rejection.Entity.SMART_DECK -> smart.first { it.id == r.id }.let {
+                        it.name to
+                            json.encodeToString(it)
+                    }
                 }
                 if (label.isNotEmpty()) {
                     q.putReject(Rejects(r.id, r.entity.value, r.code.value, label, body, nowMillis()))
@@ -184,6 +191,11 @@ class Syncer(private val store: Store, private val net: Net, private val media: 
                 }
             }
             for (e in rows.events.orEmpty()) store.save(e, pushed = true)
+            for (sd in rows.smartDecks.orEmpty()) {
+                store.hlc.observe(sd.v)
+                val local = q.smartDeck(sd.id).awaitAsOneOrNull()
+                if (local == null || !local.dirty || sd.v >= local.v) store.save(sd, dirty = false)
+            }
             for (s in rows.settings.orEmpty()) {
                 val local = q.settings().awaitAsOneOrNull()
                 if (local == null || !local.dirty || s.v >= local.v) {

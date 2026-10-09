@@ -5,6 +5,7 @@ import app.rondo.core.Decks
 import app.rondo.core.Ids
 import app.rondo.core.Learning
 import app.rondo.core.Positions
+import app.rondo.core.Tags
 import app.rondo.core.Templates
 import app.rondo.core.model.CardDef
 import app.rondo.core.model.Deck
@@ -53,7 +54,7 @@ class AnkiImport(
         val cards: List<Triple<String, String, String>>,
         val css: String,
     )
-    private class Source(val id: Long, val kind: Long, val fields: List<String>)
+    private class Source(val id: Long, val kind: Long, val fields: List<String>, val tags: Tags)
     private class Card(
         val id: Long,
         val note: Long,
@@ -127,8 +128,13 @@ class AnkiImport(
                     it.getLong(0)!! to it.getString(1)!!.split('\u001f')
                 }.toMap()
             }
-            sources = db.all("SELECT id, mid, flds FROM notes") { r ->
-                Source(r.getLong(0)!!, r.getLong(1)!!, r.getString(2).orEmpty().split('\u001f'))
+            sources = db.all("SELECT id, mid, flds, tags FROM notes") { r ->
+                Source(
+                    r.getLong(0)!!,
+                    r.getLong(1)!!,
+                    r.getString(2).orEmpty().split('\u001f'),
+                    Tags.parse(r.getString(3)),
+                )
             }
             val columns = "id, nid, did, odid, ord, type, queue, due, odue, ivl, factor, reps, lapses, flags, data, mod"
             cards = db.all("SELECT $columns FROM cards") { r ->
@@ -217,8 +223,12 @@ class AnkiImport(
             val present = s.fields.take(t.def.fields.size).withIndex().filter { it.value.isNotBlank() }
             val fields = present.associate { (index, html) -> "${index + 1}" to link(html) }
             val deck = decks.getValue(deckOf.getValue(s.id)).id
-            Note(Ids.at(start + i), deck, t.id, fields, store.hlc.next(), me).also { noteIds[s.id] = it.id }
+            // Anki's own tags become what Rondo has instead: "marked" a mark, "leech" nothing.
+            val tags = s.tags - listOf(MARKED, LEECH)
+            Note(Ids.at(start + i), deck, t.id, fields, store.hlc.next(), me, tags = tags.text)
+                .also { noteIds[s.id] = it.id }
         }
+        val marked = used.filter { it.tags.list.any { t -> t.equals(MARKED, ignoreCase = true) } }.map { it.id }.toSet()
 
         val events = ArrayList<Event>()
         for (c in cards) {
@@ -248,7 +258,7 @@ class AnkiImport(
             }
             val changed = minOf(now, c.mod * 1000)
             if (c.queue == -1) events += Event(Ids.at(changed), me, note, card, Learning.SUSPEND, changed)
-            val flag = c.flags and 7
+            val flag = (c.flags and 7).takeIf { it != 0 } ?: if (c.note in marked) 1 else 0
             if (flag != 0) events += Event(Ids.at(changed), me, note, card, Learning.FLAG, changed, flag)
         }
 
@@ -311,6 +321,9 @@ class AnkiImport(
     private fun JsonElement?.double() = (this as? JsonPrimitive)?.doubleOrNull
 
     companion object {
+        /** Tags Anki adds itself: a mark on the note, and a note failed often. */
+        private const val MARKED = "marked"
+        private const val LEECH = "leech"
         private val IMAGE = Regex("""(<img\b[^>]*?\bsrc\s*=\s*)(["']?)([^"'\s>]+)\2""", RegexOption.IGNORE_CASE)
         private val SOUND = Regex("""\[sound:([^\]]+)\]""")
         private val ZSTD = byteArrayOf(0x28, 0xB5.toByte(), 0x2F, 0xFD.toByte())

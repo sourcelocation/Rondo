@@ -12,13 +12,17 @@ import app.rondo.core.Learning
 import app.rondo.core.Level
 import app.rondo.core.Positions
 import app.rondo.core.Rules
+import app.rondo.core.SmartDecks
+import app.rondo.core.Tags
 import app.rondo.core.Templates
 import app.rondo.core.Tree
 import app.rondo.core.model.Deck
 import app.rondo.core.model.ErrorCode
 import app.rondo.core.model.Event
+import app.rondo.core.model.Filter
 import app.rondo.core.model.Note
 import app.rondo.core.model.Rows
+import app.rondo.core.model.SmartDeck
 import app.rondo.core.model.Template
 import app.rondo.core.nowMillis
 
@@ -168,8 +172,8 @@ class Library(private val store: Store) {
         return fresh
     }
 
-    suspend fun newNote(deck: String, template: String, fields: Map<String, String>): Note =
-        saveNote(Note(Ids.new(), deck, template, fields, 0))
+    suspend fun newNote(deck: String, template: String, fields: Map<String, String>, tags: Tags = Tags.NONE): Note =
+        saveNote(Note(Ids.new(), deck, template, fields, 0, tags = tags.text))
 
     suspend fun deleteNotes(ids: List<String>) = ids.forEach { id ->
         store.note(id)?.let { saveNote(it.copy(deletedAt = nowMillis())) }
@@ -181,6 +185,16 @@ class Library(private val store: Store) {
         store.note(id)?.let { saveNote(it.copy(deckId = deck)) }
     }
 
+    /** Adds [added] to the notes' tags and takes [removed] off; notes you can't change stay as they are. */
+    suspend fun tag(ids: List<String>, added: List<String>, removed: List<String>) {
+        val access = access()
+        for (id in ids) {
+            val n = store.note(id)?.takeIf { access.canWrite(it.deckId) == null } ?: continue
+            val tags = Tags.of(n) + added - removed
+            if (tags.text != n.tags.orEmpty()) saveNote(n.copy(tags = tags.text))
+        }
+    }
+
     suspend fun saveTemplate(t: Template): Template {
         val fresh = t.copy(v = store.clock(), ownerId = store.me)
         val stored = q.template(t.id).awaitAsList().firstOrNull()?.model()
@@ -188,6 +202,26 @@ class Library(private val store: Store) {
         if (fresh.deletedAt != null && q.notesUsing(t.id).awaitAsOne() > 0) throw Refused(ErrorCode.TEMPLATE_IN_USE)
         store.save(fresh)
         return fresh
+    }
+
+    // Smart decks: the learner's own --------------------------------------------------------------
+
+    suspend fun createSmartDeck(name: String, filter: Filter): SmartDeck {
+        val after = store.smartDecks().lastOrNull()?.position
+        return save(null, SmartDecks.new(name.trim(), filter, Positions.between(after, null), store.clock(), store.me))
+    }
+
+    suspend fun updateSmartDeck(id: String, change: (SmartDeck) -> SmartDeck): SmartDeck {
+        val stored = store.smartDeck(id) ?: throw Refused(ErrorCode.NOT_FOUND)
+        return save(stored, change(stored).copy(v = store.clock()))
+    }
+
+    suspend fun deleteSmartDeck(id: String) = updateSmartDeck(id) { it.copy(deletedAt = nowMillis()) }
+
+    private suspend fun save(stored: SmartDeck?, smart: SmartDeck): SmartDeck {
+        check(Rules.smartDeck(access(), stored, smart))
+        store.save(smart)
+        return smart
     }
 
     // Personal study actions: events ------------------------------------------------------------

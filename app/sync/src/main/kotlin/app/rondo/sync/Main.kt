@@ -116,8 +116,8 @@ private suspend inline fun <reified T : Any> ApplicationCall.handle(
 private val Actor = AttributeKey<String>("actor")
 
 /**
- * Hosted MCP at /mcp: agents sign in through Hydra (its tokens are checked by introspection) and
- * need Pro. The tools are :mcp's, over this person's data in Postgres.
+ * Hosted MCP at /mcp: agents sign in through Hydra (its tokens are checked by introspection), on
+ * any plan. The tools are :mcp's, over this person's data in Postgres.
  */
 fun Application.mcp(db: Db, sync: Sync, auth: Auth, origin: String, hydra: String) {
     val metadata = "$origin/.well-known/oauth-protected-resource"
@@ -139,16 +139,6 @@ fun Application.mcp(db: Db, sync: Sync, auth: Auth, origin: String, hydra: Strin
         if (actor == null) {
             call.response.headers.append("WWW-Authenticate", "Bearer resource_metadata=\"$metadata\"")
             call.respond(HttpStatusCode.Unauthorized)
-            return@intercept finish()
-        }
-        val pro =
-            withContext(Dispatchers.IO) {
-                db.transaction { c ->
-                    c.query("SELECT 1 FROM users WHERE id = ?::uuid AND pro_until > now()", actor) { true }.isNotEmpty()
-                }
-            }
-        if (!pro) {
-            call.respond(HttpStatusCode.Forbidden, ProblemBody(ErrorCode.PRO_REQUIRED, "Agents need Pro."))
             return@intercept finish()
         }
         call.attributes.put(Actor, actor)

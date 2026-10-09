@@ -20,6 +20,7 @@ import { Link, Navigate, Outlet, useLocation, useOutletContext, useSearchParams 
 import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui";
 import { toast } from "sonner";
 import { Flag } from "@/components/Flag";
+import { Checkout, ProFeatures } from "@/components/Pro";
 import {
   Avatar,
   confirm,
@@ -333,8 +334,6 @@ export function Account() {
   );
 }
 
-const PRO = [s.proEditors, s.proAgents, s.proStorage];
-
 /** Free or Pro: what Pro adds, upgrading or managing it, and redeeming a code. */
 export function Plan() {
   const [st, settings] = useSettings();
@@ -347,7 +346,6 @@ export function Plan() {
   }, [params, setParams]);
   const ready = st !== null;
   useEffect(() => void (paid && ready && settings.awaitPro()), [paid, ready, settings]);
-  const [period, setPeriod] = useState("monthly");
   const [code, setCode] = useState("");
   // A redeemed code moves Pro's end: it's done with.
   const until = st?.proUntil;
@@ -382,33 +380,14 @@ export function Plan() {
             {st.pro && (ends || source) && (
               <p className="mt-1 text-sm text-subtle">{[ends, source].filter(Boolean).join(". ")}</p>
             )}
-            <ul className="mt-4 grid gap-2 text-sm">
-              {PRO.map((f) => (
-                <li key={f} className="flex gap-2">
-                  <Check className="mt-0.5 size-4 shrink-0 text-primary" /> {f}
-                </li>
-              ))}
-            </ul>
+            <ProFeatures className="mt-4" />
             {!st.pro && (
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-                <ToggleGroup
-                  type="single"
-                  variant="outline"
-                  aria-label={s.payEvery}
-                  value={period}
-                  onValueChange={(v) => v && setPeriod(v)}
-                >
-                  <ToggleGroupItem value="monthly" className="px-3">
-                    {s.monthly}
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="yearly" className="px-3">
-                    {s.yearly}
-                  </ToggleGroupItem>
-                </ToggleGroup>
-                <Button disabled={!!st.busy} onClick={() => settings.checkout(period, go)}>
-                  {st.busy === "checkout" ? <Spinner /> : <Sparkles />} {s.upgrade}
-                </Button>
-              </div>
+              <Checkout
+                className="mt-5 border-t pt-4"
+                busy={st.busy === "checkout"}
+                disabled={!!st.busy}
+                onCheckout={(period) => settings.checkout(period, go)}
+              />
             )}
           </div>
         </div>
@@ -518,7 +497,7 @@ const Copyable = ({ text, label }: { text: string; label: string }) => (
   </div>
 );
 
-/** AI assistants: connecting them through Rondo (Pro) or on your computer, and the ones connected. */
+/** AI assistants: connecting them through Rondo or on your computer, and the ones connected. */
 export function Assistants() {
   const [st, settings] = useSettings();
   if (!st) return <Loading />;
@@ -526,20 +505,8 @@ export function Assistants() {
     <>
       <Section title={s.throughRondo} action={<LearnMore page="agents" />}>
         <Rows>
-          <Row
-            title={s.serverUrl}
-            hint={s.serverUrlHint}
-            action={!st.pro && <Badge variant="secondary">{s.pro}</Badge>}
-          >
+          <Row title={s.serverUrl} hint={s.serverUrlHint}>
             <Copyable text={st.mcpUrl} label={s.copyLink} />
-            {!st.pro && (
-              <p className="text-sm text-subtle">
-                {s.agentsNeedPro}{" "}
-                <Link to="/settings/plan" className="font-medium text-link hover:underline">
-                  {s.upgrade}
-                </Link>
-              </p>
-            )}
           </Row>
         </Rows>
       </Section>

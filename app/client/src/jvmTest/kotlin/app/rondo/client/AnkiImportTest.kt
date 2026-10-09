@@ -132,7 +132,7 @@ class AnkiImportTest {
                     "<b>Capital</b> of <i>France</i><br>today\u001f\\(x^2\\) &nbsp;Paris",
                 )
                 exec(
-                    "INSERT INTO notes VALUES (200, 2, '', ?)",
+                    "INSERT INTO notes VALUES (200, 2, ' marked Geo::Europe leech ', ?)",
                     "{{c1::Paris}} is in {{c2::<b>France</b>::country}}\u001fExtra",
                 )
                 exec(
@@ -173,6 +173,10 @@ class AnkiImportTest {
         val cloze = notes.getValue(Templates.CLOZE)
         assertEquals("{{c1::Paris}} is in {{c2::**France**::country}}", cloze.fields["1"])
         assertEquals(setOf(1, 2), Markup.clozes(cloze.fields.getValue("1")))
+        // Tags come along; Anki's "marked" becomes a mark on every card, and "leech" goes.
+        assertEquals("geo", basic.tags)
+        assertEquals("Geo::Europe", cloze.tags)
+        assertEquals(listOf(1L, 1L), r.store.q.cardsOf(cloze.id).awaitAsList().map { it.flag })
 
         val japanese = r.notes().single { !Templates.isBuiltin(it.templateId) }
         val template = r.store.template(japanese.templateId)!!

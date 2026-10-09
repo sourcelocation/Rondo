@@ -1,10 +1,10 @@
 import { mdiMicrosoft, mdiWeb } from "@mdi/js";
-import { siAndroid, siApple, siGithub, siLinux } from "simple-icons";
+import { siAndroid, siApple, siDiscord, siGithub, siLinux, siX } from "simple-icons";
 
 /**
- * Other companies' marks, where the site names their platforms: Simple Icons' (CC0) for most, and Material Design
- * Icons' (Apache-2.0) for Windows (Simple Icons has none) and the web. Each viewBox crops its icon to fill the same
- * square. They're drawn once per page, in the sprite (Sprite.astro).
+ * Other companies' marks, where the site names their platforms or links to them: Simple Icons' (CC0) for most, and
+ * Material Design Icons' (Apache-2.0) for Windows (Simple Icons has none) and the web. Each viewBox crops its icon to
+ * fill the same square. They're drawn once per page, in the sprite (Sprite.astro).
  */
 export const brands = {
   apple: { path: siApple.path, viewBox: "0 0 24 24" },
@@ -13,6 +13,8 @@ export const brands = {
   linux: { path: siLinux.path, viewBox: "0 0 24 24" },
   web: { path: mdiWeb, viewBox: "2 2 20 20" },
   github: { path: siGithub.path, viewBox: "0 0 24 24" },
+  discord: { path: siDiscord.path, viewBox: "0 0 24 24" },
+  x: { path: siX.path, viewBox: "0 0 24 24" },
 } as const;
 
 export type Brand = keyof typeof brands;

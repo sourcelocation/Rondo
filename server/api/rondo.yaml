@@ -774,6 +774,38 @@ components:
         fields: { type: object, additionalProperties: { type: string }, description: Field id to content. }
         v: { type: integer, format: int64 }
         deleted_at: { type: integer, format: int64, nullable: true }
+        tags:
+          type: string
+          nullable: true
+          description: |
+            Space-separated, sorted, without repeats; `::` nests them ("Cardio::Arrhythmia"). Absent
+            on a push from an app that predates tags: the stored ones stay.
+    SmartDeck:
+      type: object
+      description: A learner's own saved filter, studied like a deck. Never lent or published.
+      required: [id, owner_id, name, position, color, filter, new_per_day, reviews_per_day, v]
+      properties:
+        id: { type: string, format: uuid }
+        owner_id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        position: { type: string, description: A fractional index among the owner's smart decks. }
+        icon: { type: string, nullable: true }
+        color: { type: integer, minimum: 0, maximum: 7 }
+        filter: { $ref: "#/components/schemas/Filter" }
+        new_per_day: { type: integer, minimum: 0, maximum: 9999 }
+        reviews_per_day: { type: integer, minimum: 0, maximum: 99999 }
+        v: { type: integer, format: int64 }
+        deleted_at: { type: integer, format: int64, nullable: true }
+    Filter:
+      type: object
+      description: "Browse's filters as picked: a deck stands for it and its sub-decks, a tag for it and the tags under it."
+      properties:
+        text: { type: string, nullable: true }
+        deck_ids: { type: array, nullable: true, items: { type: string, format: uuid } }
+        template_ids: { type: array, nullable: true, items: { type: string, format: uuid } }
+        tags: { type: array, nullable: true, items: { type: string }, description: Any of them. }
+        state: { type: string, nullable: true, description: "new, learning, review or suspended." }
+        marked: { type: boolean, nullable: true }
     Event:
       type: object
       required: [id, user_id, subject_id, card, kind, at]
@@ -812,6 +844,7 @@ components:
         notes: { type: array, items: { $ref: "#/components/schemas/Note" } }
         events: { type: array, items: { $ref: "#/components/schemas/Event" } }
         settings: { type: array, items: { $ref: "#/components/schemas/Settings" } }
+        smart_decks: { type: array, items: { $ref: "#/components/schemas/SmartDeck" } }
 
     PullRequest:
       type: object
@@ -857,7 +890,7 @@ components:
       type: object
       required: [entity, id, code]
       properties:
-        entity: { type: string, enum: [deck, template, note, event, settings] }
+        entity: { type: string, enum: [deck, template, note, event, settings, smart_deck] }
         id: { type: string, format: uuid }
         code: { $ref: "#/components/schemas/ErrorCode" }
     FetchRequest:

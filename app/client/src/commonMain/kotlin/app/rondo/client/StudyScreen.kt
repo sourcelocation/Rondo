@@ -1,6 +1,7 @@
 package app.rondo.client
 
 import app.rondo.core.CardSide
+import app.rondo.core.Tree
 import app.rondo.core.nowMillis
 import kotlin.js.JsExport
 
@@ -29,13 +30,19 @@ class StudyState internal constructor(
     val canEdit: Boolean,
     /** The deck's language (BCP 47): pieces with speech are in it. Null: nothing is read aloud. */
     val language: String?,
+    /** Once it's finished: reviews not due yet that could come early, weakest first. */
+    val ahead: Int,
 )
 
-/** Studying a deck (null: everything): reveal, answer, undo, and the card's own actions. */
+/**
+ * Studying what [scopes] offer (a deck, every deck, a smart deck, or Browse's "Study these"):
+ * reveal, answer, undo, and the card's own actions.
+ */
 @JsExport
-class StudyScreen internal constructor(override val app: App, val deckId: String?) : Screen<StudyState>() {
+class StudyScreen internal constructor(override val app: App, scopes: suspend (Tree) -> List<Scope>) :
+    Screen<StudyState>() {
     override val live get() = false
-    private val session = Session(app.rondo.store, app.rondo.library, deckId)
+    private val session = Session(app.rondo.store, app.rondo.library, scopes)
     private var started = false
     private var revealed = false
     private var typed: String? = null
@@ -68,6 +75,7 @@ class StudyScreen internal constructor(override val app: App, val deckId: String
             card?.note?.id, card?.deck?.name, marked ?: ((card?.state?.flag ?: 0) > 0),
             card != null && app.rondo.library.access().canWrite(card.deck.id) == null,
             card?.let { app.rondo.store.tree().language(it.deck.id) },
+            if (card == null) session.aheadLeft() else 0,
         )
     }
 
@@ -86,6 +94,12 @@ class StudyScreen internal constructor(override val app: App, val deckId: String
 
     fun undo() = act {
         session.undo()
+        next()
+    }
+
+    /** Goes on with reviews not due yet, the most at risk first. */
+    fun goAhead() = act {
+        session.goAhead()
         next()
     }
 

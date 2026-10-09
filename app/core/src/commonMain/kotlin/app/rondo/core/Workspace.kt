@@ -2,6 +2,7 @@ package app.rondo.core
 
 import app.rondo.core.model.Deck
 import app.rondo.core.model.Event
+import app.rondo.core.model.Filter
 import app.rondo.core.model.Note
 import app.rondo.core.model.Rejection
 import app.rondo.core.model.Rows
@@ -17,6 +18,8 @@ data class NoteFilter(
     val state: String? = null,
     /** Only marked notes (any flag colour counts). */
     val marked: Boolean = false,
+    /** Notes with any of these tags, or a tag under one of them. */
+    val tags: List<String> = emptyList(),
 )
 
 /** A filter as SQL both SQLite and Postgres run: `?` placeholders, ids marked for binding. */
@@ -25,12 +28,39 @@ class SqlFilter(val where: String, val args: List<Any>) {
 }
 
 object Search {
+    /** No deck has this id: decks that are all gone find nothing, where none at all would find everything. */
+    const val NOWHERE = "00000000-0000-0000-0000-000000000000"
+
+    /** [f] over notes (`notes n`); a note matches [NoteFilter.state] and the mark by any of its cards. */
     fun where(f: NoteFilter, cardStates: Boolean): SqlFilter {
+        val (parts, args) = notes(f)
+        if (cardStates && f.state != null) {
+            parts += "EXISTS (SELECT 1 FROM card_state c WHERE c.note_id = n.id AND ${state(f.state)})"
+        }
+        if (cardStates && f.marked) parts += "EXISTS (SELECT 1 FROM card_state c WHERE c.note_id = n.id AND c.flag > 0)"
+        return SqlFilter(parts.joinToString(" AND "), args)
+    }
+
+    /**
+     * [f] over cards, as studying takes them: `card_state c` joined to its note `n`, the state and
+     * the mark each card's own. Devices only.
+     */
+    fun cards(f: NoteFilter): SqlFilter {
+        val (parts, args) = notes(f)
+        return SqlFilter((parts + card(f)).joinToString(" AND "), args)
+    }
+
+    /** What [f] asks of each card itself, its state and mark, over `card_state c`; "1" when nothing. */
+    fun card(f: NoteFilter): String =
+        listOfNotNull(f.state?.let(::state), "c.flag > 0".takeIf { f.marked }).joinToString(" AND ").ifEmpty { "1" }
+
+    /** What a note itself says: its text, deck, note type and tags. */
+    private fun notes(f: NoteFilter): Pair<MutableList<String>, MutableList<Any>> {
         val parts = mutableListOf("n.deleted_at IS NULL")
         val args = mutableListOf<Any>()
         for (term in fold(f.text).split(' ').filter { it.isNotBlank() }) {
             parts += "n.search_text LIKE ? ESCAPE '\\'"
-            args += "%" + term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            args += "%" + escape(term) + "%"
         }
         if (f.decks.isNotEmpty()) {
             parts += "n.deck_id IN (" + f.decks.joinToString(",") { "?" } + ")"
@@ -40,24 +70,43 @@ object Search {
             parts += "n.template_id IN (" + f.templates.joinToString(",") { "?" } + ")"
             args.addAll(f.templates.map { SqlFilter.Id(it) })
         }
-        if (cardStates && f.state != null) {
-            parts += when (f.state) {
-                "suspended" -> "EXISTS (SELECT 1 FROM card_state c WHERE c.note_id = n.id AND c.suspended = 1)"
-
-                else -> {
-                    val states = when (f.state) {
-                        "new" -> "0"
-                        "learning" -> "1, 3"
-                        else -> "2"
-                    }
-                    "EXISTS (SELECT 1 FROM card_state c WHERE c.note_id = n.id AND c.suspended = 0 " +
-                        "AND c.state IN ($states))"
-                }
+        val tags = f.tags.mapNotNull(Tags::clean)
+        if (tags.isNotEmpty()) {
+            // Tags are stored space-separated: a tag is " tag " in the padded text, the ones under it " tag::…".
+            val padded = "lower(' ' || n.tags || ' ')"
+            parts += tags.joinToString(" OR ", "(", ")") {
+                "$padded LIKE lower(?) ESCAPE '\\' OR $padded LIKE lower(?) ESCAPE '\\'"
             }
+            for (t in tags) args.addAll(listOf("% ${escape(t)} %", "% ${escape(t)}::%"))
         }
-        if (cardStates && f.marked) parts += "EXISTS (SELECT 1 FROM card_state c WHERE c.note_id = n.id AND c.flag > 0)"
-        return SqlFilter(parts.joinToString(" AND "), args)
+        return parts to args
     }
+
+    private fun state(state: String): String = when (state) {
+        "suspended" -> "c.suspended = 1"
+        "new" -> "c.suspended = 0 AND c.state = 0"
+        "learning" -> "c.suspended = 0 AND c.state IN (1, 3)"
+        else -> "c.suspended = 0 AND c.state = 2"
+    }
+
+    private fun escape(s: String) = s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+}
+
+/**
+ * What a filter as picked finds in [tree]: its decks with every live deck under them (none picked:
+ * every live deck), so notes in deleted decks never come along.
+ */
+fun Filter.notes(tree: Tree): NoteFilter {
+    val picked = deckIds.orEmpty().takeIf { it.isNotEmpty() } ?: tree.roots.map { it.id }
+    val decks = picked.filter { !tree.dead(it) }.flatMap { tree.subtree(it) }.map { it.id }.distinct()
+    return NoteFilter(
+        text = text.orEmpty(),
+        decks = decks.ifEmpty { listOf(Search.NOWHERE) },
+        templates = templateIds.orEmpty(),
+        state = state,
+        marked = marked == true,
+        tags = tags.orEmpty(),
+    )
 }
 
 /** A deck as an agent or a list sees it. */

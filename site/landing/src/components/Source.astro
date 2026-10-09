@@ -8,10 +8,10 @@ import Kotlin from "./Kotlin.astro";
  * Free and open source. Rondo's own code lies blurred under glass, and a lens that follows the pointer brings every
  * line it passes into focus (motion/lens.ts).
  */
-const facts = [
+const facts: { value: string; label: string; href?: string }[] = [
   { value: "Free", label: "To study, on every device" },
   { value: "AGPL-3.0", label: "Every line in the open" },
-  { value: "Self-host", label: "Run it on your own server" },
+  { value: "Self-host", label: "Run it on your own server", href: `${links.docs}self-hosting` },
   { value: "Export", label: "Everything, as one ZIP" },
 ];
 ---
@@ -58,7 +58,13 @@ const facts = [
       {facts.map((fact) => (
         <li class="fact" data-reveal="fade">
           <span class="fact__value">{fact.value}</span>
-          <span class="fact__label">{fact.label}</span>
+          {fact.href != null ? (
+            <a class="fact__label link" href={fact.href}>
+              {fact.label}
+            </a>
+          ) : (
+            <span class="fact__label">{fact.label}</span>
+          )}
         </li>
       ))}
     </ul>
@@ -221,6 +227,11 @@ const facts = [
   .fact__label {
     font-size: var(--size-small);
     color: var(--ink-3);
+  }
+
+  /* A label that leads somewhere is underlined under its words, not across the column. */
+  .fact__label.link {
+    justify-self: start;
   }
 
   @media (width < 960px) {

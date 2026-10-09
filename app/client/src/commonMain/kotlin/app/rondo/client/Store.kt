@@ -17,6 +17,7 @@ import app.rondo.client.db.Lends
 import app.rondo.client.db.Notes
 import app.rondo.client.db.Rejects
 import app.rondo.client.db.Settings as SettingsRow
+import app.rondo.client.db.Smart_decks
 import app.rondo.client.db.Templates as TemplateRow
 import app.rondo.core.CardState
 import app.rondo.core.Fsrs
@@ -24,12 +25,15 @@ import app.rondo.core.Hlc
 import app.rondo.core.Ids
 import app.rondo.core.Learning
 import app.rondo.core.Memory
+import app.rondo.core.Tags
 import app.rondo.core.Templates
 import app.rondo.core.Tree
 import app.rondo.core.model.Deck
 import app.rondo.core.model.Event
+import app.rondo.core.model.Filter
 import app.rondo.core.model.Note
 import app.rondo.core.model.Settings
+import app.rondo.core.model.SmartDeck
 import app.rondo.core.model.Template
 import app.rondo.core.model.TemplateDef
 import app.rondo.core.searchText
@@ -89,6 +93,7 @@ class Store private constructor(val driver: SqlDriver) {
         Lends.Adapter(uuid, uuid),
         Notes.Adapter(uuid, uuid, uuid, uuid),
         Rejects.Adapter(uuid),
+        Smart_decks.Adapter(uuid, uuid),
         TemplateRow.Adapter(uuid, uuid),
     )
     val q = db.rondoQueries
@@ -98,7 +103,9 @@ class Store private constructor(val driver: SqlDriver) {
     val changes: StateFlow<Int> get() = revision
 
     init {
-        val tables = arrayOf("decks", "templates", "notes", "events", "settings", "card_state", "lends", "rejects")
+        val tables = arrayOf(
+            "decks", "templates", "notes", "events", "settings", "smart_decks", "card_state", "lends", "rejects",
+        )
         driver.addListener(*tables, listener = { revision.value++ })
     }
 
@@ -157,6 +164,31 @@ class Store private constructor(val driver: SqlDriver) {
 
     suspend fun lends(): Map<String, Int> = q.lends().awaitAsList().associate { it.deck_id to it.role.toInt() }
 
+    /** The smart decks there are, in their order. */
+    suspend fun smartDecks(): List<SmartDeck> = q.smartDecks().awaitAsList().map { it.model() }
+
+    suspend fun smartDeck(id: String): SmartDeck? = q.smartDeck(id).awaitAsOneOrNull()?.model()
+
+    /**
+     * Tags notes have that contain [text] (case aside), with the tags above them, alphabetically;
+     * with no text, only the top-level ones.
+     */
+    suspend fun tags(text: String, limit: Int): List<String> {
+        val wanted = text.trim().lowercase()
+        val found = HashMap<String, String>()
+        for (row in q.noteTags(wanted).awaitAsList()) {
+            for (tag in Tags.parse(row).list) {
+                val levels = tag.split("::")
+                for (i in levels.indices) {
+                    val t = levels.take(i + 1).joinToString("::")
+                    val shown = if (wanted.isEmpty()) i == 0 else wanted in t.lowercase()
+                    if (shown) found.getOrPut(t.lowercase()) { t }
+                }
+            }
+        }
+        return found.values.sortedBy { it.lowercase() }.take(limit)
+    }
+
     suspend fun settings(): Settings = q.settings().awaitAsOneOrNull()?.let {
         Settings(
             me, it.grading.toInt(), it.theme.toInt(), it.text_size.toInt(), it.v, it.timezone, it.fsrs_weights,
@@ -175,8 +207,11 @@ class Store private constructor(val driver: SqlDriver) {
     suspend fun save(n: Note, template: Template, dirty: Boolean = true) {
         val fields = json.encodeToString(n.fields)
         val search = searchText(n.fields, Templates.textFields(template))
-        q.putNote(Notes(n.id, n.ownerId, n.deckId, n.templateId, fields, search, n.v, n.deletedAt, dirty))
+        val tags = n.tags.orEmpty()
+        q.putNote(Notes(n.id, n.ownerId, n.deckId, n.templateId, fields, search, n.v, n.deletedAt, dirty, tags))
     }
+
+    suspend fun save(s: SmartDeck, dirty: Boolean = true) = q.putSmartDeck(s.row(dirty))
 
     suspend fun save(e: Event, pushed: Boolean = false) = q.putEvent(
         Events(
@@ -241,7 +276,17 @@ fun Template.row(dirty: Boolean) =
     TemplateRow(id, ownerId, name, kind.toLong(), json.encodeToString(def), v, deletedAt, dirty)
 
 fun Notes.model() =
-    Note(id, deck_id, template_id, json.decodeFromString<Map<String, String>>(fields), v, owner_id, deleted_at)
+    Note(id, deck_id, template_id, json.decodeFromString<Map<String, String>>(fields), v, owner_id, deleted_at, tags)
+
+fun Smart_decks.model() = SmartDeck(
+    id, owner_id, name, position, color.toInt(), json.decodeFromString<Filter>(filter), new_per_day.toInt(),
+    reviews_per_day.toInt(), v, icon, deleted_at,
+)
+
+fun SmartDeck.row(dirty: Boolean) = Smart_decks(
+    id, ownerId, name, position, icon, color.toLong(), json.encodeToString(filter), newPerDay.toLong(),
+    reviewsPerDay.toLong(), v, deletedAt, dirty,
+)
 
 fun Events.model(me: String) = Event(
     id, me, subject_id, card.toInt(), kind.toInt(), at, value_?.toInt(), duration_ms?.toInt(), due, stability,

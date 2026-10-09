@@ -3,9 +3,11 @@ package app.rondo.sync
 import app.rondo.core.Decks
 import app.rondo.core.Hlc
 import app.rondo.core.Ids
+import app.rondo.core.SmartDecks
 import app.rondo.core.Templates
 import app.rondo.core.model.Deck
 import app.rondo.core.model.ErrorCode
+import app.rondo.core.model.Filter
 import app.rondo.core.model.Note
 import app.rondo.core.model.PullRequest
 import app.rondo.core.model.PushRequest
@@ -166,6 +168,41 @@ class SyncTest : Harness() {
             ErrorCode.CYCLE,
             push(alice, Rows(decks = listOf(a.copy(parentId = b.id, v = v())))).rejected.single().code,
         )
+    }
+
+    @Test
+    fun tagsSyncAndAnAppThatPredatesThemKeepsThem() {
+        val course = deck(alice)
+        val n = note(course).copy(tags = "Cardio::Valves pathoma")
+        push(alice, Rows(decks = listOf(course), notes = listOf(n)))
+        assertEquals("Cardio::Valves pathoma", pull(alice).stream("me").rows.notes!!.single().tags)
+        // An older app sends the note without tags: its edit lands, the tags stay.
+        push(alice, Rows(notes = listOf(n.copy(fields = mapOf("1" to "edited", "2" to "back"), tags = null, v = v()))))
+        val kept = pull(alice).stream("me").rows.notes!!.single()
+        assertEquals("edited" to "Cardio::Valves pathoma", kept.fields["1"] to kept.tags)
+        assertEquals(
+            ErrorCode.INVALID,
+            push(alice, Rows(notes = listOf(n.copy(tags = "a::", v = v())))).rejected.single().code,
+        )
+    }
+
+    @Test
+    fun smartDecksAreTheirOwnersAlone() {
+        val course = deck(alice)
+        push(alice, Rows(decks = listOf(course)))
+        lend(course.id, bob, 2)
+        val picks = Filter(deckIds = listOf(course.id), tags = listOf("Cardio"))
+        val smart = SmartDecks.new("Cardio", picks, "V", v(), alice)
+        assertEquals(1, push(alice, Rows(smartDecks = listOf(smart))).accepted)
+        assertEquals(listOf(smart), pull(alice).stream("me").rows.smartDecks)
+        // Never lent with the deck it picks from, and nobody else changes it.
+        assertNull(pull(bob).stream(course.id).rows.smartDecks)
+        val taken = smart.copy(name = "Mine now", v = v())
+        assertEquals(ErrorCode.FORBIDDEN, push(bob, Rows(smartDecks = listOf(taken))).rejected.single().code)
+
+        push(alice, Rows(smartDecks = listOf(smart.copy(deletedAt = 1, v = v()))))
+        Maintenance(db).run(System.currentTimeMillis())
+        assertEquals(0, db.transaction { c -> c.query("SELECT count(*) FROM smart_decks") { it.getInt(1) }.single() })
     }
 
     @Test

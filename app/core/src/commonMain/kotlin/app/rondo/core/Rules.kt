@@ -3,8 +3,10 @@ package app.rondo.core
 import app.rondo.core.model.Deck
 import app.rondo.core.model.ErrorCode
 import app.rondo.core.model.Event
+import app.rondo.core.model.Filter
 import app.rondo.core.model.Note
 import app.rondo.core.model.Settings
+import app.rondo.core.model.SmartDeck
 import app.rondo.core.model.Template
 
 /** Decks by id, with their children in order. */
@@ -40,6 +42,14 @@ object Decks {
     fun new(name: String, position: String, v: Long, owner: String?, parent: String?): Deck = Deck(
         id = Ids.new(), name = name, position = position, color = 0, newPerDay = 20, reviewsPerDay = 200,
         retention = 90, gated = false, unlockAt = 100, v = v, ownerId = owner, parentId = parent,
+    )
+}
+
+/** New smart decks, with a new deck's daily limits. */
+object SmartDecks {
+    fun new(name: String, filter: Filter, position: String, v: Long, owner: String): SmartDeck = SmartDeck(
+        id = Ids.new(), ownerId = owner, name = name, position = position, color = 0, filter = filter,
+        newPerDay = 20, reviewsPerDay = 200, v = v,
     )
 }
 
@@ -110,6 +120,7 @@ object Rules {
 
     fun note(a: Access, stored: Note?, n: Note, template: Template?): ErrorCode? {
         if (!Ids.isValid(n.id)) return ErrorCode.INVALID
+        if (n.tags != null && !Tags.isWellFormed(n.tags)) return ErrorCode.INVALID
         if (stored != null) {
             if (stored.ownerId == null) return ErrorCode.READ_ONLY
             if (stored.ownerId != n.ownerId) return ErrorCode.OWNER_MISMATCH
@@ -140,6 +151,29 @@ object Rules {
         }
         if (t.ownerId != a.actor) return ErrorCode.FORBIDDEN
         return if (Templates.problem(t) != null) ErrorCode.INVALID else null
+    }
+
+    /** A smart deck is its owner's alone: only they make and change it. */
+    fun smartDeck(a: Access, stored: SmartDeck?, s: SmartDeck): ErrorCode? = when {
+        !Ids.isValid(s.id) -> ErrorCode.INVALID
+
+        stored != null && stored.ownerId != s.ownerId -> ErrorCode.OWNER_MISMATCH
+
+        s.ownerId != a.actor -> ErrorCode.FORBIDDEN
+
+        s.name.isBlank() || s.name.length > 100 || !Positions.isValid(s.position) || s.color !in 0..7 ||
+            (s.icon?.length ?: 0) > 16 || s.newPerDay !in 0..9999 || s.reviewsPerDay !in 0..99999 ||
+            !valid(s.filter) -> ErrorCode.INVALID
+
+        else -> null
+    }
+
+    private fun valid(f: Filter): Boolean {
+        val ids = f.deckIds.orEmpty() + f.templateIds.orEmpty()
+        val tags = f.tags.orEmpty()
+        return (f.text?.length ?: 0) <= 500 && ids.size <= 200 && ids.all(Ids::isValid) && tags.size <= 50 &&
+            tags.all { it.length <= Tags.MAX_LENGTH && Tags.clean(it) == it } &&
+            (f.state == null || f.state in listOf("new", "learning", "review", "suspended"))
     }
 
     fun event(a: Access, e: Event, now: Long): ErrorCode? = when {

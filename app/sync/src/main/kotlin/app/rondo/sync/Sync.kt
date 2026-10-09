@@ -19,6 +19,7 @@ import app.rondo.core.model.PushResponse
 import app.rondo.core.model.Rejection
 import app.rondo.core.model.Rows
 import app.rondo.core.model.Settings
+import app.rondo.core.model.SmartDeck
 import app.rondo.core.model.StreamPage
 import app.rondo.core.model.StreamPosition
 import app.rondo.core.model.Template
@@ -41,6 +42,7 @@ private val OWN = listOf(
     "notes" to "owner_id",
     "events" to "user_id",
     "settings" to "user_id",
+    "smart_decks" to "owner_id",
 )
 
 /** Pull, push and fetch: :core's rules over Postgres. */
@@ -132,6 +134,7 @@ class Sync(private val db: Db, private val clock: () -> Long = ::nowMillis) {
                 byTable["notes"]?.map { Db.json.decodeFromString<Note>(it) },
                 byTable["events"]?.map { Db.json.decodeFromString<Event>(it) },
                 byTable["settings"]?.map { Db.json.decodeFromString<Settings>(it) },
+                byTable["smart_decks"]?.map { Db.json.decodeFromString<SmartDeck>(it) },
             ),
             if (more) rows.last().first else maxOf(head, p.cursor),
             more,
@@ -184,7 +187,8 @@ class Sync(private val db: Db, private val clock: () -> Long = ::nowMillis) {
     fun push(c: Connection, actor: String, rows: Rows): PushResponse {
         val now = clock()
         val clocks = rows.decks.orEmpty().map { it.v } + rows.templates.orEmpty().map { it.v } +
-            rows.notes.orEmpty().map { it.v } + rows.settings.orEmpty().map { it.v }
+            rows.notes.orEmpty().map { it.v } + rows.settings.orEmpty().map { it.v } +
+            rows.smartDecks.orEmpty().map { it.v }
         if (clocks.any { Rules.clockAhead(it, now) }) {
             throw Problem(409, ErrorCode.CLOCK_AHEAD, "This device's clock is ahead.")
         }
@@ -264,7 +268,9 @@ class Sync(private val db: Db, private val clock: () -> Long = ::nowMillis) {
                 continue
             }
             val search = searchText(n.fields, Templates.textFields(template!!))
-            val row = Db.json.encodeToJsonElement(n).jsonObject + ("search_text" to JsonPrimitive(search))
+            // An app that predates tags sends none: the note keeps the ones it has.
+            val tagged = if (n.tags == null) n.copy(tags = stored?.tags.orEmpty()) else n
+            val row = Db.json.encodeToJsonElement(tagged).jsonObject + ("search_text" to JsonPrimitive(search))
             write("notes", n.ownerId, JsonObject(row))
             // The media a note shows stay stored while it does (the media cleanup job reads note_media).
             c.exec("DELETE FROM note_media WHERE note_id = ?::uuid", n.id)
@@ -288,6 +294,19 @@ class Sync(private val db: Db, private val clock: () -> Long = ::nowMillis) {
                 reject(Rejection.Entity.SETTINGS, s.userId, problem)
             } else {
                 write("settings", actor, Db.json.encodeToJsonElement(s).jsonObject)
+            }
+        }
+
+        val incomingSmart = rows.smartDecks.orEmpty()
+        val storedSmart = byId<SmartDeck>(c, "smart_decks", incomingSmart.map { it.id }).associateBy { it.id }
+        for (s in incomingSmart) {
+            val stored = storedSmart[s.id]
+            if (stored != null && s.v <= stored.v) continue
+            val problem = Rules.smartDeck(access, stored, s)
+            if (problem != null) {
+                reject(Rejection.Entity.SMART_DECK, s.id, problem)
+            } else {
+                write("smart_decks", s.ownerId, Db.json.encodeToJsonElement(s).jsonObject)
             }
         }
 

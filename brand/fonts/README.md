@@ -1,15 +1,9 @@
 # Fonts
 
-| Role | Family | Faces the apps embed | Folder |
-|------|--------|----------------------|--------|
-| Sans | **Geist** | 300–700 | `geist/` |
-| Mono | **Geist Mono** | 400–500 | `geist/` |
-| Serif | **Juana** | 300–700, with italics | `juana/` |
+| Role | Family | Used for | Weights |
+|------|--------|----------|---------|
+| Sans | **Geist** | UI and body text | 300–700 |
+| Mono | **Geist Mono** | code | 400–500 |
+| Serif | **Juana** | display, card prompts and the wordmark | 300–700, with italics |
 
-Each folder holds the family's files; the apps embed the faces above.
-
-- **Apple** — XcodeGen bundles the faces; they are registered at launch with
-  `CTFontManagerRegisterFontURLs`.
-- **Android** — the build generates font resources and a Kotlin catalog from this folder.
-- **Web** — the build copies the faces into the page and declares them with `@font-face` (Geist and
-  Geist Mono as variable fonts).
+The type scale is in `tokens/foundation.json` (`text.*`).

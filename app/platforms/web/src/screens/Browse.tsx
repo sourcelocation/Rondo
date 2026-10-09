@@ -1,7 +1,8 @@
-import { ArrowDownUp, Check, Flag, Search, X } from "lucide-react";
+import { ArrowDownUp, Bookmark, Check, Flag, Play, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router";
-import { confirm, Empty, Header, Loading, pick } from "@/components/kit";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { ask, askTags, confirm, Empty, Header, Loading, pick } from "@/components/kit";
+import { TagFilter } from "@/components/tags";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -67,35 +68,72 @@ const stateText = (n: NoteItem) =>
     ? date(n.due)
     : ({ new: s.stateNew, suspended: s.stateSuspended, learning: s.stateLearning } as Record<string, string>)[n.state];
 
-/** Notes by text, deck, type, state and mark, in the order chosen; select some to change them together. */
+/** The filters as an address's search params: what Browse, "Study these" and a smart deck's rules share. */
+export function filterParams(f: {
+  text: string;
+  deckId?: string | null;
+  templateId?: string | null;
+  tags: string[];
+  cardState?: string | null;
+  marked: boolean;
+}): URLSearchParams {
+  const p = new URLSearchParams();
+  if (f.text) p.set("q", f.text);
+  if (f.deckId) p.set("deck", f.deckId);
+  if (f.templateId) p.set("type", f.templateId);
+  for (const t of f.tags) p.append("tag", t);
+  if (f.cardState) p.set("state", f.cardState);
+  if (f.marked) p.set("marked", "1");
+  return p;
+}
+
+/** The filters an address holds. */
+export const readFilters = (params: URLSearchParams) => ({
+  q: params.get("q") ?? "",
+  deck: params.get("deck"),
+  type: params.get("type"),
+  tags: params.getAll("tag"),
+  state: params.get("state"),
+  marked: params.has("marked"),
+});
+
+/**
+ * Notes by text, deck, type, tags, state and mark, in the order chosen; select some to change them
+ * together. What's found can be studied, or kept as a smart deck; opened from one (`?smart=…`), the
+ * filters become its rules.
+ */
 export function Browse() {
   const [params, setParams] = useSearchParams();
-  const [st, browse] = useScreen(() => app.browse(params.get("deck")), []);
+  const navigate = useNavigate();
+  const smartId = params.get("smart");
+  const [st, browse] = useScreen(() => app.browse(params.get("deck"), smartId), [smartId]);
   const note = useOverlay("note");
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [text, setText] = useState(params.get("q") ?? "");
 
   // The filters live in the address, so Back, a reload or a shared link brings them back.
-  const filters = {
-    q: params.get("q") ?? "",
-    deck: params.get("deck"),
-    type: params.get("type"),
-    state: params.get("state"),
-    marked: params.has("marked"),
-    sort: params.get("sort") ?? "added",
-  };
+  const filters = { ...readFilters(params), sort: params.get("sort") ?? "added" };
   const key = JSON.stringify(filters);
   useEffect(() => {
     if (!st) return;
-    browse.filter(filters.q, filters.deck, filters.type, filters.state, filters.marked, filters.sort);
+    const f = filters;
+    browse.filter(f.q, f.deck, f.type, f.tags, f.state, f.marked, f.sort);
     setPicked(new Set());
   }, [key, !!st]); // eslint-disable-line react-hooks/exhaustive-deps
-  const set = (name: string, value: string | null) => {
+  const set = (name: string, value: string | string[] | null) => {
     const next = new URLSearchParams(params);
-    if (value == null || value === "") next.delete(name);
-    else next.set(name, value);
+    next.delete(name);
+    for (const v of Array.isArray(value) ? value : value ? [value] : []) next.append(name, v);
     setParams(next, { replace: true });
   };
+  const study = filterParams({
+    text: filters.q,
+    deckId: filters.deck,
+    templateId: filters.type,
+    tags: filters.tags,
+    cardState: filters.state,
+    marked: filters.marked,
+  });
   useEffect(() => {
     const timer = setTimeout(() => text !== filters.q && set("q", text), 250);
     return () => clearTimeout(timer);
@@ -109,9 +147,21 @@ export function Browse() {
     else next.delete(id);
     setPicked(next);
   };
+  const due = st.due + st.newCount;
   return (
     <>
       <Header title={s.browse} />
+      {st.smart && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg bg-surface px-4 py-3">
+          <span className="min-w-0 flex-1 text-sm">{s.rulesOf(st.smart.label)}</span>
+          <Button variant="ghost" size="sm" asChild>
+            <Link to={`/smart/${st.smart.id}`}>{s.cancel}</Link>
+          </Button>
+          <Button size="sm" onClick={() => browse.saveRules(() => navigate(`/smart/${st.smart!.id}`))}>
+            {s.saveRules}
+          </Button>
+        </div>
+      )}
       <div className="sticky top-14 z-10 -mx-4 mb-4 grid gap-3 bg-background/95 px-4 py-3 backdrop-blur sm:-mx-8 sm:px-8 md:top-0">
         {ids.length > 0 ? (
           <Selection ids={ids} browse={browse} decks={st.decks} all={st.notes} onSelect={setPicked} />
@@ -142,6 +192,7 @@ export function Browse() {
                   ["suspended", s.stateSuspended],
                 ].map(([id, label]) => ({ id, label }) as Choice)}
               />
+              <TagFilter value={filters.tags} onChange={(tags) => set("tag", tags)} />
               <Toggle
                 size="sm"
                 variant="outline"
@@ -167,6 +218,31 @@ export function Browse() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            {st.notes.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {/* With nothing due it still opens: reviews not due yet can come early. */}
+                <Button size="sm" variant={due ? "secondary" : "ghost"} asChild>
+                  <Link to={`/browse/study?${study}`}>
+                    <Play /> {s.studyThese}
+                    <span className="text-muted-foreground tabular-nums">
+                      {s.studyTheseCounts(st.due, st.newCount)}
+                    </span>
+                  </Link>
+                </Button>
+                {!st.smart && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      const name = await ask(s.smartDeckName);
+                      if (name) browse.keep(name, (id) => navigate(`/smart/${id}`));
+                    }}
+                  >
+                    <Bookmark /> {s.keepAsSmartDeck}
+                  </Button>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -191,6 +267,7 @@ export function Browse() {
                     <div className="truncate">{n.text}</div>
                     <div className="truncate text-xs text-muted-foreground">
                       {n.deck} · {n.template}
+                      {n.tags.length > 0 && ` · ${n.tags.join(" ")}`}
                     </div>
                   </button>
                   {n.marked && <Flag className="size-4 text-[var(--rd-color-flag-red)]" aria-label={s.marked} />}
@@ -277,6 +354,23 @@ function Selection({
           <Button size="sm">{s.edit}…</Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-48">
+          <DropdownMenuItem
+            onSelect={async () => {
+              const tags = await askTags(s.addTags, s.add);
+              if (tags) browse.tag(ids, tags, []);
+            }}
+          >
+            {s.addTags}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={async () => {
+              const tags = await askTags(s.removeTags, s.remove);
+              if (tags) browse.tag(ids, [], tags);
+            }}
+          >
+            {s.removeTags}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => browse.mark(ids, true)}>{s.mark}</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => browse.mark(ids, false)}>{s.unmark}</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => browse.suspend(ids, true)}>{s.suspend}</DropdownMenuItem>
