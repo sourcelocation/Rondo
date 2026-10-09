@@ -148,7 +148,7 @@ export function Tabs({
             end={end}
             className={({ isActive }) =>
               cn(
-                "-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap",
+                "-mb-px flex scroll-mt-16 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap md:scroll-mt-0",
                 isActive ? "border-foreground" : "border-transparent text-subtle hover:text-foreground",
               )
             }

@@ -61,14 +61,16 @@ const tabs = [
 /** The screen every tab shares, opened once for all of them. */
 const useSettings = () => useOutletContext<[SettingsState | null, SettingsScreen]>();
 
-/** Settings: a tab for each part, under one header. */
+/** Settings: a tab for each part, under one header; opened afresh when someone signs in or out. */
 export function Settings() {
-  const me = useApp();
-  const signedIn = me?.signedIn ?? false;
-  const settings = useScreen(() => app.settings(), [signedIn]);
+  const signedIn = useApp()?.signedIn;
+  return signedIn === undefined ? <Loading /> : <SettingsFor key={String(signedIn)} signedIn={signedIn} />;
+}
+
+function SettingsFor({ signedIn }: { signedIn: boolean }) {
+  const settings = useScreen(() => app.settings());
   const { pathname, search } = useLocation();
   const [params] = useSearchParams();
-  if (!me) return <Loading />;
   if (pathname.endsWith("/")) return <Navigate to={pathname.slice(0, -1) + search} replace />;
   // Stripe sends people back here once they've paid.
   if (params.has("paid") && pathname !== "/settings/plan") return <Navigate to="/settings/plan?paid=1" replace />;
@@ -183,6 +185,7 @@ export function General() {
                 A
               </span>
               <Slider
+                aria-label={s.textSize}
                 min={50}
                 max={200}
                 step={10}
@@ -338,11 +341,13 @@ const PRO = [s.proEditors, s.proAgents, s.proStorage];
 export function Plan() {
   const [st, settings] = useSettings();
   const [params, setParams] = useSearchParams();
-  // Back from paying: thanks, shown until closed, while the address forgets it.
+  // Back from paying: thanks, shown until closed, while the address forgets it and Pro arrives.
   const [paid, setPaid] = useState(() => params.has("paid"));
   useEffect(() => {
     if (params.has("paid")) setParams({}, { replace: true });
   }, [params, setParams]);
+  const ready = st !== null;
+  useEffect(() => void (paid && ready && settings.awaitPro()), [paid, ready, settings]);
   const [period, setPeriod] = useState("monthly");
   const [code, setCode] = useState("");
   // A redeemed code moves Pro's end: it's done with.
@@ -396,7 +401,13 @@ export function Plan() {
             </ul>
             {!st.pro && (
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-                <ToggleGroup type="single" variant="outline" value={period} onValueChange={(v) => v && setPeriod(v)}>
+                <ToggleGroup
+                  type="single"
+                  variant="outline"
+                  aria-label={s.payEvery}
+                  value={period}
+                  onValueChange={(v) => v && setPeriod(v)}
+                >
                   <ToggleGroupItem value="monthly" className="px-3">
                     {s.monthly}
                   </ToggleGroupItem>
@@ -404,7 +415,7 @@ export function Plan() {
                     {s.yearly}
                   </ToggleGroupItem>
                 </ToggleGroup>
-                <Button disabled={!!st.busy} onClick={() => settings.checkout(period, go)}>
+                <Button disabled={!!st.busy || paid} onClick={() => settings.checkout(period, go)}>
                   {st.busy === "checkout" ? <Spinner /> : <Sparkles />} {s.upgrade}
                 </Button>
               </div>

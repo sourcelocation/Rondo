@@ -98,11 +98,24 @@ class SecurityScreen internal constructor(override val app: App) : Screen<Securi
         waiting = null
     }
 
-    /** Adds a passkey, made by the browser or the system. */
+    /**
+     * Adds a passkey, made by the browser or the system. When the sign-in is too old to add it, the
+     * one just made waits for the code, then is added as it is: the person never makes two.
+     */
     fun addPasskey() = step {
         val flow = account.addPasskey()
-        account.finishPasskey(flow, app.rondo.platform.passkey(flow.options, register = true))
-        app.say(strings.passkeyAdded)
+        val credential = app.rondo.platform.passkey(flow.options, register = true)
+        val add: suspend () -> Unit = {
+            account.finishPasskey(flow, credential)
+            app.say(strings.passkeyAdded)
+        }
+        try {
+            add()
+        } catch (e: SignInError) {
+            if (e.code != "reauthenticate") throw e
+            waiting = add
+            reauth = account.reauthenticate(account.email ?: throw e)
+        }
     }
 
     /** Starts turning on the authenticator app. */

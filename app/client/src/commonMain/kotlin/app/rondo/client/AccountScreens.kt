@@ -19,6 +19,9 @@ import app.rondo.core.model.ResetRequest
 import app.rondo.core.nowMillis
 import kotlin.js.JsExport
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** Languages a deck can be in, as BCP 47 codes; UIs show their names in the reader's language. */
 @JsExport
@@ -62,22 +65,31 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
     private val rondo get() = app.rondo
     private var reauth: CodeFlow? = null
     private var busy: String? = null
+    private var awaiting: Job? = null
 
-    /** The subscription and the agents as the server tells them, asked until it does. */
+    /** The subscription and the agents as the server told them: asked when the screen opens. */
     private var billing: Billing? = null
     private var agents: List<Agent>? = null
 
     override suspend fun load(): SettingsState {
-        val s = rondo.store.settings()
-        val account = rondo.account
-        if (account.signedIn) {
+        if (rondo.account.signedIn) {
             if (billing == null) billing = runCatching { online { rondo.net.api.getBilling().ok() } }.getOrNull()
             if (agents == null) agents = runCatching { online { rondo.net.api.listAgents().ok() } }.getOrNull()
         }
+        return known()
+    }
+
+    /** The state from what's known, without asking the server. */
+    private suspend fun known(): SettingsState {
+        val s = rondo.store.settings()
+        val account = rondo.account
         val me = account.me
+        // What the server said is about whoever is signed in: signed out, there's nothing.
+        val billing = billing.takeIf { account.signedIn }
+        val agents = agents.takeIf { account.signedIn }.orEmpty()
         val pro = billing?.pro ?: (me?.pro == true)
         val proUntil = (billing?.proUntil ?: me?.proUntil)?.toString()
-        val connected = agents.orEmpty().map { AgentItem(it.clientId, it.clientName, it.grantedAt.toString()) }
+        val connected = agents.map { AgentItem(it.clientId, it.clientName, it.grantedAt.toString()) }
         return SettingsState(
             account.signedIn, account.email, me?.activityHidden == true, pro, proUntil, billing?.provider?.value,
             billing?.renews == true, s.grading, s.theme, s.textSize, connected.toTypedArray(),
@@ -87,19 +99,39 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
 
     private fun change(block: suspend () -> Unit) = act {
         block()
-        show(load())
+        show(known())
     }
 
     /** Runs [block] as [what], shown as under way until it ends; meanwhile, asking again does nothing. */
     private fun work(what: String, block: suspend () -> Unit) = act {
         if (busy != null) return@act
         busy = what
-        show(load())
         try {
+            show(known())
             block()
         } finally {
             busy = null
-            show(load())
+            show(known())
+        }
+    }
+
+    /**
+     * Back from paying: the store tells the server on its own time, so this asks again every few
+     * seconds, for half a minute, until Pro shows; then the whole app hears of it.
+     */
+    fun awaitPro() {
+        if (awaiting?.isActive == true) return
+        awaiting = scope.launch {
+            var tries = 0
+            while (billing?.pro != true && tries++ < 10) {
+                delay(3_000)
+                runCatching { online { rondo.net.api.getBilling().ok() } }.getOrNull()?.let { billing = it }
+                show(known())
+            }
+            if (billing?.pro == true) {
+                rondo.account.refresh()
+                app.reload()
+            }
         }
     }
 
