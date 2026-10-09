@@ -36,7 +36,7 @@ class AgentItem internal constructor(val clientId: String, val name: String, val
 /**
  * What Settings' tabs show; who you are is in [AppState]. [provider]: stripe, app-store,
  * google-play, promo or grant. [busy]: what's under way, which can't be asked again until it ends:
- * checkout, portal, redeem, disconnect, export or delete.
+ * checkout (back from paying, until Pro shows), portal, redeem, disconnect, export or delete.
  */
 @JsExport
 class SettingsState internal constructor(
@@ -116,21 +116,28 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
     }
 
     /**
-     * Back from paying: the store tells the server on its own time, so this asks again every few
-     * seconds, for half a minute, until Pro shows; then the whole app hears of it.
+     * Back from paying. The store tells the server on its own time, so the checkout stays under way
+     * while this asks again every few seconds, for half a minute. Once Pro shows, the account is read
+     * again, and the server's welcome to Pro comes with it as a notification.
      */
     fun awaitPro() {
         if (awaiting?.isActive == true) return
         awaiting = scope.launch {
-            var tries = 0
-            while (billing?.pro != true && tries++ < 10) {
-                delay(3_000)
-                runCatching { online { rondo.net.api.getBilling().ok() } }.getOrNull()?.let { billing = it }
+            busy = "checkout"
+            try {
+                var tries = 0
+                while (billing?.pro != true && tries++ < 10) {
+                    show(known())
+                    delay(3_000)
+                    runCatching { online { rondo.net.api.getBilling().ok() } }.getOrNull()?.let { billing = it }
+                }
+                if (billing?.pro == true) {
+                    rondo.account.refresh()
+                    app.reload()
+                }
+            } finally {
+                busy = null
                 show(known())
-            }
-            if (billing?.pro == true) {
-                rondo.account.refresh()
-                app.reload()
             }
         }
     }
@@ -164,12 +171,16 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
 
     fun manage(open: (String) -> Unit) = work("portal") { open(online { rondo.net.api.stripePortal().ok() }.url) }
 
-    /** Redeems a promo code for Pro, from when the Pro there is ends. */
+    /**
+     * Redeems a promo code for Pro, from when the Pro there is ends. Pro that starts is welcomed by
+     * the server's own notification; only more of it is said here.
+     */
     fun redeem(code: String) = work("redeem") {
+        val had = billing?.pro ?: (rondo.account.me?.pro == true)
         billing = online { rondo.net.api.redeem(RedeemRequest(code.trim())).ok() }
         rondo.account.refresh()
         app.reload()
-        app.say(strings.redeemed)
+        if (had) app.say(strings.redeemed)
     }
 
     /** Disconnects an agent: it can't use the account until it's allowed again. */

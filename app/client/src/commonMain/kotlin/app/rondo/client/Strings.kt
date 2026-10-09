@@ -437,7 +437,6 @@ open class Strings {
     open val proEditors = "Let people edit decks you share"
     open val proAgents = "Connect AI assistants through Rondo"
     open val proStorage = "5 GB for pictures and sounds, instead of 200 MB"
-    open val paid = "Thanks for subscribing! Pro can take a moment to show here."
     open val redeemed = "Code redeemed."
     open val grading = "Answer buttons"
     open val gradingHint = "Four say how well you knew it; two are quicker."

@@ -7,7 +7,6 @@ import {
   Download,
   Monitor,
   Moon,
-  PartyPopper,
   Shapes,
   ShieldCheck,
   SlidersHorizontal,
@@ -15,7 +14,6 @@ import {
   Sun,
   TriangleAlert,
   UserRound,
-  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation, useOutletContext, useSearchParams } from "react-router";
@@ -341,8 +339,9 @@ const PRO = [s.proEditors, s.proAgents, s.proStorage];
 export function Plan() {
   const [st, settings] = useSettings();
   const [params, setParams] = useSearchParams();
-  // Back from paying: thanks, shown until closed, while the address forgets it and Pro arrives.
-  const [paid, setPaid] = useState(() => params.has("paid"));
+  // Back from paying, the checkout stays under way until Pro arrives; the server's notification
+  // welcomes it. The address forgets it was here.
+  const [paid] = useState(() => params.has("paid"));
   useEffect(() => {
     if (params.has("paid")) setParams({}, { replace: true });
   }, [params, setParams]);
@@ -358,15 +357,6 @@ export function Plan() {
   const ends = st.proUntil && (st.renews ? s.renewsOn(date(st.proUntil)) : s.proUntil(date(st.proUntil)));
   return (
     <>
-      {paid && (
-        <div className="mb-6 flex items-center gap-3 rounded-lg bg-success py-2 pr-2 pl-4 text-sm">
-          <PartyPopper className="size-4 shrink-0" />
-          <span className="flex-1">{s.paid}</span>
-          <Button size="icon-sm" variant="ghost" aria-label={s.close} onClick={() => setPaid(false)}>
-            <X />
-          </Button>
-        </div>
-      )}
       <Section title={s.plan} action={<LearnMore page="plans" />}>
         <div className="grid gap-3">
           {!st.pro && (
@@ -415,7 +405,7 @@ export function Plan() {
                     {s.yearly}
                   </ToggleGroupItem>
                 </ToggleGroup>
-                <Button disabled={!!st.busy || paid} onClick={() => settings.checkout(period, go)}>
+                <Button disabled={!!st.busy} onClick={() => settings.checkout(period, go)}>
                   {st.busy === "checkout" ? <Spinner /> : <Sparkles />} {s.upgrade}
                 </Button>
               </div>
