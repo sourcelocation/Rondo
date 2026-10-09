@@ -133,6 +133,7 @@ class AppState internal constructor(
     /** Show the profile setup: once after signing in, and when something needs it. */
     val setup: Boolean,
     val username: String?,
+    val flag: String?,
 )
 
 /** Rondo for a UI: the app-wide state, notices, and every screen. */
@@ -164,7 +165,7 @@ class App internal constructor(internal val rondo: Rondo) : Screen<AppState>() {
             rondo.account.signedIn, me?.name, rondo.account.email, me?.pro == true, sync.busy,
             sync.code?.let(::syncMessage), sync.at?.toDouble(), issues, s.grading, s.theme, s.textSize,
             roles.toTypedArray(), permissions.toTypedArray(), me?.staffLocked == true,
-            rondo.platform.read(STAFF_HIDDEN) == null, next, setup || setupOpen, me?.username,
+            rondo.platform.read(STAFF_HIDDEN) == null, next, setup || setupOpen, me?.username, me?.flag,
         )
     }
 

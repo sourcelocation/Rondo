@@ -38,7 +38,7 @@ class SecurityState internal constructor(
     val busy: Boolean,
 )
 
-/** The authenticator app and recovery codes, signed-in devices, the email, and linked accounts. */
+/** The email, passkeys, linked accounts, the authenticator app and recovery codes, and signed-in devices. */
 @JsExport
 class SecurityScreen internal constructor(override val app: App) : Screen<SecurityState>() {
     override val live get() = false
@@ -96,6 +96,26 @@ class SecurityScreen internal constructor(override val app: App) : Screen<Securi
         reauth = null
         waiting?.invoke()
         waiting = null
+    }
+
+    /**
+     * Adds a passkey, made by the browser or the system. When the sign-in is too old to add it, the
+     * one just made waits for the code, then is added as it is: the person never makes two.
+     */
+    fun addPasskey() = step {
+        val flow = account.addPasskey()
+        val credential = app.rondo.platform.passkey(flow.options, register = true)
+        val add: suspend () -> Unit = {
+            account.finishPasskey(flow, credential)
+            app.say(strings.passkeyAdded)
+        }
+        try {
+            add()
+        } catch (e: SignInError) {
+            if (e.code != "reauthenticate") throw e
+            waiting = add
+            reauth = account.reauthenticate(account.email ?: throw e)
+        }
     }
 
     /** Starts turning on the authenticator app. */

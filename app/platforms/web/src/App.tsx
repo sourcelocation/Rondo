@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import { toast } from "sonner";
 import { Dialogs, NotFound } from "@/components/kit";
 import { Notifications, useRefreshOnFocus } from "@/components/Notifications";
@@ -19,12 +19,19 @@ import { Import } from "@/screens/Import";
 import { Insights } from "@/screens/Insights";
 import { Profile } from "@/screens/Profile";
 import { Issues } from "@/screens/Issues";
-import { Settings } from "@/screens/Settings";
+import { Account, Assistants, General, Plan, Reminders, Settings } from "@/screens/Settings";
 import { Batch, CasePage, Cases, Promo, StaffEntry, StaffLog, StaffSearch, Team } from "@/screens/Staff";
 import { Redeem } from "@/screens/Redeem";
 import { Security } from "@/screens/Security";
 import { Study } from "@/screens/Study";
 import { TemplatePage, Templates } from "@/screens/Templates";
+
+/** Profile's pages moved into Settings; their old addresses, in links and notifications, lead there. */
+function Moved() {
+  const { pathname, search } = useLocation();
+  const to = pathname === "/profile" ? "/settings/account" : pathname.replace(/^\/profile/, "/settings");
+  return <Navigate to={to + search} replace />;
+}
 
 /**
  * The app's addresses. Each page sits one level below the one its Up button leads to; studying,
@@ -53,11 +60,17 @@ export function App() {
           <Route path="i/:token" element={<Preview />} />
           <Route path="u/:username" element={<Profile />} />
           <Route path="progress" element={<Insights />} />
-          <Route path="profile" element={<Settings />} />
-          <Route path="profile/templates" element={<Templates />} />
-          <Route path="profile/templates/:id" element={<TemplatePage />} />
-          <Route path="profile/issues" element={<Issues />} />
-          <Route path="profile/security" element={<Security />} />
+          <Route path="settings" element={<Settings />}>
+            <Route index element={<General />} />
+            <Route path="account" element={<Account />} />
+            <Route path="security" element={<Security />} />
+            <Route path="plan" element={<Plan />} />
+            <Route path="reminders" element={<Reminders />} />
+            <Route path="assistants" element={<Assistants />} />
+          </Route>
+          <Route path="settings/templates" element={<Templates />} />
+          <Route path="settings/templates/:id" element={<TemplatePage />} />
+          <Route path="settings/issues" element={<Issues />} />
           <Route path="staff" element={<Navigate to="/staff/cases" replace />} />
           <Route path="staff/cases" element={<Cases />} />
           <Route path="staff/cases/:id" element={<CasePage />} />
@@ -72,9 +85,9 @@ export function App() {
         </Route>
         {/* Addresses from before, kept working. */}
         <Route path="insights" element={<Navigate to="/progress" replace />} />
-        <Route path="settings" element={<Navigate to="/profile" replace />} />
-        <Route path="templates" element={<Navigate to="/profile/templates" replace />} />
-        <Route path="issues" element={<Navigate to="/profile/issues" replace />} />
+        <Route path="profile/*" element={<Moved />} />
+        <Route path="templates" element={<Navigate to="/settings/templates" replace />} />
+        <Route path="issues" element={<Navigate to="/settings/issues" replace />} />
         <Route path="notes/new" element={<Navigate to="/?note=new" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

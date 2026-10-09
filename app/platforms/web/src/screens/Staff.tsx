@@ -1,8 +1,8 @@
 import { Copy, Gavel, Inbox, Link as LinkIcon, ScrollText, SearchX, Shield, Ticket, Undo2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import { Link, NavLink, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
-import { ask, confirm, Empty, Header, Loading, Section } from "@/components/kit";
+import { ask, confirm, Empty, Header, Loading, Section, Tabs } from "@/components/kit";
 import { ModerateDialog, RemoveDeckDialog } from "@/components/ModerateDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -28,22 +28,7 @@ export function StaffFrame({ title, children }: { title: string; children: React
   return (
     <>
       <Header title={title} />
-      <nav className="mb-8 flex gap-1 border-b">
-        {shown.map((t) => (
-          <NavLink
-            key={t.to}
-            to={t.to}
-            className={({ isActive }) =>
-              cn(
-                "-mb-px border-b-2 px-3 py-2 text-sm font-medium",
-                isActive ? "border-foreground" : "border-transparent text-subtle hover:text-foreground",
-              )
-            }
-          >
-            {t.label}
-          </NavLink>
-        ))}
-      </nav>
+      <Tabs label={s.staff} tabs={shown} />
       {st?.staffLocked ? <PasskeyNeeded /> : children}
     </>
   );

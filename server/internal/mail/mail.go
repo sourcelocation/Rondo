@@ -139,9 +139,9 @@ func ResetScheduled(to, date string) Message {
 }
 
 func ResetDone(to string) Message {
-	return Message{To: to, Subject: "Your second step was removed", Heading: "Your second step was removed", Text: "Your Rondo account signs in without the authenticator app now. Turn it on again in Profile › Security."}
+	return Message{To: to, Subject: "Your second step was removed", Heading: "Your second step was removed", Text: "Your Rondo account signs in without the authenticator app now. Turn it on again in Settings › Security."}
 }
 
 func AgentConnected(to, agent string) Message {
-	return Message{To: to, Subject: agent + " can use your Rondo", Heading: agent + " was connected", Text: agent + " can now read and change your decks and notes. You can disconnect it in Profile › Agents. If this wasn't you, disconnect it and sign out everywhere."}
+	return Message{To: to, Subject: agent + " can use your Rondo", Heading: agent + " was connected", Text: agent + " can now read and change your decks and notes. You can disconnect it in Settings › AI assistants. If this wasn't you, disconnect it and sign out everywhere."}
 }

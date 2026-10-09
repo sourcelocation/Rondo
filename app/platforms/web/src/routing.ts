@@ -3,8 +3,9 @@ import { useLocation, useNavigate, useNavigationType, useSearchParams, type Loca
 
 /**
  * How the app's addresses relate: every page has one level above it, overlays sit on the page that
- * opened them (in its search params), and each place in the sidebar or tab bar remembers where it
- * was left. Up (← and Esc) goes one level up, retracing history when that's where you came from.
+ * opened them (in its search params), and each place in the sidebar, tab bar or account menu
+ * remembers where it was left. Up (← and Esc) goes one level up, retracing history when that's
+ * where you came from.
  */
 
 const at = (l: Pick<Location, "pathname" | "search">) => l.pathname + l.search;
@@ -12,8 +13,8 @@ const at = (l: Pick<Location, "pathname" | "search">) => l.pathname + l.search;
 /** This tab's history inside the app, as the router moved through it. */
 const visited: { key: string; url: string }[] = [];
 
-/** The places: roots of the sidebar and the tab bar. Each remembers the last address under it. */
-export const places = ["/", "/browse", "/discover", "/progress", "/profile", "/staff"] as const;
+/** The places: roots of the sidebar, the tab bar and the account menu. Each remembers where it was left. */
+export const places = ["/", "/browse", "/discover", "/progress", "/settings", "/staff"] as const;
 const lastIn = new Map<string, string>();
 
 /** The place an address belongs to. */
@@ -21,7 +22,7 @@ export function placeOf(path: string): string {
   if (path.startsWith("/browse")) return "/browse";
   if (path.startsWith("/discover") || path.startsWith("/d/") || path.startsWith("/u/")) return "/discover";
   if (path.startsWith("/progress")) return "/progress";
-  if (path.startsWith("/profile")) return "/profile";
+  if (path.startsWith("/settings")) return "/settings";
   if (path.startsWith("/staff")) return "/staff";
   return "/";
 }

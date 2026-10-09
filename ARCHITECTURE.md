@@ -73,7 +73,7 @@ authorless and read-only. Media are named by their SHA-256 and never change.
 | Studying | `:core`, `:client` | FSRS-6 over events, fitted to each learner on the device. Days start at 4 am in the learner's time zone. |
 | Levels | `:core` | Sub-decks of a gated deck open in order, by progress or by hand; opening is an event. |
 | Anki import | `:client` | `.apkg` and `.colpkg` read on the device, with media and history. A note type can stay Anki's HTML, read-only (1:1). |
-| Accounts | `:client`, `internal/ory` | Kratos's API flows: email code, passkey, Apple or Google. Second step, linked accounts, email change and devices in Profile › Security. |
+| Accounts | `:client`, `internal/ory` | Kratos's API flows: email code, passkey, Apple or Google. Second step, passkeys, linked accounts, email change and devices in Settings › Security. |
 | Profiles | `internal/names` | A username (needed to share or publish), a display name and a flag; a public page with activity. |
 | Sharing | Go server | Decks are lent as viewer or editor (editing needs the owner's Pro), by invitation or link; following is borrowing as a viewer. |
 | Discover | Go server | Published decks, read from `publications`, a copy refreshed on a schedule. Sorts are Top, New and Hot. |
