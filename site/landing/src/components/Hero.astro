@@ -46,6 +46,13 @@ import Countdown from "./Countdown.astro";
   </div>
 </section>
 
+<script>
+  import { hero } from "../motion/hero";
+  import { scene } from "../motion/scenes";
+
+  scene("[data-hero]", hero);
+</script>
+
 <style>
   /* Clipped at the sides only: as the hero scrolls away, its cards drift past its foot and fade over what follows. */
   .hero {

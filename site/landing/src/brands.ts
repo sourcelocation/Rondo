@@ -19,7 +19,7 @@ export const brands = {
 
 export type Brand = keyof typeof brands;
 
-/** The platforms Rondo runs on, as /launch.js names the visitor's. */
+/** The platforms Rondo runs on, as /head.js names the visitor's. */
 export type Os = "ios" | "ipados" | "android" | "macos" | "windows" | "linux" | "web";
 
 /** Each platform's mark. */

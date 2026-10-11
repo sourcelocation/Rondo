@@ -20,6 +20,7 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { Link, Outlet } from "react-router";
 import { DeckTree, HomeContext, NewDeckDialog, SmartDecks } from "@/components/decks";
 import { Avatar, confirm, docs, Wordmark } from "@/components/kit";
@@ -32,7 +33,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { app, s, useApp, useScreen } from "@/rondo";
+import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
+import { app, s, useApp, useScreen, type SyncProblem } from "@/rondo";
 import { placeLink, useOverlay, usePlace } from "@/routing";
 import { cn } from "cn";
 
@@ -117,34 +119,12 @@ export function Shell() {
           <Link to="/">
             <Wordmark />
           </Link>
-          <AccountMenu compact />
+          <div className="flex items-center gap-1">
+            <SyncBadge />
+            <AccountMenu compact />
+          </div>
         </header>
         <main className="mx-auto max-w-[var(--rd-size-content-max)] px-4 pt-6 pb-28 sm:px-8 md:pt-10 md:pb-16">
-          {(st?.issues ?? 0) > 0 && (
-            <Link
-              to="/settings/issues"
-              className="mb-4 flex items-center gap-3 rounded-lg bg-warning px-4 py-3 text-sm hover:opacity-90"
-            >
-              <TriangleAlert className="size-4 shrink-0" />
-              <span className="flex-1">{s.issues(st!.issues)}</span>
-              <span className="font-medium">{s.syncIssues}</span>
-            </Link>
-          )}
-          {st?.sync && st.sync !== s.signedOutSync && (
-            <div className="mb-4 flex items-center gap-3 rounded-lg bg-warning px-4 py-3 text-sm">
-              <CloudOff className="size-4 shrink-0" />
-              <span className="flex-1">{st.sync}</span>
-              {st.sync === s.secondFactorDue ? (
-                <Button size="sm" variant="ghost" asChild>
-                  <Link to="/sign-in">{s.signIn}</Link>
-                </Button>
-              ) : (
-                <Button size="sm" variant="ghost" onClick={() => app.syncNow()}>
-                  {s.retry}
-                </Button>
-              )}
-            </div>
-          )}
           <Outlet />
         </main>
         <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
@@ -169,9 +149,15 @@ export function Shell() {
   );
 }
 
-/** Whether changes are reaching the server; everything works offline either way. */
+const line = "flex items-center gap-2 rounded-md px-2 py-1 text-left text-xs hover:text-foreground";
+
+/**
+ * Whether changes are reaching the server, or why not, in a few words that open the rest; and changes
+ * the server didn't take. Everything works offline either way, so none of it stands in the page.
+ */
 function SyncLine() {
   const st = useApp();
+  const [open, setOpen] = useState(false);
   if (!st?.signedIn) return null;
   const minutes = st.syncedAt ? Math.round((app.now() - st.syncedAt) / 60_000) : null;
   const ago =
@@ -179,15 +165,101 @@ function SyncLine() {
       ? s.synced
       : `${s.synced} · ${new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(-minutes, "minute")}`;
   return (
-    <button
-      type="button"
-      className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-      onClick={() => app.syncNow()}
-      title={s.syncNow}
-    >
-      <RefreshCw className={cn("size-3.5", st.syncing && "animate-spin")} />
-      {st.syncing ? s.syncing : st.syncedAt ? ago : s.syncNow}
-    </button>
+    <>
+      {st.sync && !st.syncing ? (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(line, st.sync.needsYou ? "text-warning-foreground" : "text-muted-foreground")}
+            >
+              <CloudOff className="size-3.5 shrink-0" />
+              {st.sync.label}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="start">
+            <Problem problem={st.sync} done={() => setOpen(false)} />
+          </PopoverContent>
+        </Popover>
+      ) : (
+        <button
+          type="button"
+          className={cn(line, "text-muted-foreground")}
+          onClick={() => app.syncNow()}
+          title={s.syncNow}
+        >
+          <RefreshCw className={cn("size-3.5 shrink-0", st.syncing && "animate-spin")} />
+          {st.syncing ? s.syncing : st.syncedAt ? ago : s.syncNow}
+        </button>
+      )}
+      {st.issues > 0 && (
+        <Link to="/settings/issues" className={cn(line, "text-warning-foreground")}>
+          <TriangleAlert className="size-3.5 shrink-0" />
+          {s.issueCount(st.issues)}
+        </Link>
+      )}
+    </>
+  );
+}
+
+/** The sync line's place on a phone's header: an icon, only while something's wrong, opening what. */
+function SyncBadge() {
+  const st = useApp();
+  const [open, setOpen] = useState(false);
+  if (!st?.signedIn || (!st.sync && st.issues === 0)) return null;
+  const Icon = st.issues > 0 ? TriangleAlert : CloudOff;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={st.sync?.label ?? s.issueCount(st.issues)}
+          className={st.issues > 0 || st.sync?.needsYou ? "text-warning-foreground" : "text-muted-foreground"}
+        >
+          <Icon />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="grid gap-4">
+        {st.sync && <Problem problem={st.sync} done={() => setOpen(false)} />}
+        {st.issues > 0 && (
+          <div className="grid gap-3 text-sm">
+            <div className="grid gap-1">
+              <PopoverTitle>{s.issueCount(st.issues)}</PopoverTitle>
+              <PopoverDescription>{s.issues(st.issues)}</PopoverDescription>
+            </div>
+            <Button size="sm" variant="secondary" className="justify-self-start" asChild>
+              <Link to="/settings/issues" onClick={() => setOpen(false)}>
+                {s.syncIssues}
+              </Link>
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** Why syncing stopped, in full, and what resumes it: signing in again, or trying again. */
+function Problem({ problem, done }: { problem: SyncProblem; done: () => void }) {
+  return (
+    <div className="grid gap-3 text-sm">
+      <div className="grid gap-1">
+        <PopoverTitle>{problem.label}</PopoverTitle>
+        <PopoverDescription>{problem.message}</PopoverDescription>
+      </div>
+      {problem.signIn ? (
+        <Button size="sm" className="justify-self-start" asChild>
+          <Link to="/sign-in" onClick={done}>
+            {s.signIn}
+          </Link>
+        </Button>
+      ) : (
+        <Button size="sm" variant="secondary" className="justify-self-start" onClick={() => (done(), app.syncNow())}>
+          {s.retry}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -218,6 +290,7 @@ function SettingsAndDocs() {
 function AccountMenu({ compact }: { compact?: boolean }) {
   const st = useApp();
   const place = usePlace();
+  const pro = useOverlay("pro");
   const side = compact ? "bottom" : "top";
   if (!st) return null;
   if (!st.signedIn)
@@ -284,10 +357,8 @@ function AccountMenu({ compact }: { compact?: boolean }) {
         )}
         <SettingsAndDocs />
         {!st.pro && (
-          <DropdownMenuItem asChild className="text-primary focus:text-primary">
-            <Link to="/settings/plan">
-              <Sparkles className="text-primary" /> {s.upgrade}
-            </Link>
+          <DropdownMenuItem className="text-primary focus:text-primary" onSelect={() => pro.open("upgrade")}>
+            <Sparkles className="text-primary" /> {s.upgrade}
           </DropdownMenuItem>
         )}
         {st.roles.length > 0 && (

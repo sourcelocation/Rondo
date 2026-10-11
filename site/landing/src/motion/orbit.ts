@@ -1,7 +1,8 @@
 import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { all, onResize } from "./dom";
+import { whileOnScreen } from "./loop";
 import { TAU, damp, quantize } from "./math";
+import type { Pointer } from "./pointer";
 
 /** The core's layer: marks behind the ring's middle sort under it, marks in front over it. */
 const CORE_LAYER = 100;
@@ -15,13 +16,14 @@ export class Orbit {
   private readonly items: HTMLElement[];
   private readonly state = { spin: 0 };
   private readonly rest: number;
-  private readonly pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
+  private readonly lean = { x: 0, y: 0 };
   private radius = 0;
   private time = 0;
 
   constructor(
     private readonly root: HTMLElement,
     os: string,
+    private readonly pointer: Pointer,
     private readonly still: boolean,
   ) {
     this.items = all(root, "[data-orbit-item]");
@@ -46,24 +48,8 @@ export class Orbit {
     }
     this.state.spin = this.rest - TAU * 1.15;
     this.draw();
-    window.addEventListener(
-      "pointermove",
-      (event) => {
-        this.pointer.targetX = event.clientX / window.innerWidth - 0.5;
-        this.pointer.targetY = event.clientY / window.innerHeight - 0.5;
-      },
-      { passive: true },
-    );
     gsap.to(this.state, { spin: this.rest, duration: 4.2, ease: "expo.out", delay: 0.3 });
-    ScrollTrigger.create({
-      trigger: root,
-      start: "top bottom",
-      end: "bottom top",
-      onToggle: ({ isActive }) => {
-        if (isActive) gsap.ticker.add(this.tick);
-        else gsap.ticker.remove(this.tick);
-      },
-    });
+    whileOnScreen(root, this.tick);
   }
 
   /** The ring's radius: wide on large screens, and kept clear of a phone's edges. */
@@ -75,15 +61,15 @@ export class Orbit {
   private readonly tick = (_time: number, deltaMs: number): void => {
     const seconds = Math.min(deltaMs / 1000, 1 / 20);
     this.time += seconds;
-    this.pointer.x = damp(this.pointer.x, this.pointer.targetX, 2, seconds);
-    this.pointer.y = damp(this.pointer.y, this.pointer.targetY, 2, seconds);
+    this.lean.x = damp(this.lean.x, this.pointer.x, 2, seconds);
+    this.lean.y = damp(this.lean.y, this.pointer.y, 2, seconds);
     this.draw();
   };
 
   private draw(): void {
     const breath = this.still ? 0 : Math.sin(this.time * 0.7) * 0.05;
-    const spin = this.state.spin + breath + this.pointer.x * 0.5;
-    const tilt = 0.34 + this.pointer.y * 0.16;
+    const spin = this.state.spin + breath + this.lean.x * 0.5;
+    const tilt = 0.34 + this.lean.y * 0.16;
     const focal = this.radius * 3;
     this.items.forEach((item, index) => {
       const angle = (index / this.items.length) * TAU + spin;

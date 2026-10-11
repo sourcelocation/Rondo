@@ -36,7 +36,7 @@ const facts = [
   <Aurora />
   <Nav />
   <main class="download" id="main">
-    <section class="get" aria-labelledby="get-title">
+    <section class="get" aria-labelledby="get-title" data-mood="hero">
       <div class="container get__inner">
         <h1 id="get-title" class="get__title" data-reveal="words">
           Take Rondo <em>everywhere.</em>
@@ -97,7 +97,7 @@ const facts = [
       </div>
     </section>
 
-    <section class="section every" id="platforms" aria-labelledby="every-title">
+    <section class="section every" id="platforms" aria-labelledby="every-title" data-mood="maker">
       <div class="container">
         <h2 id="every-title" class="heading every__title" data-reveal="words">
           Six native apps, <em>and the web.</em>
@@ -180,7 +180,16 @@ const facts = [
 </Page>
 
 <script>
-  import "../motion/download";
+  import { Orbit } from "../motion/orbit";
+  import { scene } from "../motion/scenes";
+  import { spotlight } from "../motion/spotlight";
+
+  scene("[data-orbit]", (root, stage) => {
+    new Orbit(root, document.documentElement.dataset.os ?? "web", stage.pointer, stage.reduced);
+  });
+  scene("[data-spotlight]", (card, stage) => {
+    if (stage.fine) spotlight([card]);
+  });
 </script>
 
 <style>
@@ -252,7 +261,7 @@ const facts = [
     text-align: center;
   }
 
-  /* The visitor's own platform's button, chosen by /launch.js's data-os. */
+  /* The visitor's own platform's button, chosen by /head.js's data-os. */
   .get__yours {
     display: none;
   }

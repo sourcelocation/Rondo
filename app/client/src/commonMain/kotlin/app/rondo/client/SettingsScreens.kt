@@ -1,8 +1,10 @@
 package app.rondo.client
 
-import app.rondo.core.model.Agent
-import app.rondo.core.model.Billing
-import app.rondo.core.model.ProfileUpdate
+import app.rondo.client.net.SignInError
+import app.rondo.client.services.Agent
+import app.rondo.client.services.CodeFlow
+import app.rondo.client.services.Subscription
+import app.rondo.core.Settings
 import kotlin.js.JsExport
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -48,30 +50,30 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
     private var awaiting: Job? = null
 
     /** The subscription and the agents as the server told them: asked when the screen opens. */
-    private var billing: Billing? = null
+    private var billing: Subscription? = null
     private var agents: List<Agent>? = null
 
     override suspend fun load(): SettingsState {
         if (rondo.account.signedIn) {
-            if (billing == null) billing = runCatching { online { rondo.net.api.getBilling().ok() } }.getOrNull()
-            if (agents == null) agents = runCatching { online { rondo.net.api.listAgents().ok() } }.getOrNull()
+            if (billing == null) billing = runCatching { rondo.billing.get() }.getOrNull()
+            if (agents == null) agents = runCatching { rondo.agents.all() }.getOrNull()
         }
         return known()
     }
 
     /** The state from what's known, without asking the server. */
     private suspend fun known(): SettingsState {
-        val s = rondo.store.settings()
+        val s = rondo.library.settings()
         val account = rondo.account
         val me = account.me
         // What the server said is about whoever is signed in: signed out, there's nothing.
         val billing = billing.takeIf { account.signedIn }
         val agents = agents.takeIf { account.signedIn }.orEmpty()
         val pro = billing?.pro ?: (me?.pro == true)
-        val proUntil = (billing?.proUntil ?: me?.proUntil)?.toString()
-        val connected = agents.map { AgentItem(it.clientId, it.clientName, it.grantedAt.toString()) }
+        val proUntil = billing?.proUntil ?: me?.proUntil
+        val connected = agents.map { AgentItem(it.clientId, it.clientName, it.grantedAt) }
         return SettingsState(
-            account.signedIn, account.email, me?.activityHidden == true, pro, proUntil, billing?.provider?.value,
+            account.signedIn, account.email, me?.activityHidden == true, pro, proUntil, billing?.provider,
             billing?.renews == true, s.grading, s.theme, s.textSize, connected.toTypedArray(),
             "${rondo.net.apiUrl}/mcp", rondo.net.apiUrl.takeIf { rondo.platform.serverChoice }, reauth != null, busy,
         )
@@ -109,7 +111,7 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
                 while (billing?.pro != true && tries++ < 10) {
                     show(known())
                     delay(3_000)
-                    runCatching { online { rondo.net.api.getBilling().ok() } }.getOrNull()?.let { billing = it }
+                    runCatching { rondo.billing.get() }.getOrNull()?.let { billing = it }
                 }
                 if (billing?.pro == true) {
                     rondo.account.refresh()
@@ -126,12 +128,11 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
 
     /** Shows or hides your activity on your public profile. */
     fun setActivityHidden(hidden: Boolean) = change {
-        rondo.account.updateProfile(ProfileUpdate(activityHidden = hidden))
+        rondo.account.updateProfile(activityHidden = hidden)
     }
 
-    private fun prefer(block: (app.rondo.core.model.Settings) -> app.rondo.core.model.Settings) = change {
-        val s = rondo.store.settings()
-        rondo.store.save(block(s).copy(v = rondo.store.clock()))
+    private fun prefer(block: (Settings) -> Settings) = change {
+        rondo.library.settings(block)
         rondo.syncSoon()
     }
 
@@ -147,9 +148,9 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
     fun setServer(address: String) = work("server") { rondo.net.useServer(address) }
 
     /** Starts a Stripe checkout for [plan] (monthly or yearly); [open] goes to its page. */
-    fun checkout(plan: String, open: (String) -> Unit) = work("checkout") { open(app.checkoutPage(plan)) }
+    fun checkout(plan: String, open: (String) -> Unit) = work("checkout") { open(rondo.billing.checkout(plan)) }
 
-    fun manage(open: (String) -> Unit) = work("portal") { open(app.portalPage()) }
+    fun manage(open: (String) -> Unit) = work("portal") { open(rondo.billing.portal()) }
 
     /**
      * Redeems a promo code for Pro, from when the Pro there is ends. Pro that starts is welcomed by
@@ -157,18 +158,18 @@ class SettingsScreen internal constructor(override val app: App) : Screen<Settin
      */
     fun redeem(code: String) = work("redeem") {
         val had = billing?.pro ?: (rondo.account.me?.pro == true)
-        billing = app.redeemPromo(code)
+        billing = app.redeem(code)
         if (had) app.say(strings.redeemed)
     }
 
     /** Disconnects an agent: it can't use the account until it's allowed again. */
     fun revokeAgent(clientId: String) = work("disconnect") {
-        online { rondo.net.api.revokeAgent(clientId).ok() }
+        rondo.agents.revoke(clientId)
         agents = agents?.filter { it.clientId != clientId }
     }
 
     fun export() = work("export") {
-        online { rondo.net.api.requestExport().ok() }
+        rondo.account.export()
         app.say(strings.exportSent)
     }
 

@@ -1,14 +1,11 @@
 package app.rondo.client
 
-import app.rondo.client.api.ApiApi
-import app.rondo.core.Templates
+import app.rondo.client.net.ApiError
+import app.rondo.client.services.DiscoverItem
+import app.rondo.client.services.PublicDeck
+import app.rondo.core.ErrorCode
+import app.rondo.core.Refused
 import app.rondo.core.Tree
-import app.rondo.core.model.ActionRequest
-import app.rondo.core.model.DiscoverItem
-import app.rondo.core.model.ErrorCode
-import app.rondo.core.model.InviteRequest
-import app.rondo.core.model.PublicDeck
-import app.rondo.core.model.RoleUpdate
 import kotlin.js.JsExport
 
 @JsExport
@@ -38,56 +35,48 @@ class ShareState internal constructor(
 @JsExport
 class ShareScreen internal constructor(override val app: App, val deckId: String) : Screen<ShareState>() {
     override val live get() = false
-    private val api get() = app.rondo.net.api
+    private val sharing get() = app.rondo.sharing
     private var link: String? = null
 
     override suspend fun load(): ShareState = try {
-        online {
-            val shares = api.listShares(deckId).ok()
-            val invites = api.listInvites(deckId).ok()
-            val publication = api.getPublication(deckId).takeIf { it.success }?.body()
-            ShareState(
-                members = shares.map { Member(it.userId, it.name, it.role) }.toTypedArray(),
-                invites = invites.map { InviteItem(it.id, it.email, it.role, it.expiresAt.toString()) }.toTypedArray(),
-                link = link,
-                published = publication != null && publication.removed != true,
-                slug = publication?.slug,
-                followers = publication?.followers ?: 0,
-                pro = app.rondo.account.me?.pro == true,
-                offline = false,
-                removed = publication?.removed == true,
-                restrictedUntil = app.rondo.account.me?.restrictedUntil?.toString(),
-            )
-        }
+        val shares = sharing.shares(deckId)
+        val invites = sharing.invites(deckId)
+        val publication = sharing.publication(deckId)
+        ShareState(
+            members = shares.map { Member(it.userId, it.name, it.role) }.toTypedArray(),
+            invites = invites.map { InviteItem(it.id, it.email, it.role, it.expiresAt) }.toTypedArray(),
+            link = link,
+            published = publication != null && publication.removed != true,
+            slug = publication?.slug,
+            followers = publication?.followers ?: 0,
+            pro = app.rondo.account.me?.pro == true,
+            offline = false,
+            removed = publication?.removed == true,
+            restrictedUntil = app.rondo.account.me?.restrictedUntil,
+        )
     } catch (e: ApiError) {
         if (e.status != 0) app.notice(e)
         ShareState(emptyArray(), emptyArray(), null, false, null, 0, false, true, false, null)
     }
 
     private fun change(block: suspend () -> Unit) = act {
-        online { block() }
+        block()
         show(load())
     }
 
-    fun invite(email: String, role: Int) = change { api.createInvite(deckId, InviteRequest(role, email.trim())).ok() }
+    fun invite(email: String, role: Int) = change { sharing.invite(deckId, role, email.trim()) }
 
-    fun createLink(role: Int) = change { link = api.createInvite(deckId, InviteRequest(role)).ok().url }
+    fun createLink(role: Int) = change { link = sharing.invite(deckId, role, null).url }
 
-    fun revoke(inviteId: String) = change { api.revokeInvite(inviteId).ok() }
+    fun revoke(inviteId: String) = change { sharing.revoke(inviteId) }
 
-    fun setRole(userId: String, role: Int) = change { api.setShareRole(deckId, userId, RoleUpdate(role)).ok() }
+    fun setRole(userId: String, role: Int) = change { sharing.setRole(deckId, userId, role) }
 
-    fun remove(userId: String) = change { api.removeShare(deckId, userId).ok() }
+    fun remove(userId: String) = change { sharing.remove(deckId, userId) }
 
-    fun publish() = change { api.publishDeck(deckId).ok() }
+    fun publish() = change { sharing.publish(deckId) }
 
-    fun unpublish() = change { api.unpublishDeck(deckId).ok() }
-}
-
-/** Stops borrowing [id], a deck lent to you. */
-internal suspend fun leave(app: App, id: String) {
-    online { app.rondo.net.api.removeShare(id, app.rondo.store.me).ok() }
-    app.rondo.syncNow()
+    fun unpublish() = change { sharing.unpublish(deckId) }
 }
 
 @JsExport
@@ -108,7 +97,12 @@ class PublicItem internal constructor(
     val notes: Int,
     /** Already in your decks. */
     val following: Boolean,
-)
+) {
+    internal constructor(d: DiscoverItem, following: Boolean) : this(
+        d.slug, d.deckId, d.name, d.description, d.language, d.icon, d.color ?: 0, d.ownerName, d.ownerUsername,
+        d.ownerFlag, d.followers, d.notes, following,
+    )
+}
 
 @JsExport
 class DiscoverState internal constructor(
@@ -128,7 +122,7 @@ class DiscoverScreen internal constructor(override val app: App) : Screen<Discov
     override val live get() = false
     private var query = ""
     private var language: String? = null
-    private var sort = ApiApi.SortSearchDiscover.top
+    private var sort = "top"
     private var page = 0
     private val items = ArrayList<DiscoverItem>()
     private var more = false
@@ -136,7 +130,7 @@ class DiscoverScreen internal constructor(override val app: App) : Screen<Discov
     override suspend fun load(): DiscoverState {
         val offline = try {
             if (page == 0) items.clear()
-            val found = online { app.rondo.net.api.searchDiscover(query.ifBlank { null }, language, page, sort).ok() }
+            val found = app.rondo.discover.search(query.ifBlank { null }, language, page, sort)
             items += found.items
             more = found.more
             false
@@ -144,9 +138,9 @@ class DiscoverScreen internal constructor(override val app: App) : Screen<Discov
             if (e.status != 0) throw e
             true
         }
-        val tree = app.rondo.store.tree()
-        val shown = items.map { it.item(tree[it.deckId] != null) }
-        return DiscoverState(shown.toTypedArray(), more, query, language, sort.value, false, offline)
+        val tree = app.rondo.library.tree()
+        val shown = items.map { PublicItem(it, tree[it.deckId] != null) }
+        return DiscoverState(shown.toTypedArray(), more, query, language, sort, false, offline)
     }
 
     fun search(query: String, language: String?) = act {
@@ -158,7 +152,7 @@ class DiscoverScreen internal constructor(override val app: App) : Screen<Discov
 
     /** Orders by [sort]: top, new or hot. */
     fun sortBy(sort: String) = act {
-        this.sort = ApiApi.SortSearchDiscover.entries.firstOrNull { it.value == sort } ?: return@act
+        this.sort = sort.takeIf { it in SORTS } ?: return@act
         page = 0
         show(load())
     }
@@ -167,12 +161,11 @@ class DiscoverScreen internal constructor(override val app: App) : Screen<Discov
         page++
         show(load())
     }
-}
 
-internal fun DiscoverItem.item(following: Boolean) = PublicItem(
-    slug, deckId, name, description, language, icon,
-    color ?: 0, ownerName, ownerUsername, ownerFlag, followers, notes, following,
-)
+    private companion object {
+        val SORTS = setOf("top", "new", "hot")
+    }
+}
 
 /**
  * A deck seen before you have it: from Discover or a share link ([slug]) or an invitation ([token]).
@@ -198,7 +191,6 @@ class PreviewScreen internal constructor(
     private val token: String?,
 ) : Screen<PreviewState>() {
     override val live get() = false
-    private val api get() = app.rondo.net.api
     private var page: PublicDeck? = null
     private var role = 0
     private var fetched = false
@@ -209,24 +201,22 @@ class PreviewScreen internal constructor(
         if (!fetched) {
             fetched = true
             if (token != null) {
-                online { api.previewInvitation(token) }.takeIf { it.status != 404 }?.ok()?.let {
+                app.rondo.sharing.invitation(token)?.let {
                     page = it.deck
                     role = it.role
                 }
             } else if (slug != null) {
-                page = online { api.getPublicDeck(slug) }.takeIf { it.status != 404 }?.ok()
+                page = app.rondo.discover.deck(slug)
             }
         }
         val signedIn = app.rondo.account.signedIn
         val d = page ?: return PreviewState(null, emptyArray(), emptyArray(), signedIn, role, busy, opening)
-        val tree = app.rondo.store.tree()
+        val tree = app.rondo.library.tree()
         val sub = Tree(d.decks)
-        val templates = d.samples.templates.orEmpty().associateBy { it.id } + Templates.builtins.associateBy { it.id }
-        val notes = d.samples.notes.orEmpty()
-        val samples = notes.mapNotNull { n -> templates[n.templateId]?.let { samples(it, n) }?.firstOrNull() }
+        val samples = d.samples.mapNotNull { samples(it.template, it.note).firstOrNull() }
         val paths = sub.byId.values.map { sub.path(it.id).joinToString(" › ") }.sorted()
         return PreviewState(
-            d.item.item(tree[d.item.deckId] != null),
+            PublicItem(d.item, tree[d.item.deckId] != null),
             paths.toTypedArray(),
             samples.toTypedArray(),
             signedIn,
@@ -241,7 +231,7 @@ class PreviewScreen internal constructor(
         busy = true
         show(load())
         try {
-            opening = block().takeIf { app.rondo.store.tree()[it] != null }
+            opening = block().takeIf { app.rondo.library.tree()[it] != null }
         } finally {
             busy = false
             show(load())
@@ -250,14 +240,14 @@ class PreviewScreen internal constructor(
 
     /** Syncs until the borrowed deck [id] has arrived (a few tries). */
     private suspend fun arrive(id: String): String {
-        repeat(5) { if (app.rondo.store.tree()[id] == null) app.rondo.syncNow() }
+        repeat(5) { if (app.rondo.library.tree()[id] == null) app.rondo.syncNow() }
         return id
     }
 
     private suspend fun followed(): String {
         val id = page?.item?.deckId ?: throw Refused(ErrorCode.NOT_FOUND)
-        if (app.rondo.store.tree()[id] != null) return id
-        return arrive(online { api.followDeck(slug ?: throw Refused(ErrorCode.NOT_FOUND)).ok() }.deckId)
+        if (app.rondo.library.tree()[id] != null) return id
+        return arrive(app.rondo.discover.follow(slug ?: throw Refused(ErrorCode.NOT_FOUND)))
     }
 
     /** Follows a deck on Discover: it's yours to study, and the author's changes keep coming. */
@@ -266,7 +256,7 @@ class PreviewScreen internal constructor(
     /** Joins the deck an invitation is for. */
     fun accept() = take {
         val invitation = token ?: throw Refused(ErrorCode.NOT_FOUND)
-        arrive(online { api.acceptInvitation(invitation).ok() }.deckId)
+        arrive(app.rondo.sharing.accept(invitation))
     }
 
     /**
@@ -276,15 +266,14 @@ class PreviewScreen internal constructor(
     fun removeFromDiscover(reason: String, note: String?, takeDown: Boolean) = act {
         val id = page?.item?.deckId ?: return@act
         val data = mapOf("take_down" to takeDown.toString())
-        val told = note?.ifBlank { null }
-        app.doStaff(ActionRequest("deck.remove", deckId = id, reason = reason, note = told, data = data))
+        app.rondo.staff.act("deck.remove", deckId = id, reason = reason, note = note, data = data)
         app.say(strings.done)
     }
 
     /** A copy of your own to change: borrowed just long enough to copy it, unless you already follow it. */
     fun copy() = take {
-        val had = page?.item?.deckId?.let { app.rondo.store.tree()[it] } != null
+        val had = page?.item?.deckId?.let { app.rondo.library.tree()[it] } != null
         val id = followed()
-        app.rondo.library.copy(id).also { if (!had) leave(app, id) }
+        app.rondo.library.copy(id).also { if (!had) app.leave(id) }
     }
 }

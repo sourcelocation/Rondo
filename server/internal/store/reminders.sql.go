@@ -167,7 +167,7 @@ func (q *Queries) PutSummary(ctx context.Context, arg PutSummaryParams) error {
 }
 
 const reminding = `-- name: Reminding :many
-SELECT s.user_id, s.reminder_at, coalesce(s.reminder_email, false)::boolean AS email, s.timezone,
+SELECT s.user_id, s.reminder_at, s.timezone,
   r.last_sent_at, r.last_sent_on, coalesce(r.ignored, 0)::smallint AS ignored, r.paused_at,
   coalesce((SELECT max(e.at) FROM events e WHERE e.user_id = s.user_id AND e.kind = 1), 0)::bigint AS last_review
 FROM settings s LEFT JOIN reminder_state r ON r.user_id = s.user_id
@@ -177,7 +177,6 @@ WHERE s.reminder_at IS NOT NULL
 type RemindingRow struct {
 	UserID     uuid.UUID
 	ReminderAt *int16
-	Email      bool
 	Timezone   *string
 	LastSentAt *time.Time
 	LastSentOn *time.Time
@@ -199,7 +198,6 @@ func (q *Queries) Reminding(ctx context.Context) ([]RemindingRow, error) {
 		if err := rows.Scan(
 			&i.UserID,
 			&i.ReminderAt,
-			&i.Email,
 			&i.Timezone,
 			&i.LastSentAt,
 			&i.LastSentOn,

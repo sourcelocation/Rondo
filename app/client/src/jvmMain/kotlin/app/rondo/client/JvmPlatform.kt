@@ -2,10 +2,14 @@ package app.rondo.client
 
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import app.rondo.client.net.SignInError
 import com.squareup.zstd.okio.zstdDecompress
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.Properties
+import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 import okio.Buffer
 import okio.buffer
 
@@ -33,14 +37,33 @@ class JvmPlatform(
             generateSequence { zip.nextEntry }.filterNot { it.isDirectory }.associate { it.name to zip.readBytes() }
         }
 
+    override suspend fun zip(files: Map<String, ByteArray>): ByteArray = ByteArrayOutputStream().also { out ->
+        ZipOutputStream(out).use { zip ->
+            for ((name, bytes) in files) {
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
+    }.toByteArray()
+
     override fun unzstd(bytes: ByteArray): ByteArray = Buffer().write(bytes).zstdDecompress().buffer().use {
         it.readByteArray()
     }
 
+    /** Each database [openSqlite] made, by its driver: a temporary file. */
+    private val files = HashMap<SqlDriver, File>()
+
     override suspend fun openSqlite(bytes: ByteArray): SqlDriver {
-        val file = File.createTempFile("rondo-import", ".db").apply { deleteOnExit() }
+        val file = File.createTempFile("rondo-sqlite", ".db").apply { deleteOnExit() }
         file.writeBytes(bytes)
-        return JdbcSqliteDriver("jdbc:sqlite:${file.path}")
+        return JdbcSqliteDriver("jdbc:sqlite:${file.path}").also { files[it] = file }
+    }
+
+    override suspend fun sqliteBytes(driver: SqlDriver): ByteArray {
+        driver.close()
+        val file = files.remove(driver) ?: error("Not a database openSqlite made")
+        return file.readBytes().also { file.delete() }
     }
 
     override suspend fun passkey(options: String, register: Boolean): String =

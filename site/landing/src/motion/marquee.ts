@@ -1,6 +1,5 @@
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { all, one, onResize } from "./dom";
+import { whileOnScreen } from "./loop";
 
 /**
  * A row of chips drifting sideways without end. It drifts faster for a moment while the page scrolls, in the
@@ -28,15 +27,7 @@ export class Marquee {
     this.tracks = all(row, "[data-marquee-track]");
     this.measure();
     onResize(this.track, () => this.measure());
-    ScrollTrigger.create({
-      trigger: row,
-      start: "top bottom",
-      end: "bottom top",
-      onToggle: ({ isActive }) => {
-        if (isActive) gsap.ticker.add(this.tick);
-        else gsap.ticker.remove(this.tick);
-      },
-    });
+    whileOnScreen(row, this.tick);
   }
 
   private measure(): void {

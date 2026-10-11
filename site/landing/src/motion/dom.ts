@@ -36,3 +36,21 @@ export function prefersReducedMotion(): boolean {
 export function hasFinePointer(): boolean {
   return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 }
+
+/** Waits for the page's fonts, which text is split and measured by, but not for long. */
+export async function fontsLoaded(): Promise<void> {
+  await Promise.race([document.fonts.ready, new Promise((resolve) => setTimeout(resolve, 1500))]);
+}
+
+/** Waits until the page is on screen, so a tab opened in the background plays its opening when it's first seen. */
+export async function pageShown(): Promise<void> {
+  if (document.visibilityState === "visible") return;
+  await new Promise<void>((resolve) => {
+    const shown = () => {
+      if (document.visibilityState !== "visible") return;
+      document.removeEventListener("visibilitychange", shown);
+      resolve();
+    };
+    document.addEventListener("visibilitychange", shown);
+  });
+}

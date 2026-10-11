@@ -101,8 +101,37 @@ export function useUp() {
   };
 }
 
+/** The overlays, each kept in the address under its name, with the keys it brings along. */
+const OVERLAYS = {
+  note: ["in"],
+  new: ["parent"],
+  settings: [],
+  share: [],
+  export: [],
+  pro: [],
+  sheet: [],
+} as const satisfies Record<string, readonly string[]>;
+type Overlay = keyof typeof OVERLAYS;
+const overlayKeys = new Set<string>(Object.entries(OVERLAYS).flatMap(([name, extra]) => [name, ...extra]));
+
+/**
+ * The page's own part of the address: every search param but the overlays'. A page that keeps its
+ * state there (Browse, its filter) reads it, and writes it back in place, leaving overlays open.
+ */
+export function usePageAddress(): [string, (address: string) => void] {
+  const [params, setParams] = useSearchParams();
+  const address = new URLSearchParams([...params].filter(([key]) => !overlayKeys.has(key))).toString();
+  const set = (next: string) => {
+    if (next === address) return;
+    const kept = new URLSearchParams([...params].filter(([key]) => overlayKeys.has(key)));
+    for (const [key, value] of new URLSearchParams(next)) kept.append(key, value);
+    setParams(kept, { replace: true });
+  };
+  return [address, set];
+}
+
 /** An overlay kept in the address (`?note=…`): its value, and opening and closing it. */
-export function useOverlay(name: string) {
+export function useOverlay(name: Overlay) {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -117,7 +146,7 @@ export function useOverlay(name: string) {
     const before = visited[visited.length - 2];
     const next = new URLSearchParams(params);
     next.delete(name);
-    if (name === "note") next.delete("in");
+    for (const key of OVERLAYS[name]) next.delete(key);
     const url = pathname + (next.size ? `?${next}` : "");
     if (before?.url === url) navigate(-1);
     else setParams(next, { replace: true });

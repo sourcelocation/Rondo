@@ -1,7 +1,6 @@
 package app.rondo.client
 
-import app.rondo.core.model.ProfileUpdate
-import app.rondo.core.model.PublicProfile
+import app.rondo.client.services.PublicProfile
 import kotlin.js.JsExport
 import kotlin.math.ceil
 
@@ -39,12 +38,12 @@ class ProfileSetupScreen internal constructor(override val app: App) : Screen<Se
         val username = if (automatic && suggested != null) usernameFrom(suggested).ifEmpty { current } else current
         val name = me?.name ?: suggested.orEmpty()
         val flag = me?.flag ?: me?.suggestedFlag
-        val start = SetupState(username, null, null, name, flag, me?.usernameChangesAt?.toString(), false)
+        val start = SetupState(username, null, null, name, flag, me?.usernameChangesAt, false)
         return if (username != current) checked(start, username) else start
     }
 
     private suspend fun checked(s: SetupState, username: String): SetupState {
-        val result = runCatching { online { app.rondo.net.api.checkUsername(username).ok() } }.getOrNull()
+        val result = runCatching { app.rondo.account.checkUsername(username) }.getOrNull()
             ?: return s.copy(username = username)
         val note = result.reason?.let(strings::usernameRefusal)
         return s.copy(username = result.username, usernameNote = note, suggestion = result.suggestion)
@@ -72,13 +71,12 @@ class ProfileSetupScreen internal constructor(override val app: App) : Screen<Se
         show(draft!!)
         try {
             val me = app.rondo.account.me
-            val update = ProfileUpdate(
+            app.rondo.account.updateProfile(
                 username = username.takeIf { it != me?.username },
                 name = name.trim(),
                 flag = flag.orEmpty(),
                 confirm = true,
             )
-            app.rondo.account.updateProfile(update)
             app.setupDone()
         } finally {
             draft = draft?.copy(busy = false)
@@ -148,19 +146,17 @@ class ProfileScreen internal constructor(override val app: App, private val user
     Screen<ProfileState>() {
     override val live get() = false
 
-    override suspend fun load(): ProfileState {
-        val response = online { app.rondo.net.api.getProfile(username, year) }
-        return if (response.status == 404) missing() else state(response.ok())
-    }
+    override suspend fun load(): ProfileState =
+        app.rondo.discover.profile(username, year)?.let { state(it) } ?: missing()
 
     private suspend fun state(p: PublicProfile): ProfileState {
-        val tree = app.rondo.store.tree()
-        val decks = p.decks.map { it.item(tree[it.deckId] != null) }
+        val tree = app.rondo.library.tree()
+        val decks = p.decks.map { PublicItem(it, tree[it.deckId] != null) }
         return ProfileState(
-            false, p.id, p.username, p.name, p.flag, p.joined.toString(), p.pro, p.movedFrom, decks.toTypedArray(),
+            false, p.id, p.username, p.name, p.flag, p.joined, p.pro, p.movedFrom, decks.toTypedArray(),
             p.activity?.let { a ->
                 val most = a.days.maxOfOrNull { it.reviews } ?: 0
-                val days = a.days.map { ActivityDayItem(it.date.toString(), it.reviews, level(it.reviews, most)) }
+                val days = a.days.map { ActivityDayItem(it.date, it.reviews, level(it.reviews, most)) }
                 ActivityItem(
                     a.year, a.years.toTypedArray(), a.reviews, a.learned, a.yearReviews, a.yearDays, a.yearMinutes,
                     a.streak, a.longestStreak, days.toTypedArray(),

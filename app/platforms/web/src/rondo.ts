@@ -40,6 +40,12 @@ export function useScreen<T extends Screen>(make: () => T, deps: unknown[] = [])
   return [state, screen as T];
 }
 
+/** The state of [screen], a part another screen holds and closes (a Browse's filter): watched, never closed here. */
+export function usePart<T extends Screen>(screen: T | null): NonNullable<T["state"]> | null {
+  const subscribe = useCallback((changed: () => void) => screen?.watch(changed) ?? (() => {}), [screen]);
+  return useSyncExternalStore(subscribe, () => (screen?.state ?? null) as NonNullable<T["state"]> | null);
+}
+
 /** The app-wide state: account, sync and preferences. */
 export function useApp() {
   const subscribe = useCallback((changed: () => void) => app.watch(changed), []);

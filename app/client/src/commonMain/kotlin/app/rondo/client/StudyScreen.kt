@@ -1,9 +1,10 @@
 package app.rondo.client
 
+import app.rondo.client.services.Scope
 import app.rondo.core.CardSide
 import app.rondo.core.Tree
-import app.rondo.core.nowMillis
 import kotlin.js.JsExport
+import kotlin.time.Clock
 
 /** An answer button: its rating (1 Again … 4 Easy), name, and when the card would come back. */
 @JsExport
@@ -42,7 +43,7 @@ class StudyState internal constructor(
 class StudyScreen internal constructor(override val app: App, scopes: suspend (Tree) -> List<Scope>) :
     Screen<StudyState>() {
     override val live get() = false
-    private val session = Session(app.rondo.store, app.rondo.library, scopes)
+    private val session = app.rondo.study.session(scopes)
     private var started = false
     private var revealed = false
     private var typed: String? = null
@@ -53,10 +54,10 @@ class StudyScreen internal constructor(override val app: App, scopes: suspend (T
         if (!started) {
             session.start()
             started = true
-            shownAt = nowMillis()
+            shownAt = now()
         }
         val card = session.current
-        val grading = app.rondo.store.settings().grading
+        val grading = app.rondo.library.settings().grading
         val intervals = if (revealed) session.intervals() else emptyList()
         val ratings = if (grading == 2) listOf(1, 3) else listOf(1, 2, 3, 4)
         val names = mapOf(1 to strings.again, 2 to strings.hard, 3 to strings.good, 4 to strings.easy)
@@ -69,12 +70,12 @@ class StudyScreen internal constructor(override val app: App, scopes: suspend (T
             session.done, session.left, card == null, session.canUndo,
             // Typing is optional: an empty box just shows the answer.
             typed?.takeIf { revealed && expected != null && it.isNotBlank() }
-                ?.let { Session.typedCorrectly(it, expected!!) },
+                ?.let { session.correct(it, expected!!) },
             typed?.ifBlank { null },
-            session.opened.mapNotNull { app.rondo.store.tree()[it]?.name }.toTypedArray(),
+            session.opened.mapNotNull { app.rondo.library.tree()[it]?.name }.toTypedArray(),
             card?.note?.id, card?.deck?.name, marked ?: ((card?.state?.flag ?: 0) > 0),
             card != null && app.rondo.library.access().canWrite(card.deck.id) == null,
-            card?.let { app.rondo.store.tree().language(it.deck.id) },
+            card?.let { app.rondo.library.tree().language(it.deck.id) },
             if (card == null) session.aheadLeft() else 0,
         )
     }
@@ -88,7 +89,7 @@ class StudyScreen internal constructor(override val app: App, scopes: suspend (T
 
     fun answer(rating: Int) = act {
         if (!revealed) return@act
-        session.answer(rating, (nowMillis() - shownAt).coerceIn(0, 60_000).toInt())
+        session.answer(rating, (now() - shownAt).coerceIn(0, 60_000).toInt())
         next()
     }
 
@@ -107,7 +108,7 @@ class StudyScreen internal constructor(override val app: App, scopes: suspend (T
         revealed = false
         typed = null
         marked = null
-        shownAt = nowMillis()
+        shownAt = now()
         show(load())
         app.rondo.syncSoon()
     }
@@ -135,4 +136,6 @@ class StudyScreen internal constructor(override val app: App, scopes: suspend (T
         session.reload()
         show(load())
     }
+
+    private fun now() = Clock.System.now().toEpochMilliseconds()
 }

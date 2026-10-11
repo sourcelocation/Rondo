@@ -1,7 +1,8 @@
 import init, { type Database, type Sqlite3Static } from "@sqlite.org/sqlite-wasm";
 
-// SQLDelight's web worker protocol over SQLite in WebAssembly: the app's database in OPFS, or an
-// Anki collection held in memory, sent first as { action: "load", bytes }.
+// SQLDelight's web worker protocol over SQLite in WebAssembly: the app's database in OPFS, or one
+// held in memory, sent first as { action: "load", bytes } (an Anki collection to read; none, to
+// write one). "PRAGMA rondo_export" answers with the database's bytes (Web.kt's sqliteBytes).
 type Request = { id: number; action: string; sql?: string; params?: unknown[]; bytes?: Uint8Array };
 
 const transaction: Record<string, string> = {
@@ -24,10 +25,13 @@ async function stored(sqlite3: Sqlite3Static): Promise<Database> {
   }
 }
 
+let sqlite: Sqlite3Static | undefined;
+
 async function open(bytes?: Uint8Array): Promise<Database> {
-  const sqlite3 = await init();
+  const sqlite3 = (sqlite ??= await init());
   if (!bytes) return stored(sqlite3);
   const db = new sqlite3.oo1.DB();
+  if (bytes.length === 0) return db;
   const { capi } = sqlite3;
   const data = sqlite3.wasm.allocFromTypedArray(bytes);
   db.checkRc(
@@ -48,6 +52,9 @@ onmessage = async ({ data: r }: MessageEvent<Request>) => {
   try {
     const db = await (database ??= open());
     const sql = transaction[r.action] ?? r.sql ?? "";
+    if (sql === "PRAGMA rondo_export") {
+      return void postMessage({ id: r.id, results: { values: [[sqlite!.capi.sqlite3_js_db_export(db)]] } });
+    }
     const values = db.exec({ sql, bind: r.params as never, rowMode: "array", returnValue: "resultRows" });
     // A write answers with the rows it changed, as SQLDelight reads them.
     postMessage({

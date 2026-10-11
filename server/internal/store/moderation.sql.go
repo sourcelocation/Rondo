@@ -351,7 +351,7 @@ func (q *Queries) RenewingSubscriptions(ctx context.Context, userID uuid.UUID) (
 }
 
 const searchUsers = `-- name: SearchUsers :many
-SELECT id, name, pro_until, stripe_customer, created_at, username, username_changed_at, flag, activity_hidden, profile_confirmed_at, restricted_until, banned_until, email_key FROM users
+SELECT id, username, username_changed_at, name, flag, activity_hidden, profile_confirmed_at, pro_until, stripe_customer, restricted_until, banned_until, email_key, created_at FROM users
 WHERE username LIKE lower($1::text) || '%' OR name ILIKE '%' || $1::text || '%' OR id::text = $1::text
 ORDER BY (username = lower($1::text)) DESC, created_at DESC LIMIT 30
 `
@@ -367,18 +367,18 @@ func (q *Queries) SearchUsers(ctx context.Context, q_ string) ([]User, error) {
 		var i User
 		if err := rows.Scan(
 			&i.ID,
-			&i.Name,
-			&i.ProUntil,
-			&i.StripeCustomer,
-			&i.CreatedAt,
 			&i.Username,
 			&i.UsernameChangedAt,
+			&i.Name,
 			&i.Flag,
 			&i.ActivityHidden,
 			&i.ProfileConfirmedAt,
+			&i.ProUntil,
+			&i.StripeCustomer,
 			&i.RestrictedUntil,
 			&i.BannedUntil,
 			&i.EmailKey,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -503,7 +503,7 @@ func (q *Queries) SharesOf(ctx context.Context, deckID uuid.UUID) ([]SharesOfRow
 }
 
 const stoppedRenewals = `-- name: StoppedRenewals :many
-SELECT provider, ref, user_id, product, status, period_end, auto_renew, sandbox, updated_at, renewal_stopped FROM subscriptions WHERE user_id = $1 AND renewal_stopped
+SELECT provider, ref, user_id, product, status, period_end, auto_renew, sandbox, renewal_stopped, updated_at FROM subscriptions WHERE user_id = $1 AND renewal_stopped
 `
 
 // Someone's subscriptions whose renewal a ban turned off.
@@ -525,8 +525,8 @@ func (q *Queries) StoppedRenewals(ctx context.Context, userID uuid.UUID) ([]Subs
 			&i.PeriodEnd,
 			&i.AutoRenew,
 			&i.Sandbox,
-			&i.UpdatedAt,
 			&i.RenewalStopped,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -548,7 +548,7 @@ func (q *Queries) UndoNames(ctx context.Context, actionID *uuid.UUID) error {
 }
 
 const usersAt = `-- name: UsersAt :many
-SELECT DISTINCT u.id, u.name, u.pro_until, u.stripe_customer, u.created_at, u.username, u.username_changed_at, u.flag, u.activity_hidden, u.profile_confirmed_at, u.restricted_until, u.banned_until, u.email_key FROM users u JOIN user_ips i ON i.user_id = u.id WHERE i.ip <<= $1::cidr LIMIT 30
+SELECT DISTINCT u.id, u.username, u.username_changed_at, u.name, u.flag, u.activity_hidden, u.profile_confirmed_at, u.pro_until, u.stripe_customer, u.restricted_until, u.banned_until, u.email_key, u.created_at FROM users u JOIN user_ips i ON i.user_id = u.id WHERE i.ip <<= $1::cidr LIMIT 30
 `
 
 func (q *Queries) UsersAt(ctx context.Context, range_ netip.Prefix) ([]User, error) {
@@ -562,18 +562,18 @@ func (q *Queries) UsersAt(ctx context.Context, range_ netip.Prefix) ([]User, err
 		var i User
 		if err := rows.Scan(
 			&i.ID,
-			&i.Name,
-			&i.ProUntil,
-			&i.StripeCustomer,
-			&i.CreatedAt,
 			&i.Username,
 			&i.UsernameChangedAt,
+			&i.Name,
 			&i.Flag,
 			&i.ActivityHidden,
 			&i.ProfileConfirmedAt,
+			&i.ProUntil,
+			&i.StripeCustomer,
 			&i.RestrictedUntil,
 			&i.BannedUntil,
 			&i.EmailKey,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -586,7 +586,7 @@ func (q *Queries) UsersAt(ctx context.Context, range_ netip.Prefix) ([]User, err
 }
 
 const usersByID = `-- name: UsersByID :many
-SELECT id, name, pro_until, stripe_customer, created_at, username, username_changed_at, flag, activity_hidden, profile_confirmed_at, restricted_until, banned_until, email_key FROM users WHERE id = ANY($1::uuid[])
+SELECT id, username, username_changed_at, name, flag, activity_hidden, profile_confirmed_at, pro_until, stripe_customer, restricted_until, banned_until, email_key, created_at FROM users WHERE id = ANY($1::uuid[])
 `
 
 func (q *Queries) UsersByID(ctx context.Context, dollar_1 []uuid.UUID) ([]User, error) {
@@ -600,18 +600,18 @@ func (q *Queries) UsersByID(ctx context.Context, dollar_1 []uuid.UUID) ([]User, 
 		var i User
 		if err := rows.Scan(
 			&i.ID,
-			&i.Name,
-			&i.ProUntil,
-			&i.StripeCustomer,
-			&i.CreatedAt,
 			&i.Username,
 			&i.UsernameChangedAt,
+			&i.Name,
 			&i.Flag,
 			&i.ActivityHidden,
 			&i.ProfileConfirmedAt,
+			&i.ProUntil,
+			&i.StripeCustomer,
 			&i.RestrictedUntil,
 			&i.BannedUntil,
 			&i.EmailKey,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

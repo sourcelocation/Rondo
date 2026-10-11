@@ -1,6 +1,6 @@
 import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { one, onResize } from "./dom";
+import { whileOnScreen } from "./loop";
 import { clamp, damp } from "./math";
 
 /** How much the lens magnifies. */
@@ -53,16 +53,7 @@ export class CodeLens {
     root.addEventListener("pointerleave", () => (this.following = false));
     gsap.to(this.window, { opacity: 1, duration: 1.2, ease: "power2.out" });
     this.draw();
-    if (still) return;
-    ScrollTrigger.create({
-      trigger: root,
-      start: "top bottom",
-      end: "bottom top",
-      onToggle: ({ isActive }) => {
-        if (isActive) gsap.ticker.add(this.tick);
-        else gsap.ticker.remove(this.tick);
-      },
-    });
+    if (!still) whileOnScreen(root, this.tick);
   }
 
   private measure(): void {

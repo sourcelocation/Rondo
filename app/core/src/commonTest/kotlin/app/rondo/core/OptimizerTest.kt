@@ -1,22 +1,14 @@
 package app.rondo.core
 
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.EmptyCoroutineContext
-import kotlin.coroutines.startCoroutine
 import kotlin.math.max
 import kotlin.random.Random
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class OptimizerTest {
-    private fun <T> run(block: suspend () -> T): T {
-        var result: Result<T>? = null
-        block.startCoroutine(Continuation(EmptyCoroutineContext) { result = it })
-        return result!!.getOrThrow()
-    }
-
     /** Reviews of a learner whose memory works by [truth]: each due after about its stability. */
     private fun history(truth: List<Double>, cards: Int): List<IntArray> {
         val fsrs = Fsrs(truth, fuzz = false)
@@ -52,8 +44,8 @@ class OptimizerTest {
             }
         }
         val cards = history(truth, 400)
-        val fitted = assertNotNull(run { Optimizer.fit(cards, steps = 40) })
-        assertTrue(Fsrs.valid(fitted))
+        val fitted = assertNotNull(blocking { Fsrs().fit(cards, steps = 40) })
+        assertEquals(fitted, Fsrs(fitted).weights, "within FSRS's bounds")
         val before = Fsrs(Fsrs.DEFAULT).loss(cards)
         val after = Fsrs(fitted).loss(cards)
         assertTrue(after < before, "loss $before -> $after")
@@ -62,6 +54,6 @@ class OptimizerTest {
 
     @Test
     fun waitsForEnoughReviews() {
-        assertNull(run { Optimizer.fit(history(Fsrs.DEFAULT, 50)) })
+        assertNull(blocking { Fsrs().fit(history(Fsrs.DEFAULT, 50)) })
     }
 }

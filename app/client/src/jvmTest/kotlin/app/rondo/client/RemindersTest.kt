@@ -1,11 +1,11 @@
 package app.rondo.client
 
-import app.rondo.core.Ids
-import app.rondo.core.Templates
-import app.rondo.core.model.Event
+import app.rondo.core.Event
+import app.rondo.core.Template
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Instant
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.runBlocking
 
 class RemindersTest {
@@ -29,11 +29,11 @@ class RemindersTest {
         val phone = Phone(JvmPlatform("http://localhost", "http://localhost", ":memory:", null))
         val rondo = Rondo.open(phone, autoSync = false)
         val store = rondo.store
-        store.save(store.settings().copy(timezone = "UTC", reminderAt = 18 * 60, v = store.clock()))
+        store.settings.save(store.settings.get().copy(timezone = "UTC", reminderAt = 18 * 60, v = store.clock()))
         val library = rondo.library
         val deck = library.createDeck("Spanish")
         library.updateDeck(deck.id) { it.copy(newPerDay = 10, reviewsPerDay = 100) }
-        val notes = List(15) { library.newNote(deck.id, Templates.BASIC, mapOf("1" to "uno $it", "2" to "one")) }
+        val notes = List(15) { library.newNote(deck.id, Template.BASIC.id, mapOf("1" to "uno $it", "2" to "one")) }
         // Three reviews: one overdue, one due tomorrow morning, one in three days.
         for ((note, due) in notes.take(3).zip(listOf(now - day, now + day - 2 * 3_600_000L, now + 3 * day))) {
             store.driver.execute(null, "UPDATE card_state SET state = 2, due = $due WHERE note_id = ?", 1) {
@@ -51,13 +51,13 @@ class RemindersTest {
         assertEquals(strings.reminderTitle(11), phone.scheduled.first().title)
 
         // Studied today: today's reminder goes, the rest stay.
-        store.save(Event(Ids.new(), store.me, notes[3].id, 0, 1, now - 3_600_000L, value = 3))
+        store.events.save(Event.Review(Uuid.generateV7().toString(), store.me, notes[3].id, 1, now - 3_600_000L, 3))
         rondo.reminders.schedule(now = now)
         assertEquals(6, phone.scheduled.size)
         assertEquals(Instant.parse("2026-10-08T18:00:00Z").toEpochMilliseconds(), phone.scheduled.first().at)
 
         // Reminders off: nothing scheduled.
-        store.save(store.settings().copy(reminderAt = null, v = store.clock()))
+        store.settings.save(store.settings.get().copy(reminderAt = null, v = store.clock()))
         rondo.reminders.schedule(now = now)
         assertEquals(0, phone.scheduled.size)
     }

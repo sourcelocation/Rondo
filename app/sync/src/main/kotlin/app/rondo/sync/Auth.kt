@@ -1,6 +1,6 @@
 package app.rondo.sync
 
-import app.rondo.core.model.ErrorCode
+import app.rondo.core.ErrorCode
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.request.forms.submitForm

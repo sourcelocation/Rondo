@@ -127,7 +127,7 @@ func Serve(ctx context.Context, cfg Config, log *slog.Logger) error {
 	} else if cfg.MediaDir == "" {
 		return errors.New("set RONDO_MEDIA_DIR or RONDO_S3_BUCKET")
 	}
-	mailer := mail.New(mail.Config{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Password: cfg.SMTPPassword, TLS: cfg.SMTPTLS, From: cfg.MailFrom, BrandDir: cfg.BrandDir})
+	mailer := mail.New(mail.Config{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Password: cfg.SMTPPassword, TLS: cfg.SMTPTLS, From: cfg.MailFrom, BrandDir: cfg.BrandDir, PublicURL: cfg.PublicURL})
 	httpClient := &http.Client{Timeout: 15 * time.Second}
 	oryClient := &ory.Client{KratosPublic: cfg.KratosPublic, KratosAdmin: cfg.KratosAdmin, HydraAdmin: cfg.HydraAdmin, HTTP: httpClient}
 
@@ -145,9 +145,10 @@ func Serve(ctx context.Context, cfg Config, log *slog.Logger) error {
 	river.AddWorker(workers, resets)
 	pusher := &notify.Pusher{PublicKey: cfg.VAPIDPublicKey, PrivateKey: cfg.VAPIDPrivateKey, Subject: cfg.VAPIDSubject, HTTP: httpClient}
 	river.AddWorker(workers, &notify.PushWorker{Pool: pool, Pusher: pusher})
-	reminding := &reminders.Worker{Pool: pool, Pusher: pusher, Ory: oryClient, PublicURL: cfg.PublicURL}
+	reminding := &reminders.Worker{Pool: pool, Pusher: pusher}
 	river.AddWorker(workers, reminding)
-	river.AddWorker(workers, &jobs.ExportWorker{Pool: pool, Blobs: blobs, Mailer: mailer})
+	exports := &jobs.ExportWorker{Pool: pool, Blobs: blobs}
+	river.AddWorker(workers, exports)
 	river.AddWorker(workers, &jobs.MediaGCWorker{Pool: pool, Blobs: blobs})
 	queue, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 8}},
@@ -170,8 +171,8 @@ func Serve(ctx context.Context, cfg Config, log *slog.Logger) error {
 		return err
 	}
 	sender := &notify.Sender{Jobs: queue}
-	resets.Jobs = queue
-	reminding.Jobs, reminding.Notify = queue, sender
+	resets.Jobs, exports.Jobs = queue, queue
+	reminding.Notify = sender
 	skipPasskey := cfg.StaffPasskey == "off" && strings.HasPrefix(cfg.PublicURL, "http://localhost")
 	if skipPasskey {
 		log.Warn("staff tools work without a passkey (RONDO_STAFF_PASSKEY=off): local development only")

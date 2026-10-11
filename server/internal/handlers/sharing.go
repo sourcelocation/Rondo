@@ -12,10 +12,12 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"golang.org/x/time/rate"
 
 	"github.com/sourcelocation/rondo/server/internal/api"
 	"github.com/sourcelocation/rondo/server/internal/jobs"
@@ -111,6 +113,15 @@ func hashToken(token string) []byte {
 	return sum[:]
 }
 
+// inviters limits the invitations each person sends by email, which carry their words to any
+// address: twenty, then one every ten minutes. Links aren't limited.
+var inviters sync.Map
+
+func inviteAllowed(user uuid.UUID) bool {
+	l, _ := inviters.LoadOrStore(user, rate.NewLimiter(rate.Every(10*time.Minute), 20))
+	return l.(*rate.Limiter).Allow()
+}
+
 // CreateInvite makes a link anyone can use for 30 days, or with an email a single-use invitation
 // sent to that address.
 func (s *Server) CreateInvite(ctx context.Context, r api.CreateInviteRequestObject) (api.CreateInviteResponseObject, error) {
@@ -133,6 +144,9 @@ func (s *Server) CreateInvite(ctx context.Context, r api.CreateInviteRequestObje
 	}
 	if err := s.editorsAllowed(ctx, id.ID, r.Body.Role); err != nil {
 		return nil, err
+	}
+	if r.Body.Email != nil && !inviteAllowed(id.ID) {
+		return nil, fail(http.StatusTooManyRequests, api.RateLimited, "That's a lot of invitations by email. Share a link instead, or try again in a while.")
 	}
 	secret := make([]byte, 24)
 	_, _ = rand.Read(secret)
@@ -425,23 +439,26 @@ func (s *Server) publicDeck(ctx context.Context, where string, args ...any) (api
 		return api.PublicDeck{}, errNotFound
 	}
 	item := items[0]
-	decks, err := decode[api.Deck](s.Q.Subtree(ctx, item.DeckId))
+	// Rondo's data goes through as its rows are: the sync server's records read them.
+	decks, err := decode[map[string]any](s.Q.Subtree(ctx, item.DeckId))
 	if err != nil {
 		return api.PublicDeck{}, err
 	}
-	notes, err := decode[api.Note](s.Q.Samples(ctx, item.DeckId))
+	notes, err := decode[map[string]any](s.Q.Samples(ctx, item.DeckId))
 	if err != nil {
 		return api.PublicDeck{}, err
 	}
 	var ids []uuid.UUID
 	for _, n := range notes {
-		ids = append(ids, n.TemplateId)
+		if id, err := uuid.Parse(fmt.Sprint(n["template_id"])); err == nil {
+			ids = append(ids, id)
+		}
 	}
-	templates, err := decode[api.Template](s.Q.TemplatesByID(ctx, ids))
+	templates, err := decode[map[string]any](s.Q.TemplatesByID(ctx, ids))
 	if err != nil {
 		return api.PublicDeck{}, err
 	}
-	return api.PublicDeck{Item: item, Decks: decks, Samples: api.Rows{Notes: &notes, Templates: &templates}}, nil
+	return api.PublicDeck{Item: item, Decks: decks, Samples: api.Samples{Notes: notes, Templates: templates}}, nil
 }
 
 func decode[T any](rows []string, err error) ([]T, error) {

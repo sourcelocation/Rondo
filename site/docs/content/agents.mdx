@@ -203,19 +203,23 @@ Assistants write fields in [Rondo's markup](#markup), the same text the editor s
 <Accordions>
 <Accordion title="Available MCP tools" id="tools">
 
-| Tool             | Does                                                                               |
-| ---------------- | ---------------------------------------------------------------------------------- |
-| `list_decks`     | Every deck you own or can use, with its path, your role and how many notes it has. |
-| `list_templates` | Note types: their fields and the cards they make.                                  |
-| `search_notes`   | Finds notes by text and deck (including its sub-decks).                            |
-| `get_notes`      | Reads notes by id.                                                                 |
-| `create_deck`    | Creates a deck, or a path of decks like `Spanish/Verbs`.                           |
-| `update_deck`    | Renames a deck, or changes its description, daily limits or levels.                |
-| `create_notes`   | Adds notes to a deck with a note type, fields by name.                             |
-| `update_notes`   | Changes notes' fields.                                                             |
-| `move_notes`     | Moves notes to another deck.                                                       |
-| `delete_notes`   | Deletes notes; they stay restorable for 30 days.                                   |
-| `due_today`      | How many new, learning and review cards a deck, or everything, offers today.       |
+| Tool             | Does                                                                                                     |
+| ---------------- | -------------------------------------------------------------------------------------------------------- |
+| `list_decks`     | Every deck you own or can use, with its path, your role and how many notes it has.                       |
+| `list_templates` | Note types: their fields and the cards they make.                                                        |
+| `search_notes`   | Finds notes by text, deck (including its sub-decks) and tags, a page at a time.                          |
+| `get_notes`      | Reads notes by id.                                                                                       |
+| `create_deck`    | Creates a deck, or a path of decks like `Spanish/Verbs`.                                                 |
+| `update_deck`    | Renames a deck, or changes its description, daily limits or levels.                                      |
+| `delete_deck`    | Deletes a deck with its sub-decks and notes; they stay restorable for 30 days.                           |
+| `create_notes`   | Adds notes as rows of fields or CSV, skipping ones already there. With `rondo-mcp`, from a CSV file too. |
+| `export_csv`     | A deck's notes as CSV, one a note type: what `create_notes` takes back.                                  |
+| `update_notes`   | Changes notes' fields or tags.                                                                           |
+| `move_notes`     | Moves notes to another deck.                                                                             |
+| `delete_notes`   | Deletes notes; they stay restorable for 30 days.                                                         |
+| `due_today`      | How many new, learning and review cards a deck, or everything, offers today.                             |
+
+A note is already there when another note of the same type in the same top-level deck has the same first field, as the editor warns too. An assistant can add it anyway.
 
 </Accordion>
 <Accordion title="Markup" id="markup">

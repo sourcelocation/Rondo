@@ -1,0 +1,249 @@
+---
+import { Image } from "astro:assets";
+import opening from "../assets/flight/opening.webp";
+import openingTall from "../assets/flight/opening-tall.webp";
+import rest from "../assets/flight/rest.webp";
+import restTall from "../assets/flight/rest-tall.webp";
+import { links } from "../content/links";
+import Kicker from "./Kicker.astro";
+
+/**
+ * Offline, and in sync: a film of an airliner skimming the cloud tops, white on white, drawn by three.js and played by
+ * the scroll (motion/flight.ts). The section is several screens tall and the film holds the screen through it: it
+ * opens on the plane's business cabin, seen from a little ahead, with the words above the clouds over the sky; as the
+ * page scrolls the camera swings in through a window, turns to the laptop on the empty seat's table, and settles
+ * there, Rondo in airplane mode, as the words of landing come up over the cabin. The film fades into the page above
+ * and below. Its posters, drawn by the film itself at twice the pixels, stand in until it plays: its opening shot,
+ * full screen (16:10, and 1:2 for phones), so it takes over from them seamlessly; and, without motion, where it would
+ * have come to rest (2:1, and 4:5), the words then laid out above and below it.
+ */
+---
+
+<section class="flight" id="offline" aria-labelledby="offline-title" data-mood="sync" data-flight>
+  <div class="flight__stage">
+    <div class="container flight__copy flight__copy--above" data-flight-above>
+      <Kicker>Offline &amp; sync</Kicker>
+      <h2 id="offline-title" class="heading" data-reveal="words">
+        Offline above the clouds.
+      </h2>
+    </div>
+
+    <div class="flight__film" aria-hidden="true">
+      {/* The posters: the film's opening shot and its last, framed for wide screens and for tall ones. */}
+      <Image
+        class="flight__poster flight__poster--wide"
+        src={opening}
+        alt=""
+        widths={[960, 1440, 1920, 2880]}
+        sizes="100vw"
+        loading="lazy"
+      />
+      <Image
+        class="flight__poster flight__poster--tall"
+        src={openingTall}
+        alt=""
+        widths={[540, 1080]}
+        sizes="100vw"
+        loading="lazy"
+      />
+      <Image
+        class="flight__poster flight__poster--rest"
+        src={rest}
+        alt=""
+        widths={[960, 1440, 1920, 2880]}
+        sizes="100vw"
+        loading="lazy"
+      />
+      <Image
+        class="flight__poster flight__poster--rest-tall"
+        src={restTall}
+        alt=""
+        widths={[540, 1080]}
+        sizes="100vw"
+        loading="lazy"
+      />
+      <div class="flight__screen" data-flight-screen></div>
+    </div>
+
+    <div class="container flight__copy flight__copy--landed" data-flight-landed>
+      <p class="heading">
+        <em>In sync when you land.</em>
+      </p>
+      <p class="lead">
+        Your whole collection lives on your device, so Rondo never needs a connection to study, edit or import. Back
+        online, it syncs in the background, and every answer from every device counts.
+      </p>
+      <p class="flight__more">
+        <a class="link" href={`${links.docs}sync`}>
+          How sync works
+        </a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { FlightFilm } from "../motion/flight";
+  import { scene } from "../motion/scenes";
+
+  scene("[data-flight]", (host, stage) => new FlightFilm(host, stage));
+</script>
+
+<style>
+  /* Several screens tall: the scroll through it plays the film, which holds the screen meanwhile. */
+  .flight {
+    position: relative;
+    height: 360svh;
+  }
+
+  .flight__stage {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    overflow: hidden;
+  }
+
+  /*
+   * The words, over the film's top: its sky at the opening, the cabin beyond the laptop at rest, both faded to the
+   * page's white there.
+   */
+  .flight__copy {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(var(--nav) + clamp(24px, 6svh, 72px));
+    z-index: 1;
+    display: grid;
+    justify-items: center;
+    gap: clamp(16px, 2.4vh, 28px);
+    text-align: center;
+  }
+
+  .flight__copy .heading {
+    max-width: 14em;
+  }
+
+  .flight__copy .lead {
+    max-width: 34em;
+  }
+
+  .flight__more {
+    font-size: var(--size-small);
+    color: var(--ink-2);
+  }
+
+  /* The film: the whole screen, its top fading into the page under the words, and its foot into the page below. */
+  .flight__film {
+    position: absolute;
+    inset: 0;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 6%, #000 42%, #000 86%, transparent);
+    mask-image: linear-gradient(to bottom, transparent 6%, #000 42%, #000 86%, transparent);
+  }
+
+  .flight__poster {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .flight__poster--tall,
+  .flight__poster--rest,
+  .flight__poster--rest-tall {
+    display: none;
+  }
+
+  /* The film fades in over its poster once it has drawn its first frame, and the poster then goes. */
+  .flight__screen {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.4s var(--ease-out);
+  }
+
+  .flight.is-playing .flight__screen {
+    opacity: 1;
+  }
+
+  .flight.is-playing .flight__poster {
+    visibility: hidden;
+    transition: visibility 0s 1.4s;
+  }
+
+  .flight__screen :global(canvas) {
+    width: 100%;
+    height: 100%;
+  }
+
+  @media (width < 760px) {
+    /* A phone's frame has the laptop higher: the words of landing keep to their heading, clear of it. */
+    .flight__copy--landed .lead {
+      display: none;
+    }
+
+    .flight__poster--wide {
+      display: none;
+    }
+
+    .flight__poster--tall {
+      display: block;
+    }
+  }
+
+  /*
+   * Without motion the film doesn't play: the section is as tall as it is, its words above and below the poster of
+   * where the film would have come to rest.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .flight {
+      height: auto;
+      padding-top: var(--section);
+    }
+
+    .flight__stage {
+      position: static;
+      height: auto;
+      display: grid;
+      gap: clamp(24px, 4vh, 48px);
+    }
+
+    .flight__copy {
+      position: static;
+    }
+
+    .flight__film {
+      position: relative;
+      height: clamp(440px, 50vw, 88svh);
+      -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 84%, transparent);
+      mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 84%, transparent);
+    }
+
+    .flight__poster--wide,
+    .flight__poster--tall {
+      display: none;
+    }
+
+    .flight__poster--rest {
+      display: block;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) and (width < 760px) {
+    .flight__copy--landed .lead {
+      display: block;
+    }
+
+    .flight__film {
+      height: auto;
+      aspect-ratio: 4 / 5;
+    }
+
+    .flight__poster--rest {
+      display: none;
+    }
+
+    .flight__poster--rest-tall {
+      display: block;
+    }
+  }
+</style>

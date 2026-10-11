@@ -82,9 +82,9 @@ Your review history comes along, so cards continue on their current schedule. An
 - **Local-first.** Apps read and write their own SQLite copy and never wait on the network. Decks, note types and notes are rows with a clock; the newest version of a row wins.
 - **Progress is a log.** Reviews, suspensions and flags are events that are never overwritten, so two offline devices can't lose each other's answers. Card states are folded from them.
 - **One set of rules.** `:core` decides what a write may do; devices check it before writing, the sync server again before storing. The same Kotlin runs in the apps and on the server.
-- **Spec-first.** [`rondo.yaml`](server/api/rondo.yaml) generates the Go server interfaces, the Kotlin models and client, and the API docs.
+- **Spec-first for Go.** [`rondo.yaml`](server/api/rondo.yaml) generates the Go server's interfaces and the API docs. Rondo's data is Kotlin classes in `:core`, stored and synced as records; the compiler is the contract between the apps and the sync server.
 
-[ARCHITECTURE.md](ARCHITECTURE.md) has the whole map: who owns what, the rules every write follows, and how sync works.
+[ARCHITECTURE.md](ARCHITECTURE.md) has the map, and what every change does and doesn't do.
 
 ## Run your own
 

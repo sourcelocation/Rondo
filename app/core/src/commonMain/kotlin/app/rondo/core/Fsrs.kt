@@ -1,11 +1,14 @@
 package app.rondo.core
 
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.round
+import kotlin.math.sqrt
+import kotlin.random.Random
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -68,6 +71,9 @@ class Fsrs(
     private val fuzz: Boolean = true,
 ) {
     private val w: DoubleArray = (weights?.takeIf(::valid) ?: DEFAULT).toDoubleArray()
+
+    /** The weights in use: those given when they're within FSRS's bounds, otherwise the defaults. */
+    val weights: List<Double> get() = w.toList()
     private val decay = -w[20]
     private val factor = 0.9.pow(1 / decay) - 1
 
@@ -199,6 +205,47 @@ class Fsrs(
         return sum / max(n, 1)
     }
 
+    /**
+     * Weights that predict one learner's [cards] better than these, or null: Adam over
+     * central-difference gradients of [loss], kept within FSRS's bounds, on their device. Cards are
+     * as [loss] takes them. [pause] runs between steps, to yield where everything shares one thread.
+     */
+    suspend fun fit(cards: List<IntArray>, steps: Int = 80, pause: suspend () -> Unit = {}): List<Double>? {
+        val start = weights
+        if (cards.sumOf { it.size / 2 - 1 } < MIN_REVIEWS) return null
+        // About 20,000 reviews are plenty, and keep a step quick enough for a phone.
+        val sample = ArrayList<IntArray>()
+        var reviews = 0
+        for (c in cards.shuffled(Random(7))) {
+            if (reviews >= 20_000) break
+            sample += c
+            reviews += c.size / 2
+        }
+        fun loss(w: DoubleArray) = Fsrs(w.toList(), fuzz = false).loss(sample)
+        val w = start.toDoubleArray()
+        // Steps in proportion to each weight, so initial stabilities (up to 100) move as fast as the rest.
+        val scale = DoubleArray(w.size) { max(1.0, abs(w[it])) }
+        val m = DoubleArray(w.size)
+        val v = DoubleArray(w.size)
+        repeat(steps) { t ->
+            for (i in w.indices) {
+                val h = 1e-4 * max(1.0, abs(w[i]))
+                val up = w.copyOf().also { it[i] += h }
+                val down = w.copyOf().also { it[i] -= h }
+                val g = (loss(up) - loss(down)) / (2 * h)
+                m[i] = 0.9 * m[i] + 0.1 * g
+                v[i] = 0.999 * v[i] + 0.001 * g * g
+            }
+            for (i in w.indices) {
+                val mHat = m[i] / (1 - 0.9.pow(t + 1))
+                val vHat = v[i] / (1 - 0.999.pow(t + 1))
+                w[i] = (w[i] - 0.04 * scale[i] * mHat / (sqrt(vHat) + 1e-8)).coerceIn(LOWER[i], UPPER[i])
+            }
+            pause()
+        }
+        return w.map { round(it * 10_000) / 10_000 }.takeIf { loss(it.toDoubleArray()) < loss(start.toDoubleArray()) }
+    }
+
     private fun clampS(v: Double) = max(v, 0.001)
     private fun clampD(v: Double) = v.coerceIn(1.0, 10.0)
     private fun initialDifficulty(r: Int) = w[4] - exp(w[5] * (r - 1)) + 1
@@ -242,9 +289,9 @@ class Fsrs(
         )
         private val FUZZ = listOf(Triple(2.5, 7.0, 0.15), Triple(7.0, 20.0, 0.1), Triple(20.0, 1e18, 0.05))
 
-        fun valid(w: List<Double>): Boolean = w.size == 21 && w.indices.all { w[it] in LOWER[it]..UPPER[it] }
+        /** Fewer reviews than this say more about chance than about the learner. */
+        const val MIN_REVIEWS = 1000
 
-        fun parse(weights: String?): List<Double>? =
-            weights?.split(',')?.mapNotNull { it.trim().toDoubleOrNull() }?.takeIf(::valid)
+        private fun valid(w: List<Double>): Boolean = w.size == 21 && w.indices.all { w[it] in LOWER[it]..UPPER[it] }
     }
 }

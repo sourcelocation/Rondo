@@ -6,7 +6,6 @@ plugins {
     alias(libs.plugins.jvm) apply false
     alias(libs.plugins.serialization) apply false
     alias(libs.plugins.sqldelight) apply false
-    alias(libs.plugins.openapi) apply false
 }
 
 // Kotlin/JS gets Node.js from the repository declared in settings.gradle.kts, the only place

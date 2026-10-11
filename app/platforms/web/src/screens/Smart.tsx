@@ -1,42 +1,19 @@
-import { Play, SlidersHorizontal, Settings2, Trash2 } from "lucide-react";
+import { Play, Settings2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { ColorSwatches, EmojiPicker } from "@/components/decks";
-import { confirm, Counts, Empty, Header, Loading, Section } from "@/components/kit";
+import { confirm, Counts, Empty, Header, Loading, Section, WholeInput } from "@/components/kit";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { app, s, useScreen, type SmartDeckScreen, type SmartDeckState } from "@/rondo";
+import { app, s, usePart, useScreen, type SmartDeckScreen, type SmartDeckState } from "@/rondo";
 import { useOverlay, useUp } from "@/routing";
-import { filterParams } from "@/screens/Browse";
+import { FilterBar, NoteList, SortMenu } from "@/screens/Browse";
 
-type Look = { name: string; icon: string | null; color: number; newPerDay: number; reviewsPerDay: number };
-
-/** Saves [change] on top of what the smart deck has now. */
-const save = (smart: SmartDeckScreen, st: SmartDeckState, change: Partial<Look>) => {
-  const v = {
-    name: st.item.name,
-    icon: st.item.icon ?? null,
-    color: st.item.color,
-    newPerDay: st.newPerDay,
-    reviewsPerDay: st.reviewsPerDay,
-    ...change,
-  };
-  smart.save(v.name, v.icon, v.color, v.newPerDay, v.reviewsPerDay);
-};
-
-/** A whole number from an input, kept within [min]…[max]; null while it's not a number. */
-const whole = (text: string, min: number, max: number) => {
-  const n = Number.parseInt(text, 10);
-  return Number.isNaN(n) ? null : Math.min(max, Math.max(min, n));
-};
-
-/** Its look and daily limits; each change is saved as it's made. Its rules change in Browse. */
+/** Its look and daily limits; each change is saved as it's made. */
 function SmartSettings({ st, smart, onClose }: { st: SmartDeckState; smart: SmartDeckScreen; onClose: () => void }) {
   const [name, setName] = useState(st.item.name);
-  const [limits, setLimits] = useState({ n: String(st.newPerDay), r: String(st.reviewsPerDay) });
-  const set = (change: Partial<Look>) => save(smart, st, change);
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-md">
@@ -46,43 +23,25 @@ function SmartSettings({ st, smart, onClose }: { st: SmartDeckState; smart: Smar
         </SheetHeader>
         <div className="grid gap-6 px-4 pb-8">
           <div className="flex items-center gap-3">
-            <EmojiPicker value={st.item.icon ?? null} onChange={(icon) => set({ icon })} />
+            <EmojiPicker value={st.item.icon ?? null} onChange={(icon) => smart.setIcon(icon)} />
             <Input
               aria-label={s.deckName}
               value={name}
               maxLength={100}
               className="h-12"
               onChange={(e) => setName(e.target.value.replace(/[\t\n]/g, ""))}
-              onBlur={() => (name.trim() && name !== st.item.name ? set({ name }) : setName(st.item.name))}
+              onBlur={() => (name.trim() && name !== st.item.name ? smart.setName(name) : setName(st.item.name))}
             />
           </div>
-          <ColorSwatches value={st.item.color} onChange={(color) => set({ color })} />
+          <ColorSwatches value={st.item.color} onChange={(color) => smart.setColor(color)} />
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
               <Label>{s.newPerDay}</Label>
-              <Input
-                inputMode="numeric"
-                value={limits.n}
-                onChange={(e) => setLimits({ ...limits, n: e.target.value })}
-                onBlur={() => {
-                  const n = whole(limits.n, 0, 9999) ?? st.newPerDay;
-                  setLimits({ ...limits, n: String(n) });
-                  if (n !== st.newPerDay) set({ newPerDay: n });
-                }}
-              />
+              <WholeInput value={st.newPerDay} onCommit={(n) => smart.setNewPerDay(n)} />
             </div>
             <div className="grid gap-2">
               <Label>{s.reviewsPerDay}</Label>
-              <Input
-                inputMode="numeric"
-                value={limits.r}
-                onChange={(e) => setLimits({ ...limits, r: e.target.value })}
-                onBlur={() => {
-                  const r = whole(limits.r, 0, 99999) ?? st.reviewsPerDay;
-                  setLimits({ ...limits, r: String(r) });
-                  if (r !== st.reviewsPerDay) set({ reviewsPerDay: r });
-                }}
-              />
+              <WholeInput value={st.reviewsPerDay} onCommit={(n) => smart.setReviewsPerDay(n)} />
             </div>
           </div>
         </div>
@@ -91,18 +50,17 @@ function SmartSettings({ st, smart, onClose }: { st: SmartDeckState; smart: Smar
   );
 }
 
-/** A smart deck: what it offers today, its rules (changed in Browse), its settings. */
+/** A smart deck: what it offers today, its settings, and its rules, changed here above the notes they find. */
 export function SmartDeck() {
   const { id = "" } = useParams();
   const goUp = useUp();
   const [st, smart] = useScreen(() => app.smartDeck(id), [id]);
+  const notes = usePart(smart?.notes ?? null);
   const sheet = useOverlay("sheet");
   if (!st) return <Loading />;
   if (st.gone) return <Empty title={s.notFound}>{s.error("not_found")}</Empty>;
   const d = st.item;
   const due = d.newCount + d.learning + d.review;
-  const rules = filterParams(st);
-  rules.set("smart", id);
   return (
     <>
       <Header
@@ -132,23 +90,20 @@ export function SmartDeck() {
         )}
         {due > 0 && <Counts n={d.newCount} l={d.learning} r={d.review} />}
       </div>
-      <Section
-        title={s.smartRules}
-        action={
-          <Button variant="ghost" size="sm" asChild>
-            <Link to={`/browse?${rules}`}>
-              <SlidersHorizontal /> {s.editRules}
-            </Link>
-          </Button>
-        }
-      >
-        <ul className="divide-y overflow-hidden rounded-lg bg-card shadow-sm">
-          {st.rules.map((r) => (
-            <li key={r} className="px-4 py-3">
-              {r}
-            </li>
-          ))}
-        </ul>
+      <Section title={s.smartRules}>
+        {notes ? (
+          <NoteList
+            st={notes}
+            browse={smart.notes}
+            bar={
+              <FilterBar filter={smart.notes.filter}>
+                <SortMenu st={notes} browse={smart.notes} />
+              </FilterBar>
+            }
+          />
+        ) : (
+          <Loading />
+        )}
       </Section>
       <Button
         variant="ghost"

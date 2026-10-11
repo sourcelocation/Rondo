@@ -26,7 +26,7 @@ SELECT * FROM push_devices WHERE user_id = $1;
 
 -- name: Reminding :many
 -- Everyone with reminders on, and what the server knows to decide whether to remind them now.
-SELECT s.user_id, s.reminder_at, coalesce(s.reminder_email, false)::boolean AS email, s.timezone,
+SELECT s.user_id, s.reminder_at, s.timezone,
   r.last_sent_at, r.last_sent_on, coalesce(r.ignored, 0)::smallint AS ignored, r.paused_at,
   coalesce((SELECT max(e.at) FROM events e WHERE e.user_id = s.user_id AND e.kind = 1), 0)::bigint AS last_review
 FROM settings s LEFT JOIN reminder_state r ON r.user_id = s.user_id

@@ -1,0 +1,227 @@
+---
+import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
+import Plus from "@lucide/astro/icons/plus";
+import { faq } from "../content/faq";
+import { links } from "../content/links";
+import Kicker from "./Kicker.astro";
+
+/**
+ * Questions people ask before trying Rondo, one open at a time. Native <details>, so they open and close without
+ * JavaScript; with it, they open and close smoothly (motion/faq.ts), the plus turning into a cross.
+ */
+---
+
+<section class="section faq" id="faq" aria-labelledby="faq-title" data-mood="faq">
+  <div class="container faq__grid">
+    <div class="faq__intro">
+      <Kicker>FAQ</Kicker>
+      <h2 id="faq-title" class="heading" data-reveal="words">
+        Frequently asked <em>questions.</em>
+      </h2>
+      <p class="lead" data-reveal="lines">
+        The short answer to most of them: it’s free, it’s yours, and it’s ready for your decks. Anything else? Ask in
+        the{" "}
+        <a class="link faq__discord" href={links.discord}>
+          Discord
+        </a>
+        , or read the{" "}
+        <a class="link faq__discord" href={links.docs}>
+          docs
+        </a>
+        .
+      </p>
+    </div>
+
+    <div class="faq__list" data-faq>
+      {faq.map((item, index) => (
+        <details class="faq__item" name="faq" data-reveal="fade">
+          <summary class="faq__question">
+            <span class="faq__index">{String(index + 1).padStart(2, "0")}</span>
+            <span class="faq__text">{item.question}</span>
+            <span class="faq__icon" aria-hidden="true">
+              <Plus stroke-width={1.75} />
+            </span>
+          </summary>
+          <div class="faq__answer" data-faq-answer>
+            <div class="faq__body">
+              {item.answer.map((paragraph) => (
+                <p>{paragraph}</p>
+              ))}
+              {item.more != null && (
+                <a class="faq__more" href={item.more.href}>
+                  {item.more.label}
+                  <ArrowUpRight aria-hidden="true" stroke-width={1.75} />
+                </a>
+              )}
+            </div>
+          </div>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  import { Questions } from "../motion/faq";
+  import { scene } from "../motion/scenes";
+
+  scene("[data-faq]", (list, stage) => new Questions(list, stage.reduced));
+</script>
+
+<style>
+  .faq__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(40px, 6vw, 112px);
+    align-items: start;
+  }
+
+  /* The title stays in view while the questions scroll past it. */
+  .faq__intro {
+    position: sticky;
+    top: calc(var(--nav) + 32px);
+    display: grid;
+    justify-items: start;
+    gap: clamp(20px, 3vh, 30px);
+  }
+
+  .faq__intro .lead {
+    max-width: 22em;
+  }
+
+  .faq__discord {
+    color: var(--ink);
+    background-size: 100% 1px;
+  }
+
+  .faq__list {
+    border-top: 1px solid var(--line-2);
+  }
+
+  .faq__item {
+    border-bottom: 1px solid var(--line-2);
+  }
+
+  .faq__question {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: clamp(20px, 3vh, 28px) 0;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .faq__question::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq__index {
+    font-size: 13px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .faq__text {
+    font-size: clamp(1.125rem, 1rem + 0.5vw, 1.5rem);
+    font-weight: 400;
+    line-height: 1.3;
+    letter-spacing: -0.025em;
+    transition: transform 0.7s var(--ease-out);
+  }
+
+  .faq__question:hover .faq__text {
+    transform: translateX(6px);
+  }
+
+  .faq__icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--line-2) inset;
+    transition:
+      background-color 0.5s var(--ease-out),
+      color 0.5s var(--ease-out),
+      box-shadow 0.5s var(--ease-out);
+  }
+
+  .faq__icon :global(svg) {
+    width: 18px;
+    height: 18px;
+    transition: transform 0.7s var(--ease-spring);
+  }
+
+  .faq__question:hover .faq__icon,
+  .faq__item[open]:not(.is-closing) .faq__icon {
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: none;
+  }
+
+  .faq__item[open]:not(.is-closing) .faq__icon :global(svg) {
+    transform: rotate(135deg);
+  }
+
+  .faq__answer {
+    overflow: hidden;
+  }
+
+  .faq__body {
+    display: grid;
+    justify-items: start;
+    gap: 12px;
+    max-width: 38em;
+    padding: 0 52px clamp(22px, 3vh, 30px);
+    font-size: var(--size-lead);
+    line-height: 1.55;
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+
+  .faq__more {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+    font-size: var(--size-small);
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .faq__more :global(svg) {
+    width: 15px;
+    height: 15px;
+    transition: transform 0.6s var(--ease-out);
+  }
+
+  .faq__more:hover :global(svg) {
+    transform: translate(2px, -2px);
+  }
+
+  @media (width < 960px) {
+    .faq__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .faq__intro {
+      position: static;
+    }
+  }
+
+  @media (width < 640px) {
+    .faq__question {
+      grid-template-columns: 1fr auto;
+    }
+
+    .faq__index {
+      display: none;
+    }
+
+    .faq__body {
+      padding-inline: 0;
+    }
+  }
+</style>

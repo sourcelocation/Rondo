@@ -1,9 +1,11 @@
 package app.rondo.client
 
-import app.rondo.client.api.ApiApi
-import app.rondo.core.model.CodeEntry
-import app.rondo.core.model.EmailChange
-import app.rondo.core.model.LinkRequest
+import app.rondo.client.net.ApiError
+import app.rondo.client.net.SignInError
+import app.rondo.client.services.CodeFlow
+import app.rondo.client.services.RecoveryCodes
+import app.rondo.client.services.TotpSetup
+import app.rondo.core.ErrorCode
 import kotlin.js.JsExport
 import kotlinx.coroutines.CancellationException
 
@@ -43,7 +45,6 @@ class SecurityState internal constructor(
 class SecurityScreen internal constructor(override val app: App) : Screen<SecurityState>() {
     override val live get() = false
     private val account get() = app.rondo.account
-    private val api get() = app.rondo.net.api
     private var setup: TotpSetup? = null
     private var codes: RecoveryCodes? = null
     private var emailSent: String? = null
@@ -56,11 +57,11 @@ class SecurityScreen internal constructor(override val app: App) : Screen<Securi
     override suspend fun load(): SecurityState {
         val twoFactor = runCatching { account.twoFactor() }.getOrDefault(false)
         val devices = runCatching { account.devices() }.getOrDefault(emptyList())
-            .map { DeviceItem(it.id, it.device, it.place, it.since, it.current) }
-        val links = runCatching { online { api.listLinks().ok() }.providers }.getOrDefault(emptyList())
+            .map { DeviceItem(it.id, it.name, it.place, it.since, it.current) }
+        val links = runCatching { account.links() }.getOrDefault(emptyList())
         return SecurityState(
             account.email, twoFactor, setup?.qr, setup?.key, codes?.codes?.toTypedArray(), devices.toTypedArray(),
-            links.toTypedArray(), emailSent, reauth != null, account.me?.secondFactorResetAt?.toString(), busy,
+            links.toTypedArray(), emailSent, reauth != null, account.me?.secondFactorResetAt, busy,
         )
     }
 
@@ -80,7 +81,7 @@ class SecurityScreen internal constructor(override val app: App) : Screen<Securi
             waiting = block
             reauth = account.reauthenticate(account.email ?: throw e)
         } catch (e: ApiError) {
-            if (e.code?.value != "reauthenticate") throw e
+            if (e.code != ErrorCode.REAUTHENTICATE) throw e
             waiting = block
             reauth = account.reauthenticate(account.email ?: throw e)
         } finally {
@@ -147,31 +148,21 @@ class SecurityScreen internal constructor(override val app: App) : Screen<Securi
 
     /** Sends a code to a new [email]; [confirmEmail] with it moves the account there. */
     fun changeEmail(email: String) = step {
-        online { api.changeEmail(EmailChange(email.trim())).ok() }
+        account.changeEmail(email)
         emailSent = email.trim()
     }
 
     fun confirmEmail(code: String) = step {
-        online { api.confirmEmail(CodeEntry(code.trim())).ok() }
+        account.confirmEmail(code)
         emailSent = null
-        account.refreshEmail()
         app.say(strings.done)
     }
 
     /** Links a Google or Apple account by an ID token from its own sign-in. */
-    fun link(provider: String, idToken: String, nonce: String?) = step {
-        val which = LinkRequest.Provider.entries.first { it.value == provider }
-        online { api.link(LinkRequest(which, idToken, nonce)).ok() }
-    }
+    fun link(provider: String, idToken: String, nonce: String?) = step { account.link(provider, idToken, nonce) }
 
-    fun unlink(provider: String) = step {
-        val which = ApiApi.ProviderUnlink.entries.first { it.value == provider }
-        online { api.unlink(which).ok() }
-    }
+    fun unlink(provider: String) = step { account.unlink(provider) }
 
     /** Stops removing the second step someone asked to remove. */
-    fun cancelReset() = step {
-        online { api.cancelReset().ok() }
-        account.refresh()
-    }
+    fun cancelReset() = step { account.cancelReset() }
 }

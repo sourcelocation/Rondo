@@ -10,4 +10,6 @@ export const links = {
   discord: "https://discord.gg/GfftwYzbdV",
   /** The maker, where they post. */
   x: "https://x.com/sourceloc",
+  /** Where writers and creators reach the maker (the press kit's contact). */
+  email: "support@matthewsource.com",
 } as const;

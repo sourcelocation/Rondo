@@ -1,7 +1,6 @@
 // Package reminders reminds people to study, when they turned it on: once a day at their time,
 // only when cards are due and they haven't studied yet, on the devices that don't remind them
-// themselves, and by email if they chose. After seven ignored in a row, reminders pause until they
-// study again.
+// themselves. After seven ignored in a row, reminders pause until they study again.
 package reminders
 
 import (
@@ -13,10 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 
-	"github.com/sourcelocation/rondo/server/internal/jobs"
-	"github.com/sourcelocation/rondo/server/internal/mail"
 	"github.com/sourcelocation/rondo/server/internal/notify"
-	"github.com/sourcelocation/rondo/server/internal/ory"
 	"github.com/sourcelocation/rondo/server/internal/store"
 )
 
@@ -33,12 +29,9 @@ func (Tick) Kind() string { return "reminders" }
 
 type Worker struct {
 	river.WorkerDefaults[Tick]
-	Pool      *pgxpool.Pool
-	Pusher    *notify.Pusher
-	Ory       *ory.Client
-	Notify    *notify.Sender
-	Jobs      *river.Client[pgx.Tx]
-	PublicURL string
+	Pool   *pgxpool.Pool
+	Pusher *notify.Pusher
+	Notify *notify.Sender
 	// Now is the clock; tests set it.
 	Now func() time.Time
 }
@@ -146,18 +139,7 @@ func (w *Worker) remind(ctx context.Context, q *store.Queries, r store.Reminding
 			return err
 		}
 	}
-	if !r.Email {
-		return nil
-	}
-	who, err := w.Ory.Identity(ctx, r.UserID)
-	if err != nil || who == nil {
-		return err
-	}
-	_, err = w.Jobs.Insert(ctx, jobs.Mail{Message: mail.Message{
-		To: who.Email, Subject: title, Heading: title, Text: body + " Turn these emails off in Settings › Reminders.",
-		Link: w.PublicURL + "/app/study", LinkLabel: "Study now",
-	}}, nil)
-	return err
+	return nil
 }
 
 func ptr[T any](v T) *T { return &v }

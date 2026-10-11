@@ -5,7 +5,6 @@
 }
 
 [data-ring],
-[data-intro],
 .lens__window {
   display: none !important;
 }
@@ -13,4 +12,11 @@
 .study__answer {
   height: auto !important;
   opacity: 1 !important;
+}
+
+/* The collection's deck, already stacked. */
+.pile-card[data-rest],
+.pile__block {
+  opacity: 1 !important;
+  animation: none !important;
 }

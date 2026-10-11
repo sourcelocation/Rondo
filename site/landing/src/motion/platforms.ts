@@ -1,33 +1,34 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { all, hasFinePointer, one } from "./dom";
-
-type Kind = "phone" | "tablet" | "laptop";
-
-/**
- * The turns, one device at a time: the platform it turns into. After eight turns every device is back where it
- * started (the phone on Android, the tablet on iPadOS, the laptop on Windows), so the story loops without a seam.
- */
-const turns: readonly (readonly [Kind, string])[] = [
-  ["laptop", "linux"],
-  ["phone", "ios"],
-  ["laptop", "web"],
-  ["tablet", "android"],
-  ["laptop", "macos"],
-  ["phone", "android"],
-  ["laptop", "windows"],
-  ["tablet", "ipados"],
-];
-
-/** A turn's length, in seconds. */
-const TURN = 3.4;
+import type { Gadget } from "../content/devices";
+import { all, one } from "./dom";
+import type { Stage } from "./stage";
 
 /** How far each device drifts with the pointer, in pixels: the nearer, the more. */
-const depth: Record<Kind, number> = { laptop: 6, tablet: 14, phone: 18 };
+const depth: Record<Gadget, number> = { laptop: 6, tablet: 14, phone: 18 };
+
+/**
+ * How each device moves as the section scrolls past, from where it is as it comes in to where it is as it leaves:
+ * the nearer, the farther it travels, and a little turn. The laptop's lid also comes up the last few degrees.
+ */
+const passing: Record<Gadget, readonly [gsap.TweenVars, gsap.TweenVars]> = {
+  laptop: [{ yPercent: 7 }, { yPercent: -5 }],
+  tablet: [
+    { yPercent: 16, rotation: -2.5 },
+    { yPercent: -12, rotation: 1 },
+  ],
+  phone: [
+    { yPercent: 26, rotation: 3 },
+    { yPercent: -20, rotation: -1.5 },
+  ],
+};
+
+/** The order the devices take turns studying in. */
+const turns: readonly Gadget[] = ["laptop", "phone", "tablet"];
 
 /** One device: its screen, its study session, and what presses its buttons (a finger, or a pointer). */
 class Device {
-  readonly kind: Kind;
+  readonly kind: Gadget;
   private readonly screen: HTMLElement;
   private readonly study: HTMLElement;
   private readonly cards: HTMLElement[];
@@ -39,19 +40,14 @@ class Device {
   private index = 0;
 
   constructor(readonly element: HTMLElement) {
-    this.kind = (element.dataset.dev ?? "phone") as Kind;
-    this.screen = one(element, ".laptop__screen, .tablet__screen, .phone__screen");
+    this.kind = (element.dataset.dev ?? "phone") as Gadget;
+    this.screen = one(element, "[data-screen]");
     this.study = one(element, "[data-study]");
     this.cards = all(this.study, "[data-card]");
     this.show = one(this.study, "[data-show]");
     this.good = one(this.study, '[data-rate="Good"]');
     this.touch = element.querySelector<HTMLElement>("[data-touch]");
     this.cursor = element.querySelector<SVGElement>("[data-cursor]");
-  }
-
-  /** Turns into another platform: the styles redraw its frame, and its mark beneath it changes. */
-  platform(os: string): void {
-    this.element.dataset.os = os;
   }
 
   /** Asks for the answer, which is there the moment the button is pressed. */
@@ -100,7 +96,6 @@ class Device {
         .set(cursor, { x: at.x + 4 * size, y: at.y + 3 * size, opacity: 0 })
         .to(cursor, { opacity: 1, duration: 0.3 });
     }
-    // The window may still be settling into a new frame, so the glide aims at where the button is on every frame.
     const glide = { progress: 0, x: 0, y: 0 };
     timeline
       .to(
@@ -166,7 +161,7 @@ class Device {
       );
   }
 
-  /** The middle of `target`, from the screen's corner, in the screen's own pixels: it's scaled as it rises in. */
+  /** The middle of `target`, from the screen's corner, in the screen's own pixels: it may be scaled as it moves. */
   private centre(target: HTMLElement): { x: number; y: number } {
     const screen = this.screen.getBoundingClientRect();
     const scale = screen.width / this.screen.offsetWidth || 1;
@@ -179,64 +174,89 @@ class Device {
 }
 
 /**
- * The phone, the tablet and the laptop of the native-apps section, told on a loop while it's on screen: a device
- * turns into another platform, then studies a card, its answer there the moment it's asked for. The devices float
- * a little, and lean apart with the pointer, the nearest the most.
+ * The native-apps section: as it scrolls past, the devices move a little at their own depths, the laptop's lid
+ * coming up the last few degrees; they float, and lean apart with the pointer, the nearest the most. While it's on
+ * screen they take turns studying a card.
  */
-export function playPlatforms(root: HTMLElement, still: boolean): void {
-  if (still) return;
-  const devices = new Map(all(root, "[data-dev]").map((element) => [element.dataset.dev, new Device(element)]));
+export class Platforms {
+  private readonly devices: Device[];
 
-  const story = gsap.timeline({ paused: true, repeat: -1 });
-  turns.forEach(([kind, os], index) => {
-    const device = devices.get(kind);
-    if (device == null) return;
-    const at = index * TURN;
-    story.call(() => device.platform(os), undefined, at);
-    // The pointer needs a moment to reach its button; a finger is just there.
-    const lead = kind === "laptop" ? 0.55 : 0;
-    story.call(() => device.ask(), undefined, at + 1.2 - lead);
-    story.call(() => device.grade(), undefined, at + 2.3 - lead);
-  });
-  story.set({}, {}, turns.length * TURN);
+  constructor(stage: HTMLElement, { reduced, fine, pointer }: Stage) {
+    const trio = one(stage, "[data-trio]");
+    this.devices = all(trio, "[data-dev]").map((element) => new Device(element));
+    if (reduced) return;
 
-  ScrollTrigger.create({
-    trigger: root,
-    start: "top 75%",
-    end: "bottom 20%",
-    onToggle: ({ isActive }) => {
-      if (isActive) story.play();
-      else story.pause();
-    },
-  });
-
-  for (const [index, float] of all(root, "[data-float]").entries()) {
-    gsap.to(float, {
-      yPercent: index === 0 ? -0.8 : -1.6,
-      duration: 3.4 + index * 0.6,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1,
-      delay: index * 0.4,
-    });
+    this.pass(stage);
+    this.studies(stage);
+    for (const [index, float] of all(trio, "[data-float]").entries()) {
+      gsap.to(float, {
+        yPercent: index === 0 ? -0.8 : -1.6,
+        duration: 3.4 + index * 0.6,
+        ease: "sine.inOut",
+        yoyo: true,
+        repeat: -1,
+        delay: index * 0.4,
+      });
+    }
+    if (!fine) return;
+    const drift = this.devices.map((device) => ({
+      depth: depth[device.kind],
+      x: gsap.quickTo(device.element, "x", { duration: 1.4, ease: "power3.out" }),
+      y: gsap.quickTo(device.element, "y", { duration: 1.4, ease: "power3.out" }),
+    }));
+    window.addEventListener(
+      "pointermove",
+      () => {
+        for (const device of drift) {
+          device.x(pointer.x * device.depth);
+          device.y(pointer.y * device.depth * 0.6);
+        }
+      },
+      { passive: true },
+    );
   }
 
-  if (!hasFinePointer()) return;
-  const drift = [...devices.values()].map((device) => ({
-    depth: depth[device.kind],
-    x: gsap.quickTo(device.element, "x", { duration: 1.4, ease: "power3.out" }),
-    y: gsap.quickTo(device.element, "y", { duration: 1.4, ease: "power3.out" }),
-  }));
-  window.addEventListener(
-    "pointermove",
-    (event) => {
-      const x = event.clientX / window.innerWidth - 0.5;
-      const y = event.clientY / window.innerHeight - 0.5;
-      for (const device of drift) {
-        device.x(x * device.depth);
-        device.y(y * device.depth * 0.6);
-      }
-    },
-    { passive: true },
-  );
+  /** The devices move with the scroll, all the way through the section's passing. */
+  private pass(stage: HTMLElement): void {
+    for (const device of this.devices) {
+      const [from, to] = passing[device.kind];
+      gsap.fromTo(device.element, from, {
+        ...to,
+        ease: "none",
+        scrollTrigger: { trigger: stage, start: "top bottom", end: "bottom top", scrub: 0.8 },
+      });
+    }
+    const lid = stage.querySelector<HTMLElement>("[data-lid]");
+    if (lid == null) return;
+    gsap.fromTo(
+      lid,
+      { rotationX: -24 },
+      {
+        rotationX: 0,
+        ease: "power1.out",
+        scrollTrigger: { trigger: stage, start: "top bottom", end: "center center", scrub: 0.8 },
+      },
+    );
+  }
+
+  /** While the devices are on screen, one of them studies a card every few seconds, each in turn. */
+  private studies(stage: HTMLElement): void {
+    let turn = 0;
+    const studying = (): Device | undefined => this.devices.find((device) => device.kind === turns[turn]);
+    const loop = gsap
+      .timeline({ paused: true, repeat: -1 })
+      .call(() => studying()?.ask(), undefined, 0.9)
+      .call(() => studying()?.grade(), undefined, 2.0)
+      .call(() => (turn = (turn + 1) % turns.length), undefined, 2.6)
+      .set({}, {}, 3.2);
+    ScrollTrigger.create({
+      trigger: stage,
+      start: "top 75%",
+      end: "bottom 25%",
+      onToggle: ({ isActive }) => {
+        if (isActive) loop.play();
+        else loop.pause();
+      },
+    });
+  }
 }

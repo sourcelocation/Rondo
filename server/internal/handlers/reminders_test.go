@@ -59,7 +59,7 @@ func TestReminders(t *testing.T) {
 		t.Fatal(err)
 	}
 	endpoint, p256dh, auth, pushes, gone := browser(t)
-	w := &reminders.Worker{Pool: s.Pool, Pusher: s.Pusher, Ory: s.Ory, Notify: s.Notify, Jobs: s.Jobs, Now: func() time.Time { return now }}
+	w := &reminders.Worker{Pool: s.Pool, Pusher: s.Pusher, Notify: s.Notify, Now: func() time.Time { return now }}
 	device := func(localUntil *time.Time) {
 		t.Helper()
 		if _, err := s.PutPushDevice(as(ann), api.PutPushDeviceRequestObject{Body: &api.PushDevice{
@@ -164,7 +164,7 @@ func TestRemindersZone(t *testing.T) {
 	// 9:00 in Tokyo is midnight UTC; the window is the next quarter hour.
 	for _, at := range []string{"2026-10-07T23:59:00Z", "2026-10-08T00:15:00Z", "2026-10-08T00:14:00Z"} {
 		now, _ := time.Parse(time.RFC3339, at)
-		w := &reminders.Worker{Pool: s.Pool, Pusher: s.Pusher, Ory: s.Ory, Notify: s.Notify, Jobs: s.Jobs, Now: func() time.Time { return now }}
+		w := &reminders.Worker{Pool: s.Pool, Pusher: s.Pusher, Notify: s.Notify, Now: func() time.Time { return now }}
 		if err := w.Work(ctx, &river.Job[reminders.Tick]{}); err != nil {
 			t.Fatal(err)
 		}

@@ -29,4 +29,10 @@ export class SmoothScroll {
   get velocity(): number {
     return this.lenis?.velocity ?? 0;
   }
+
+  /** Holds the page still (while the curtain is over it), or lets it scroll again. */
+  hold(held: boolean): void {
+    if (held) this.lenis?.stop();
+    else this.lenis?.start();
+  }
 }

@@ -1,9 +1,9 @@
 package app.rondo.cli
 
 import app.rondo.client.JvmPlatform
-import app.rondo.client.LocalWorkspace
 import app.rondo.client.Rondo
-import app.rondo.mcp.rondoServer
+import app.rondo.client.anki.AnkiHtml
+import app.rondo.mcp.RondoTools
 import io.modelcontextprotocol.kotlin.sdk.server.StdioServerTransport
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
@@ -39,7 +39,7 @@ fun main(args: Array<String>) = runBlocking {
         return@runBlocking
     }
     rondo.syncNow()
-    val server = rondoServer(LocalWorkspace(rondo))
+    val server = RondoTools(rondo.workspace, local = true) { AnkiHtml(it).markup }.server
     val done = CompletableDeferred<Unit>()
     server.onClose { done.complete(Unit) }
     server.createSession(StdioServerTransport(System.`in`.asSource().buffered(), System.out.asSink().buffered()))

@@ -1,5 +1,8 @@
 package app.rondo.client
 
+import app.rondo.client.net.Net
+import app.rondo.client.net.SignInError
+import app.rondo.client.services.Account
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -17,11 +20,12 @@ class ServerChoiceTest {
 
     @Test
     fun addressesBecomeOrigins() {
-        assertEquals("https://cards.example.org", Net.origin("cards.example.org"))
-        assertEquals("https://cards.example.org", Net.origin("https://cards.example.org/app/"))
-        assertEquals("http://localhost:23900", Net.origin("http://localhost:23900/app/settings"))
-        assertEquals("https://cards.example.org:8443", Net.origin("cards.example.org:8443"))
-        assertNull(Net.origin("ftp://cards.example.org"))
+        val net = rondo().net
+        assertEquals("https://cards.example.org", net.origin("cards.example.org"))
+        assertEquals("https://cards.example.org", net.origin("https://cards.example.org/app/"))
+        assertEquals("http://localhost:23900", net.origin("http://localhost:23900/app/settings"))
+        assertEquals("https://cards.example.org:8443", net.origin("cards.example.org:8443"))
+        assertNull(net.origin("ftp://cards.example.org"))
     }
 
     @Test

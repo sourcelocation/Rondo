@@ -509,7 +509,7 @@ func (q *Queries) Samples(ctx context.Context, id uuid.UUID) ([]string, error) {
 }
 
 const setName = `-- name: SetName :one
-UPDATE users SET name = $2 WHERE id = $1 RETURNING id, name, pro_until, stripe_customer, created_at, username, username_changed_at, flag, activity_hidden, profile_confirmed_at, restricted_until, banned_until, email_key
+UPDATE users SET name = $2 WHERE id = $1 RETURNING id, username, username_changed_at, name, flag, activity_hidden, profile_confirmed_at, pro_until, stripe_customer, restricted_until, banned_until, email_key, created_at
 `
 
 type SetNameParams struct {
@@ -522,18 +522,18 @@ func (q *Queries) SetName(ctx context.Context, arg SetNameParams) (User, error) 
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
-		&i.ProUntil,
-		&i.StripeCustomer,
-		&i.CreatedAt,
 		&i.Username,
 		&i.UsernameChangedAt,
+		&i.Name,
 		&i.Flag,
 		&i.ActivityHidden,
 		&i.ProfileConfirmedAt,
+		&i.ProUntil,
+		&i.StripeCustomer,
 		&i.RestrictedUntil,
 		&i.BannedUntil,
 		&i.EmailKey,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -603,7 +603,7 @@ func (q *Queries) Shares(ctx context.Context, deckID uuid.UUID) ([]SharesRow, er
 }
 
 const subscriptions = `-- name: Subscriptions :many
-SELECT provider, ref, user_id, product, status, period_end, auto_renew, sandbox, updated_at, renewal_stopped FROM subscriptions WHERE user_id = $1 ORDER BY updated_at DESC
+SELECT provider, ref, user_id, product, status, period_end, auto_renew, sandbox, renewal_stopped, updated_at FROM subscriptions WHERE user_id = $1 ORDER BY updated_at DESC
 `
 
 func (q *Queries) Subscriptions(ctx context.Context, userID uuid.UUID) ([]Subscription, error) {
@@ -624,8 +624,8 @@ func (q *Queries) Subscriptions(ctx context.Context, userID uuid.UUID) ([]Subscr
 			&i.PeriodEnd,
 			&i.AutoRenew,
 			&i.Sandbox,
-			&i.UpdatedAt,
 			&i.RenewalStopped,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -729,7 +729,7 @@ func (q *Queries) UseInvite(ctx context.Context, id uuid.UUID) error {
 }
 
 const user = `-- name: User :one
-SELECT id, name, pro_until, stripe_customer, created_at, username, username_changed_at, flag, activity_hidden, profile_confirmed_at, restricted_until, banned_until, email_key FROM users WHERE id = $1
+SELECT id, username, username_changed_at, name, flag, activity_hidden, profile_confirmed_at, pro_until, stripe_customer, restricted_until, banned_until, email_key, created_at FROM users WHERE id = $1
 `
 
 func (q *Queries) User(ctx context.Context, id uuid.UUID) (User, error) {
@@ -737,18 +737,18 @@ func (q *Queries) User(ctx context.Context, id uuid.UUID) (User, error) {
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
-		&i.ProUntil,
-		&i.StripeCustomer,
-		&i.CreatedAt,
 		&i.Username,
 		&i.UsernameChangedAt,
+		&i.Name,
 		&i.Flag,
 		&i.ActivityHidden,
 		&i.ProfileConfirmedAt,
+		&i.ProUntil,
+		&i.StripeCustomer,
 		&i.RestrictedUntil,
 		&i.BannedUntil,
 		&i.EmailKey,
+		&i.CreatedAt,
 	)
 	return i, err
 }

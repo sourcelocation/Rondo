@@ -95,7 +95,7 @@ func (q *Queries) ReviewDays(ctx context.Context, arg ReviewDaysParams) ([]Revie
 const setProfile = `-- name: SetProfile :one
 UPDATE users SET username = $2, username_changed_at = $3, name = $4, flag = $5, activity_hidden = $6,
   profile_confirmed_at = coalesce(profile_confirmed_at, $7)
-WHERE id = $1 RETURNING id, name, pro_until, stripe_customer, created_at, username, username_changed_at, flag, activity_hidden, profile_confirmed_at, restricted_until, banned_until, email_key
+WHERE id = $1 RETURNING id, username, username_changed_at, name, flag, activity_hidden, profile_confirmed_at, pro_until, stripe_customer, restricted_until, banned_until, email_key, created_at
 `
 
 type SetProfileParams struct {
@@ -121,18 +121,18 @@ func (q *Queries) SetProfile(ctx context.Context, arg SetProfileParams) (User, e
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
-		&i.ProUntil,
-		&i.StripeCustomer,
-		&i.CreatedAt,
 		&i.Username,
 		&i.UsernameChangedAt,
+		&i.Name,
 		&i.Flag,
 		&i.ActivityHidden,
 		&i.ProfileConfirmedAt,
+		&i.ProUntil,
+		&i.StripeCustomer,
 		&i.RestrictedUntil,
 		&i.BannedUntil,
 		&i.EmailKey,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -149,7 +149,7 @@ func (q *Queries) Timezone(ctx context.Context, userID uuid.UUID) (*string, erro
 }
 
 const userByUsername = `-- name: UserByUsername :one
-SELECT id, name, pro_until, stripe_customer, created_at, username, username_changed_at, flag, activity_hidden, profile_confirmed_at, restricted_until, banned_until, email_key FROM users WHERE username = $1
+SELECT id, username, username_changed_at, name, flag, activity_hidden, profile_confirmed_at, pro_until, stripe_customer, restricted_until, banned_until, email_key, created_at FROM users WHERE username = $1
 `
 
 func (q *Queries) UserByUsername(ctx context.Context, username string) (User, error) {
@@ -157,18 +157,18 @@ func (q *Queries) UserByUsername(ctx context.Context, username string) (User, er
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
-		&i.ProUntil,
-		&i.StripeCustomer,
-		&i.CreatedAt,
 		&i.Username,
 		&i.UsernameChangedAt,
+		&i.Name,
 		&i.Flag,
 		&i.ActivityHidden,
 		&i.ProfileConfirmedAt,
+		&i.ProUntil,
+		&i.StripeCustomer,
 		&i.RestrictedUntil,
 		&i.BannedUntil,
 		&i.EmailKey,
+		&i.CreatedAt,
 	)
 	return i, err
 }

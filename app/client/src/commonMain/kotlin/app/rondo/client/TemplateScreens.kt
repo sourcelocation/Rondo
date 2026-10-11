@@ -1,17 +1,15 @@
 package app.rondo.client
 
-import app.cash.sqldelight.async.coroutines.awaitAsList
+import app.rondo.core.AnkiTemplate
+import app.rondo.core.Block
+import app.rondo.core.CardDef
 import app.rondo.core.CardSide
-import app.rondo.core.Ids
-import app.rondo.core.Templates
-import app.rondo.core.model.Block
-import app.rondo.core.model.CardDef
-import app.rondo.core.model.FieldDef
-import app.rondo.core.model.Note
-import app.rondo.core.model.Template
-import app.rondo.core.model.TemplateDef
-import app.rondo.core.nowMillis
+import app.rondo.core.FieldDef
+import app.rondo.core.RondoTemplate
+import app.rondo.core.Template
 import kotlin.js.JsExport
+import kotlin.time.Clock
+import kotlin.uuid.Uuid
 
 /** A note type in the picker: its name, what it's for, and its first card's front for a sample note. */
 @JsExport
@@ -32,17 +30,16 @@ class TemplatesState internal constructor(val items: Array<TemplateItem>)
 @JsExport
 class TemplatesScreen internal constructor(override val app: App) : Screen<TemplatesState>() {
     override suspend fun load(): TemplatesState {
-        val store = app.rondo.store
-        val use = store.q.templateUse().awaitAsList().associate { it.template_id to it.notes.toInt() }
-        val shown = store.templates().values.filter {
-            it.deletedAt == null && (Templates.isBuiltin(it.id) || it.ownerId == store.me)
+        val library = app.rondo.library
+        val use = library.templateUse()
+        val shown = library.templates().values.filter {
+            it.deletedAt == null && (it.builtin || it.ownerId == library.me)
         }
-        val items = shown.sortedWith(compareBy({ !Templates.isBuiltin(it.id) }, { it.name.lowercase() })).map {
+        val items = shown.sortedWith(compareBy({ !it.builtin }, { it.name.lowercase() })).map {
             val notes = use[it.id] ?: 0
-            val builtin = Templates.isBuiltin(it.id)
             val sample = samples(it, sampleNote(it)).firstOrNull()?.front
-            val summary = if (builtin) strings.summary(it.id) else strings.inUse(notes)
-            TemplateItem(it.id, it.name, builtin, it.kind == Templates.ANKI, notes, summary, sample)
+            val summary = if (it.builtin) strings.summary(it.id) else strings.inUse(notes)
+            TemplateItem(it.id, it.name, it.builtin, it is AnkiTemplate, notes, summary, sample)
         }
         return TemplatesState(items.toTypedArray())
     }
@@ -102,71 +99,76 @@ class TemplateState internal constructor(
 class TemplateScreen internal constructor(override val app: App, private val id: String?, private val from: String?) :
     Screen<TemplateState>() {
     override val live get() = false
-    private val store get() = app.rondo.store
+    private val library get() = app.rondo.library
     private lateinit var draft: Template
     private var stored: Template? = null
     private var saved = false
 
     override suspend fun load(): TemplateState {
         if (!::draft.isInitialized) {
-            stored = id?.let { store.template(it) }
-            val base = from?.let { store.template(it) }
-            draft = stored ?: base?.copy(
-                id = Ids.new(),
-                name = strings.copyOf(base.name),
-                kind = Templates.RONDO,
-                ownerId = store.me,
-                v = 0,
-            ) ?: newTemplate()
+            stored = id?.let { library.template(it) }
+            val base = from?.let { library.template(it) } as? RondoTemplate
+            draft = stored ?: base?.copy(id = newId(), name = strings.copyOf(base.name), ownerId = library.me, v = 0)
+                ?: newTemplate()
         }
-        val d = draft.def
-        val builtin = Templates.isBuiltin(draft.id)
+        val cards = (draft as? RondoTemplate)?.cards.orEmpty()
         val sample = sampleNote(draft)
-        val first = runCatching { Templates.cards(draft, sample).firstOrNull() }.getOrNull()
-        val use = stored?.let { t -> store.q.templateUse().awaitAsList().firstOrNull { it.template_id == t.id } }
+        val first = runCatching { draft.cards(sample).firstOrNull() }.getOrNull()
+        val use = stored?.let { library.templateUse()[it.id] } ?: 0
         fun blocks(list: List<Block>) = list.map { b ->
-            val kind = when {
-                b.divider == true -> "divider"
-                b.label != null -> "label"
-                b.typein != null -> "typein"
-                else -> "field"
+            when (b) {
+                Block.Divider -> BlockItem("divider", 0, "normal", true, "")
+
+                is Block.Label -> BlockItem(
+                    "label",
+                    0,
+                    (b.size ?: Block.Size.NORMAL).value,
+                    b.align != Block.Align.START,
+                    b.text,
+                )
+
+                is Block.TypeIn -> BlockItem("typein", b.id, "normal", true, "")
+
+                is Block.Field -> BlockItem(
+                    "field",
+                    b.id,
+                    (b.size ?: Block.Size.NORMAL).value,
+                    b.align != Block.Align.START,
+                    "",
+                )
             }
-            BlockItem(
-                kind,
-                b.field ?: b.typein ?: 0,
-                b.propertySize?.value ?: "normal",
-                b.align != Block.Align.START,
-                b.label.orEmpty(),
-            )
         }.toTypedArray()
-        val fields = d.fields.map { FieldItem(it.id, it.name, it.kind.value, it.tts == true) }
-        val cards = d.cards.map { CardItem(it.id, it.name, blocks(it.front), blocks(it.back)) }
-        val each = d.cards.firstNotNullOfOrNull { it.each } ?: 0
-        val problem = Templates.problem(draft)?.let(strings::problem)
-        fun side(card: Int, back: Boolean) = Templates.layout(draft, sample, card, back)
+        val fields = draft.fields.map { FieldItem(it.id, it.name, it.kind.value, it.tts) }
+        val cardItems = cards.map { CardItem(it.id, it.name, blocks(it.front), blocks(it.back)) }
+        val each = cards.firstNotNullOfOrNull { it.each } ?: 0
+        val problem = draft.problem?.let(strings::problem)
+        fun side(card: Int, back: Boolean) = draft.side(sample, card, back)
         val preview = first?.let { listOf(side(it, false), side(it, true)) }.orEmpty()
-        val q = Questions(d)
+        val q = (draft as? RondoTemplate)?.let(::Questions)
         fun items(ids: List<Int>) = ids.mapNotNull { id -> fields.firstOrNull { it.id == id } }.toTypedArray()
         return TemplateState(
-            draft.id, draft.name, fields.toTypedArray(), cards.toTypedArray(), each, builtin,
-            builtin || draft.kind == Templates.ANKI, use?.notes?.toInt() ?: 0, problem, preview.toTypedArray(), saved,
-            items(q.front), items(q.back), q.reverse?.let { q.reverseCard != null },
-            q.answer?.let { q.typeIn }, q.audio?.let { q.listenCard != null },
+            draft.id, draft.name, fields.toTypedArray(), cardItems.toTypedArray(), each, draft.builtin,
+            draft.builtin || draft is AnkiTemplate, use, problem, preview.toTypedArray(), saved,
+            items(q?.front.orEmpty()), items(q?.back.orEmpty()), q?.reverse?.let { q.reverseCard != null },
+            q?.answer?.let { q.typeIn }, q?.audio?.let { q.listenCard != null },
         )
     }
 
+    private fun newId() = Uuid.generateV7().toString()
+
     /** A new note type to start from: a front and a back, one card. */
-    private fun newTemplate(): Template {
+    private fun newTemplate(): RondoTemplate {
         val front = FieldDef(1, strings.front, FieldDef.Kind.TEXT)
         val fields = listOf(front, FieldDef(2, strings.backSide, FieldDef.Kind.TEXT))
-        val back = listOf(Block(field = 1), Block(divider = true), Block(field = 2))
-        val card = CardDef(1, "${strings.cardsTitle} 1", listOf(Block(field = 1)), back)
-        return Template(Ids.new(), strings.newTemplate, Templates.RONDO, TemplateDef(fields, listOf(card)), 0, store.me)
+        val back = listOf(Block.Field(1), Block.Divider, Block.Field(2))
+        val card = CardDef(1, "${strings.cardsTitle} 1", listOf(Block.Field(1)), back)
+        return RondoTemplate(newId(), strings.newTemplate, fields, listOf(card), 0, library.me)
     }
 
-    private fun change(block: (TemplateDef) -> TemplateDef) = act {
-        if (Templates.isBuiltin(draft.id) || draft.kind == Templates.ANKI) return@act
-        draft = draft.copy(def = block(draft.def))
+    private fun change(block: (RondoTemplate) -> RondoTemplate) = act {
+        val d = draft as? RondoTemplate ?: return@act
+        if (d.builtin) return@act
+        draft = block(d)
         show(load())
     }
 
@@ -175,10 +177,10 @@ class TemplateScreen internal constructor(override val app: App, private val id:
         val id = (d.fields.maxOfOrNull { it.id } ?: 0) + 1
         val field = FieldDef(id, "${strings.field} $id", FieldDef.Kind.entries.first { it.value == kind })
         val first = d.cards.firstOrNull() ?: return@change d.copy(fields = d.fields + field)
-        val shown = Block(field = id)
+        val shown = Block.Field(id)
         val card = if (front) {
             // The back repeats the front above its divider: the new field goes there too.
-            val at = first.back.indexOfFirst { it.divider == true }.takeIf { it >= 0 } ?: first.back.size
+            val at = first.back.indexOf(Block.Divider).takeIf { it >= 0 } ?: first.back.size
             first.copy(front = first.front + shown, back = first.back.toMutableList().apply { add(at, shown) })
         } else {
             first.copy(back = first.back + shown)
@@ -190,9 +192,9 @@ class TemplateScreen internal constructor(override val app: App, private val id:
     fun moveOnCard(id: Int, delta: Int) = change { d ->
         val first = d.cards.firstOrNull() ?: return@change d
         fun List<Block>.shift(): List<Block> {
-            val at = indexOfFirst { it.field == id }
+            val at = indexOfFirst { it is Block.Field && it.id == id }
             if (at < 0) return this
-            val fieldsAt = indices.filter { this[it].field != null }
+            val fieldsAt = indices.filter { this[it] is Block.Field }
             val to = fieldsAt.getOrNull(fieldsAt.indexOf(at) + delta) ?: return this
             return toMutableList().apply {
                 set(at, this@shift[to])
@@ -207,8 +209,8 @@ class TemplateScreen internal constructor(override val app: App, private val id:
         val q = Questions(d)
         val question = q.front.firstOrNull() ?: return@change d
         val answer = q.reverse ?: return@change d
-        val front = listOf(Block(field = answer, propertySize = LARGE))
-        val back = front + listOf(Block(divider = true), Block(field = question))
+        val front = listOf(Block.Field(answer, Block.Size.LARGE))
+        val back = front + listOf(Block.Divider, Block.Field(question))
         val card = CardDef(nextCard(d), strings.reverseCard, front, back)
         d.copy(cards = d.cards.filter { it != q.reverseCard } + listOfNotNull(card.takeIf { on }))
     }
@@ -217,11 +219,11 @@ class TemplateScreen internal constructor(override val app: App, private val id:
     fun setTypeAnswer(on: Boolean) = change { d ->
         val answer = Questions(d).answer ?: return@change d
         val first = d.cards.first()
-        val front = first.front.filter { it.typein == null }
-        val back = first.back.filter { it.typein == null }
-        val at = back.indexOfFirst { it.divider == true }.takeIf { it >= 0 } ?: back.size
+        val front = first.front.filter { it !is Block.TypeIn }
+        val back = first.back.filter { it !is Block.TypeIn }
+        val at = back.indexOf(Block.Divider).takeIf { it >= 0 } ?: back.size
         val card = if (on) {
-            val typed = Block(typein = answer)
+            val typed = Block.TypeIn(answer)
             first.copy(front = front + typed, back = back.toMutableList().apply { add(at, typed) })
         } else {
             first.copy(front = front, back = back)
@@ -233,12 +235,12 @@ class TemplateScreen internal constructor(override val app: App, private val id:
     fun setListening(on: Boolean) = change { d ->
         val q = Questions(d)
         val audio = q.audio ?: return@change d
-        val back = listOf(Block(field = audio), Block(divider = true)) + q.front.map { Block(field = it) }
-        val card = CardDef(nextCard(d), strings.listeningCard, listOf(Block(field = audio)), back)
+        val back = listOf(Block.Field(audio), Block.Divider) + q.front.map { Block.Field(it) }
+        val card = CardDef(nextCard(d), strings.listeningCard, listOf(Block.Field(audio)), back)
         d.copy(cards = d.cards.filter { it != q.listenCard } + listOfNotNull(card.takeIf { on }))
     }
 
-    private fun nextCard(d: TemplateDef) = (d.cards.maxOfOrNull { it.id } ?: 0) + 1
+    private fun nextCard(d: RondoTemplate) = (d.cards.maxOfOrNull { it.id } ?: 0) + 1
 
     private fun cards(card: Int, back: Boolean, block: (MutableList<Block>) -> Unit) = change { d ->
         d.copy(
@@ -251,7 +253,10 @@ class TemplateScreen internal constructor(override val app: App, private val id:
     }
 
     fun rename(name: String) = act {
-        draft = draft.copy(name = name)
+        draft = when (val d = draft) {
+            is RondoTemplate -> d.copy(name = name)
+            is AnkiTemplate -> d.copy(name = name)
+        }
         show(load())
     }
 
@@ -266,16 +271,16 @@ class TemplateScreen internal constructor(override val app: App, private val id:
     }
 
     fun setTts(id: Int, on: Boolean) = change { d ->
-        d.copy(fields = d.fields.map { if (it.id == id) it.copy(tts = on.takeIf { it }) else it })
+        d.copy(fields = d.fields.map { if (it.id == id) it.copy(tts = on) else it })
     }
 
     fun moveField(id: Int, delta: Int) = change { d ->
-        d.copy(fields = d.fields.moved(d.fields.indexOfFirst { it.id == id }, delta))
+        d.copy(fields = moved(d.fields, d.fields.indexOfFirst { it.id == id }, delta))
     }
 
-    /** Removes a field and every block showing it. */
+    /** Removes a field and every block showing it; a card that needed it no longer does. */
     fun removeField(id: Int) = change { d ->
-        val keep = { b: Block -> b.field != id && b.typein != id }
+        val keep = { b: Block -> !(b is Block.Field && b.id == id) && !(b is Block.TypeIn && b.id == id) }
         d.copy(
             fields = d.fields.filter { it.id != id },
             cards = d.cards.map { c ->
@@ -283,6 +288,7 @@ class TemplateScreen internal constructor(override val app: App, private val id:
                     front = c.front.filter(keep),
                     back = c.back.filter(keep),
                     each = c.each?.takeIf { it != id },
+                    requires = c.requires?.map { g -> g - id }?.filter { it.isNotEmpty() }?.ifEmpty { null },
                 )
             },
         )
@@ -291,8 +297,8 @@ class TemplateScreen internal constructor(override val app: App, private val id:
     fun addCard() = change { d ->
         val id = (d.cards.maxOfOrNull { it.id } ?: 0) + 1
         val f = d.fields.map { it.id }
-        val back = listOf(Block(field = f.last()), Block(divider = true), Block(field = f.first()))
-        d.copy(cards = d.cards + CardDef(id, "${strings.cardsTitle} $id", listOf(Block(field = f.last())), back))
+        val back = listOf(Block.Field(f.last()), Block.Divider, Block.Field(f.first()))
+        d.copy(cards = d.cards + CardDef(id, "${strings.cardsTitle} $id", listOf(Block.Field(f.last())), back))
     }
 
     fun renameCard(id: Int, name: String) = change { d ->
@@ -302,15 +308,18 @@ class TemplateScreen internal constructor(override val app: App, private val id:
     fun removeCard(id: Int) = change { d -> d.copy(cards = d.cards.filter { it.id != id }) }
 
     /** One card per cloze number or mask group of [fieldId]; 0 turns it off. */
-    fun setEach(fieldId: Int) =
-        change { d -> d.copy(cards = d.cards.map { it.copy(each = fieldId.takeIf { f -> f > 0 }) }) }
+    fun setEach(fieldId: Int) = change { d ->
+        val each = fieldId.takeIf { it > 0 }
+        // Cards made one per cloze or mask exist by those, not by fields filled.
+        d.copy(cards = d.cards.map { it.copy(each = each, requires = it.requires.takeIf { each == null }) })
+    }
 
     fun addBlock(card: Int, back: Boolean, kind: String, field: Int) = cards(card, back) {
         it += when (kind) {
-            "divider" -> Block(divider = true)
-            "label" -> Block(label = strings.label)
-            "typein" -> Block(typein = field)
-            else -> Block(field = field)
+            "divider" -> Block.Divider
+            "label" -> Block.Label(strings.label)
+            "typein" -> Block.TypeIn(field)
+            else -> Block.Field(field)
         }
     }
 
@@ -318,12 +327,13 @@ class TemplateScreen internal constructor(override val app: App, private val id:
     fun setBlock(card: Int, back: Boolean, index: Int, size: String, center: Boolean, text: String) =
         cards(card, back) { list ->
             val b = list.getOrNull(index) ?: return@cards
-            val sized = Block.PropertySize.entries.firstOrNull { it.value == size }
-            list[index] = b.copy(
-                propertySize = sized?.takeIf { it != Block.PropertySize.NORMAL },
-                align = if (center) null else Block.Align.START,
-                label = if (b.label != null) text else null,
-            )
+            val sized = Block.Size.entries.firstOrNull { it.value == size }?.takeIf { it != Block.Size.NORMAL }
+            val align = if (center) null else Block.Align.START
+            list[index] = when (b) {
+                is Block.Field -> b.copy(size = sized, align = align)
+                is Block.Label -> b.copy(text = text, size = sized, align = align)
+                else -> b
+            }
         }
 
     fun removeBlock(card: Int, back: Boolean, index: Int) = cards(card, back) {
@@ -331,20 +341,21 @@ class TemplateScreen internal constructor(override val app: App, private val id:
     }
 
     fun moveBlock(card: Int, back: Boolean, index: Int, delta: Int) = cards(card, back) { list ->
-        val moved = list.moved(index, delta)
+        val moved = moved(list.toList(), index, delta)
         list.clear()
         list += moved
     }
 
     /** A built-in type as your own, to change. */
     fun duplicate() = act {
-        draft = draft.copy(id = Ids.new(), name = "${draft.name} 2", kind = Templates.RONDO, ownerId = store.me)
+        val d = draft as? RondoTemplate ?: return@act
+        draft = d.copy(id = newId(), name = "${d.name} 2", ownerId = library.me)
         stored = null
         show(load())
     }
 
     fun save() = act {
-        draft = app.rondo.library.saveTemplate(draft)
+        draft = library.saveTemplate(draft)
         stored = draft
         saved = true
         show(load())
@@ -352,38 +363,45 @@ class TemplateScreen internal constructor(override val app: App, private val id:
     }
 
     fun delete() = act {
-        app.rondo.library.saveTemplate(draft.copy(deletedAt = nowMillis()))
+        library.saveTemplate(draft.with(deletedAt = Clock.System.now().toEpochMilliseconds()))
         saved = true
         show(load())
     }
-}
 
-private val LARGE = Block.PropertySize.LARGE
+    /** [list] with the item at [index] moved by [delta], when it can be. */
+    private fun <T> moved(list: List<T>, index: Int, delta: Int): List<T> {
+        val to = index + delta
+        if (index !in list.indices || to !in list.indices) return list
+        return list.toMutableList().apply { add(to, removeAt(index)) }
+    }
+}
 
 /**
  * A note type's first card read as questions: the fields it asks ([front]) and answers ([back]),
  * and the cards that ask the other way round or by sound, when the type can.
  */
-private class Questions(d: TemplateDef) {
+private class Questions(d: RondoTemplate) {
     private val first = d.cards.firstOrNull()
     private val kinds = d.fields.associate { it.id to it.kind }
     private val simple = first != null && first.each == null
-    val front: List<Int> = first?.front.orEmpty().mapNotNull { it.field }.distinct()
-    val back: List<Int> = first?.back.orEmpty().mapNotNull { it.field }.filter { it !in front }.distinct()
+    val front: List<Int> = first?.front.orEmpty().filterIsInstance<Block.Field>().map { it.id }.distinct()
+    val back: List<Int> = first?.back.orEmpty().filterIsInstance<Block.Field>().map {
+        it.id
+    }.filter { it !in front }.distinct()
 
     /** The first answer that's text: what typing and the other way round use. */
     val answer: Int? = back.firstOrNull { kinds[it] == FieldDef.Kind.TEXT }?.takeIf { simple }
     val reverse: Int? = answer?.takeIf { front.isNotEmpty() }
     private val sound = d.fields.firstOrNull { it.kind == FieldDef.Kind.AUDIO }?.id
     val audio: Int? = sound?.takeIf { simple && front.isNotEmpty() }
-    val typeIn: Boolean = first?.front.orEmpty().any { it.typein != null }
+    val typeIn: Boolean = first?.front.orEmpty().any { it is Block.TypeIn }
     private val others = d.cards.drop(1)
-    val reverseCard: CardDef? = others.firstOrNull { reverse != null && it.front.firstOrNull()?.field == reverse }
-    val listenCard: CardDef? = others.firstOrNull { audio != null && it.front.singleOrNull()?.field == audio }
-}
-
-private fun <T> List<T>.moved(index: Int, delta: Int): List<T> {
-    val to = index + delta
-    if (index !in indices || to !in indices) return this
-    return toMutableList().apply { add(to, removeAt(index)) }
+    val reverseCard: CardDef? = others.firstOrNull {
+        reverse != null &&
+            (it.front.firstOrNull() as? Block.Field)?.id == reverse
+    }
+    val listenCard: CardDef? = others.firstOrNull {
+        audio != null &&
+            (it.front.singleOrNull() as? Block.Field)?.id == audio
+    }
 }

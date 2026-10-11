@@ -1,8 +1,18 @@
 ---
-title: Import from Anki
+title: Import and export
 icon: Import
-description: Bring your decks, review history, and media into Rondo.
+description: Bring decks in from Anki, another Rondo or a spreadsheet, and take them out again.
 ---
+
+**Home › Import** takes three kinds of file, and tells them apart by what's in them:
+
+| File                         | From                                                      |
+| ---------------------------- | --------------------------------------------------------- |
+| `.apkg`, `.colpkg`           | Anki: decks with their media, scheduling and history.     |
+| `.rondo`                     | Rondo: a deck you exported, or your account's export.     |
+| `.csv`, `.tsv`, `.txt`, text | A spreadsheet, Quizlet, an assistant: a card on each row. |
+
+## From Anki
 
 <Steps>
 <Step>
@@ -14,26 +24,38 @@ In Anki, open **File › Export**. Choose **Anki Deck Package** (`.apkg`) for a 
 </Step>
 <Step>
 
-### Choose how to import
+### Check what comes in
 
-Open **Home › Import from Anki** (or **Settings › General › Import from Anki**).
+Open **Home › Import** (or **Settings › General › Import**) and choose the package. Rondo reads it and shows what importing will do before anything is saved: how many notes, cards, pictures, sounds and past reviews it holds, the decks it fills, and each note type with its first card as it will look.
 
-| Option                 | What it does                                                                                                                                                                                                 |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Make it editable       | On by default. Turns Anki's HTML into Rondo cards: formatting, clozes, MathJax and furigana become Rondo's own, images and sounds get fields of their own. Standard Anki types become Rondo's built-in ones. |
-| Include review history | On by default. Brings every past review, for [Progress](/studying#progress) and a schedule fitted to you. Off brings only where each card stands.                                                            |
-| Deck                   | Where the imported decks go: the top level, or inside one of your decks.                                                                                                                                     |
+| Option                 | What it does                                                                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Keep Anki's look       | Off by default: cards become Rondo's own, to edit. On, they keep Anki's HTML and look exactly as in Anki, but can't be edited in Rondo.                                         |
+| Include review history | On by default, when the package has reviews. Brings every past review, for [Progress](/studying#progress) and a schedule fitted to you. Off brings only where each card stands. |
+| Deck                   | Where the imported decks go: the top level, or inside one of your decks.                                                                                                        |
 
-With **Make it editable** off, cards keep Anki's own HTML and look exactly as they did in Anki, but can't be edited in Rondo. You can change your mind later: open the deck and choose **Convert to Rondo format**, which makes an editable copy and keeps your progress.
+Rondo's own cards show what Anki's templates do, in the same order: fields keep their names and order, a line across the card divides it, and a box to type in stays one. Formatting, clozes, MathJax and furigana become Rondo's; pictures and sounds get fields of their own. Standard Anki types become Rondo's built-in ones. Nothing is guessed from Anki's styling.
+
+A card exists on the same notes as in Anki, so an optional field on the front, or an optional reverse card, works as it did. Fields no card shows stay with the note, folded away in the editor.
+
+On top of that, Rondo suggests what Anki's format doesn't say, and you choose. Each suggestion shows how likely it is to be right; likely ones start chosen.
+
+| Suggestion         | When                                                                                                                                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Title notes by …   | The first field shows on no card (a key Anki sorted by): the field the first card asks with names the notes.                                                    |
+| Show … large       | Nothing on the cards is large: the field the first card asks with is.                                                                                           |
+| … is in a language | Most notes' titles are in a script of its own (Chinese, Japanese, Korean, Russian, Arabic…): the deck learns the language, and the fields in it are read aloud. |
+
+A note type whose cards Rondo can't follow keeps Anki's look, and the preview says why. You can change your mind later about any deck kept that way: open it and choose **Convert to Rondo format**, which makes an editable copy and keeps your progress.
 
 </Step>
 <Step>
 
-### Choose the file
+### Import
 
-Choose **Choose file** and pick the package. It is read on your device; only your decks, notes and media sync afterwards, as usual.
+Choose **Import**. The package is read on your device; only your decks, notes and media sync afterwards, as usual.
 
-When it's done, Rondo says how many notes and media files came in, and how many notes didn't fit (a field over 64 KB, say) and were left out.
+When it's done, Rondo says how many notes and cards came in, and how many notes were left out: ones already in your decks, or ones that didn't fit (a field over 64 KB, say).
 
 </Step>
 </Steps>
@@ -44,4 +66,41 @@ When it's done, Rondo says how many notes and media files came in, and how many 
 
 Notes keep their tags, so a deck organized by them can be filtered by them in [Browse](/search#tags). Anki's own `marked` tag becomes a [mark](/organizing#marks) on the note's cards, and `leech` is left out.
 
-Importing the same package twice makes a second copy; delete the first from **Decks** if you don't need it.
+Importing a package again to the same place adds only what's new: its decks, note types and notes are recognized by who they are in Anki (a note by the id Anki keeps for it wherever it's copied, a deck by its place), not by their names, so renaming one in Rondo keeps it recognized. An updated package brings only the notes its author added. A series of packages, like a deck for each level, comes together under one top-level deck. Decks keep Anki's names, `b. HSK1` included; rename them as you like. Importing to another place makes a second copy, as **Duplicate** does.
+
+## From a Rondo file
+
+A Rondo file is a deck someone exported, or the ZIP of [your account's export](/sync#export-everything). Its decks come in as your own, under the top level or a deck you choose; importing it again to the same place adds only what's new. **Include progress** brings the reviews in the file and where each card stands; off, every card starts new. Your own export, imported beside its decks, brings where each card stands, not the reviews again.
+
+## From a spreadsheet
+
+Export your sheet as CSV (or TSV), or copy its rows and paste them under **Or paste rows**: Quizlet's export and an assistant's answer paste the same way. Rondo works out the rest, and shows it before anything is imported:
+
+| What          | How Rondo reads it                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Separator     | Commas, tabs, semicolons (Excel in much of Europe) or bars, whichever splits the rows evenly.                             |
+| Column titles | A first row naming fields (`Front`, `Back`, `Word`…), `Tags`, or `Question` and `Answer`, is a row of titles, not a card. |
+| Note type     | The one whose fields the titles name; **Cloze** when cells have `{{c1::…}}`; otherwise **Basic**.                         |
+| Cells         | [Markup](/agents#markup), so `**bold**` is bold. HTML, as in Anki's text export, becomes markup.                          |
+| Tags          | A **Tags** column, its tags separated by spaces or commas.                                                                |
+
+Change any of it on the same screen: the note type, which field or tags each column goes to (or **Leave out**), the separator, and whether the first row names the columns. **The first card** shows how the first row will look. The notes go in a new deck named after the file, or in one of yours.
+
+Rows whose first field is already in the deck are skipped, so importing the same file again adds only what's new. So are rows that make no card, like a Basic row without a front.
+
+<Callout title="Coming from Anki?" type="info">
+  Anki's **Notes in Plain Text** export works, but leaves out pictures, sounds and scheduling. Export a package
+  (`.apkg`) instead.
+</Callout>
+
+## Export a deck
+
+Open a deck and choose **Export**:
+
+| Format       | For                                                                                                         |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| Rondo file   | A backup, or the deck for another Rondo: everything in it, with pictures and sounds.                        |
+| CSV          | A spreadsheet or another app. One file a note type (in a ZIP when the deck uses several); cells are markup. |
+| Anki package | Anki, AnkiDroid and AnkiMobile. Rondo's note types become Anki's, markup becomes HTML.                      |
+
+**Include your progress** adds where each card stands and your reviews to a Rondo file or an Anki package. An Anki package keeps an image occlusion note's picture, but not its masks. Anyone who can copy a deck can export it.

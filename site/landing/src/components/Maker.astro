@@ -4,6 +4,7 @@ import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
 import { links } from "../content/links";
 import { projects } from "../content/work";
 import portrait from "../assets/maker/sourcelocation.webp";
+import Kicker from "./Kicker.astro";
 
 /**
  * Who makes Rondo, and what they made before: their portrait, which opens up as it scrolls in and tilts toward the
@@ -14,9 +15,9 @@ import portrait from "../assets/maker/sourcelocation.webp";
 
 <section class="section maker" id="maker" aria-labelledby="maker-title" data-mood="maker">
   <div class="container maker__grid">
-    <p class="kicker maker__kicker" data-reveal="fade">
-      <span class="kicker__index">05</span>The maker
-    </p>
+    <div class="maker__kicker">
+      <Kicker>The maker</Kicker>
+    </div>
 
     <figure class="portrait" data-portrait>
       <div class="portrait__card" data-portrait-card>
@@ -36,7 +37,7 @@ import portrait from "../assets/maker/sourcelocation.webp";
       </div>
     </figure>
 
-    <div class="maker__intro">
+    <div class="maker__intro" data-depth="-0.04">
       <h2 id="maker-title" class="heading" data-reveal="words">
         Made by someone <em>who ships.</em>
       </h2>
@@ -103,6 +104,19 @@ import portrait from "../assets/maker/sourcelocation.webp";
     </filter>
   </svg>
 </section>
+
+<script>
+  import { one } from "../motion/dom";
+  import { Portrait } from "../motion/portrait";
+  import { scene } from "../motion/scenes";
+  import { WorkPreview } from "../motion/work";
+
+  scene("[data-portrait]", (root, stage) => new Portrait(root, stage.reduced, stage.fine));
+  scene(
+    "[data-work]",
+    (list, stage) => new WorkPreview(list, one(document, "[data-preview]"), stage.pointer, stage.reduced),
+  );
+</script>
 
 <style>
   .maker__grid {

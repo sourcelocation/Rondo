@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,11 +17,14 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+	"github.com/riverqueue/river/rivertype"
 	"github.com/sourcelocation/dawl/subscription"
 
 	"github.com/sourcelocation/rondo/server/db"
 	"github.com/sourcelocation/rondo/server/internal/api"
 	"github.com/sourcelocation/rondo/server/internal/blob"
+	"github.com/sourcelocation/rondo/server/internal/jobs"
+	"github.com/sourcelocation/rondo/server/internal/mail"
 	"github.com/sourcelocation/rondo/server/internal/notify"
 	"github.com/sourcelocation/rondo/server/internal/ory"
 	"github.com/sourcelocation/rondo/server/internal/staff"
@@ -188,6 +192,50 @@ func TestInvitationsLendDecks(t *testing.T) {
 	_ = s.Pool.QueryRow(context.Background(), "SELECT count(*) FROM river_job WHERE kind = 'mail'").Scan(&jobs)
 	if jobs != 1 {
 		t.Fatalf("invitation mail queued: %d", jobs)
+	}
+}
+
+func TestMailToAnyAddressIsLimited(t *testing.T) {
+	s := server(t)
+	alice := person(t, s, "Alice", false)
+	d := deck(t, s, alice, "HSK 1")
+	invite := func(email *string) error {
+		_, err := s.CreateInvite(as(alice), api.CreateInviteRequestObject{DeckId: d, Body: &api.InviteRequest{Role: 1, Email: (*openapi_types.Email)(email)}})
+		return err
+	}
+	for i := range 20 {
+		email := fmt.Sprintf("friend%d@example.com", i)
+		if err := invite(&email); err != nil {
+			t.Fatalf("invitation %d: %v", i+1, err)
+		}
+	}
+	email := "one-more@example.com"
+	if err := invite(&email); code(err) != api.RateLimited {
+		t.Fatalf("21st invitation by email: %v", err)
+	}
+	if err := invite(nil); err != nil {
+		t.Fatalf("a link after the limit: %v", err)
+	}
+
+	s.S.HookSecret = "kratos"
+	kratos := context.WithValue(context.Background(), hookKey{}, "kratos")
+	sent := func() (n int) {
+		_ = s.Pool.QueryRow(context.Background(), "SELECT count(*) FROM river_job WHERE kind = 'mail' AND lower(args->>'To') = 'bombed@example.com'").Scan(&n)
+		return n
+	}
+	for range 6 {
+		if _, err := s.KratosCourier(kratos, api.KratosCourierRequestObject{Body: &api.KratosMessage{TemplateType: "registration_code_valid", Recipient: "Bombed@example.com", Code: ptr("123456")}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := sent(); n != 5 {
+		t.Fatalf("codes mailed to one address: %d", n)
+	}
+
+	late := &river.Job[jobs.Mail]{JobRow: &rivertype.JobRow{CreatedAt: time.Now().Add(-time.Hour)}, Args: jobs.Mail{Message: mail.FromKratos("login_code_valid", "a@example.com", "123456", "")}}
+	var cancel *river.JobCancelError
+	if err := (&jobs.MailWorker{}).Work(context.Background(), late); !errors.As(err, &cancel) {
+		t.Fatalf("a code an hour late: %v", err)
 	}
 }
 

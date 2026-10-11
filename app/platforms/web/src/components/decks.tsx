@@ -6,8 +6,10 @@ import {
   type Instruction,
 } from "@atlaskit/pragmatic-drag-and-drop-hitbox/tree-item";
 import {
+  ArrowRightLeft,
   ChevronRight,
   Copy,
+  Download,
   FolderInput,
   FolderPlus,
   LogOut,
@@ -22,8 +24,9 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { createContext, use, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, Fragment, use, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
+import { toast } from "sonner";
 import { ask, confirm, Counts as CountsOf, DECK_COLORS, DeckLook, deckColor, pick, Ring } from "@/components/kit";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -44,7 +47,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { languageName, languages, s, type DeckItem, type Home, type HomeState, type SmartDeckItem } from "@/rondo";
+import {
+  app,
+  DeckAction,
+  languageName,
+  languages,
+  s,
+  type DeckItem,
+  type DeckScreen,
+  type Home,
+  type HomeState,
+  type SmartDeckItem,
+} from "@/rondo";
 import { useOverlay } from "@/routing";
 import { cn } from "cn";
 
@@ -61,67 +75,115 @@ export function move(home: Home, id: string, parent: string | null, before: stri
   });
 }
 
-/** Picks where to move a deck ("Move to…"), then moves it. */
-export async function moveTo(home: Home, id: string) {
-  const to = await pick(s.moveTo, home.targets(id));
-  if (to != null) move(home, id, to || null, null);
-}
+/** Acts on deck [id] through a screen made just for that, which reads nothing. */
+const onDeck = (id: string, act: (deck: DeckScreen) => void) => {
+  const deck = app.deck(id);
+  act(deck);
+  deck.close();
+};
 
 interface Action {
   label: string;
   icon: LucideIcon;
   run: () => void;
   destructive?: boolean;
-  separated?: boolean;
 }
 
-/** Everything a deck's menu offers, for who you are to it. */
-function useActions(d: DeckItem): Action[] {
+/** Where each of a deck's actions sits in its menu: separators fall between groups. */
+const GROUP: Record<DeckAction["name"], number> = {
+  STUDY: 0,
+  SETTINGS: 0,
+  SHARE: 0,
+  BROWSE: 0,
+  ADD_NOTE: 1,
+  NEW_SUBDECK: 1,
+  RENAME: 1,
+  MOVE: 1,
+  DUPLICATE: 1,
+  CONVERT: 1,
+  EXPORT: 1,
+  LEAVE: 2,
+  DELETE: 2,
+};
+
+/**
+ * What each of a deck's actions looks like and does here. [onGone] runs once the deck is deleted
+ * or left: the deck's own page goes up.
+ */
+function useActions(d: DeckItem, onGone?: () => void): Record<DeckAction["name"], Action> {
   const [, home] = useHome();
   const navigate = useNavigate();
   const note = useOverlay("note");
   const created = useOverlay("new");
-  const own = d.role === "owner";
-  const write = own || d.role === "editor";
-  const out: (Action | false)[] = [
-    d.notes > 0 && { label: s.study, icon: Play, run: () => navigate(`/decks/${d.id}/study`) },
-    write && { label: s.deckSettings, icon: Settings2, run: () => navigate(`/decks/${d.id}?sheet=settings`) },
-    own && { label: s.share, icon: Share2, run: () => navigate(`/decks/${d.id}?sheet=share`) },
-    { label: s.browseDeck, icon: Search, run: () => navigate(`/browse?deck=${d.id}`) },
-    write && { label: s.addNote, icon: Plus, run: () => note.open("new", { in: d.id }), separated: true },
-    write && { label: s.newSubdeck, icon: FolderPlus, run: () => created.open("deck", { parent: d.id }) },
-    write && {
+  const settings = useOverlay("settings");
+  const share = useOverlay("share");
+  const exported = useOverlay("export");
+  const open = (copy: string) => navigate(`/decks/${copy}`);
+  return {
+    STUDY: { label: s.study, icon: Play, run: () => navigate(`/decks/${d.id}/study`) },
+    SETTINGS: { label: s.deckSettings, icon: Settings2, run: () => settings.open(d.id) },
+    SHARE: { label: s.share, icon: Share2, run: () => share.open(d.id) },
+    BROWSE: { label: s.browseDeck, icon: Search, run: () => navigate(`/browse?deck=${d.id}`) },
+    ADD_NOTE: { label: s.addNote, icon: Plus, run: () => note.open("new", { in: d.id }) },
+    NEW_SUBDECK: { label: s.newSubdeck, icon: FolderPlus, run: () => created.open("deck", { parent: d.id }) },
+    RENAME: {
       label: s.rename,
       icon: Pencil,
       run: async () => {
         const name = await ask(s.rename, d.name);
-        if (name) home.rename(d.id, name);
+        if (name) onDeck(d.id, (deck) => deck.rename(name));
       },
     },
-    own && { label: s.moveTo, icon: FolderInput, run: () => moveTo(home, d.id) },
-    { label: s.copy, icon: Copy, run: () => home.copy(d.id, (copy) => navigate(`/decks/${copy}`)) },
-    own && {
+    MOVE: {
+      label: s.moveTo,
+      icon: FolderInput,
+      run: async () => {
+        const to = await pick(s.moveTo, home.targets(d.id));
+        if (to != null) move(home, d.id, to || null, null);
+      },
+    },
+    DUPLICATE: {
+      label: s.duplicateDeck,
+      icon: Copy,
+      run: () => onDeck(d.id, (deck) => deck.copy((copy) => (toast(s.duplicated), open(copy)))),
+    },
+    CONVERT: { label: s.convert, icon: ArrowRightLeft, run: () => onDeck(d.id, (deck) => deck.convert(open)) },
+    EXPORT: { label: s.exportDeck, icon: Download, run: () => exported.open(d.id) },
+    LEAVE: {
+      label: s.leave,
+      icon: LogOut,
+      destructive: true,
+      run: async () => {
+        if (await confirm(`${s.leave} “${d.name}”?`, s.leaveHint, s.leave))
+          onDeck(d.id, (deck) => deck.leave(() => onGone?.()));
+      },
+    },
+    DELETE: {
       label: s.delete,
       icon: Trash2,
       destructive: true,
-      separated: true,
-      run: async () => (await confirm(`${s.delete} “${d.name}”?`, s.deleteDeckHint)) && home.delete(d.id),
-    },
-    !own &&
-      d.depth === 0 && {
-        label: s.leave,
-        icon: LogOut,
-        destructive: true,
-        separated: true,
-        run: async () => (await confirm(`${s.leave} “${d.name}”?`, s.leaveHint, s.leave)) && home.leave(d.id),
+      run: async () => {
+        if (await confirm(`${s.delete} “${d.name}”?`, s.deleteDeckHint))
+          (onDeck(d.id, (deck) => deck.delete()), onGone?.());
       },
-  ];
-  return out.filter((a): a is Action => !!a);
+    },
+  };
 }
 
-/** A deck's ⋯ menu. */
-export function DeckMenu({ d, className }: { d: DeckItem; className?: string }) {
-  const actions = useActions(d);
+/** A deck's ⋯ menu: [actions], or everything the deck offers. */
+export function DeckMenu({
+  d,
+  actions = d.actions,
+  onGone,
+  className,
+}: {
+  d: DeckItem;
+  actions?: DeckAction[];
+  onGone?: () => void;
+  className?: string;
+}) {
+  const all = useActions(d, onGone);
+  if (actions.length === 0) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -130,9 +192,7 @@ export function DeckMenu({ d, className }: { d: DeckItem; className?: string }) 
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-48">
-        {actions.map((a) => (
-          <MenuEntry key={a.label} a={a} separator={DropdownMenuSeparator} item={DropdownMenuItem} />
-        ))}
+        <MenuEntries actions={actions} all={all} separator={DropdownMenuSeparator} item={DropdownMenuItem} />
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -140,37 +200,41 @@ export function DeckMenu({ d, className }: { d: DeckItem; className?: string }) 
 
 /** The same menu on right-click. */
 function DeckContextMenu({ d, children }: { d: DeckItem; children: ReactNode }) {
-  const actions = useActions(d);
+  const all = useActions(d);
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="min-w-48">
-        {actions.map((a) => (
-          <MenuEntry key={a.label} a={a} separator={ContextMenuSeparator} item={ContextMenuItem} />
-        ))}
+        <MenuEntries actions={d.actions} all={all} separator={ContextMenuSeparator} item={ContextMenuItem} />
       </ContextMenuContent>
     </ContextMenu>
   );
 }
 
-function MenuEntry({
-  a,
+function MenuEntries({
+  actions,
+  all,
   separator: Separator,
   item: Item,
 }: {
-  a: Action;
+  actions: DeckAction[];
+  all: Record<DeckAction["name"], Action>;
   separator: typeof DropdownMenuSeparator;
   item: typeof DropdownMenuItem;
 }) {
-  return (
-    <>
-      {a.separated && <Separator />}
-      <Item variant={a.destructive ? "destructive" : "default"} onSelect={a.run}>
-        <a.icon />
-        {a.label}
-      </Item>
-    </>
-  );
+  return actions.map((kind, i) => {
+    const a = all[kind.name];
+    const before = actions[i - 1];
+    return (
+      <Fragment key={kind.name}>
+        {before && GROUP[before.name] !== GROUP[kind.name] && <Separator />}
+        <Item variant={a.destructive ? "destructive" : "default"} onSelect={a.run}>
+          <a.icon />
+          {a.label}
+        </Item>
+      </Fragment>
+    );
+  });
 }
 
 /**
@@ -189,7 +253,7 @@ function useDrag(
   const [hint, setHint] = useState<Instruction | null>(null);
   useEffect(() => {
     const element = ref.current;
-    if (!element || !fine || d.role !== "owner") return;
+    if (!element || !fine || !d.actions.includes(DeckAction.MOVE)) return;
     const siblings = items.filter((x) => x.parentId === d.parentId);
     return combine(
       draggable({

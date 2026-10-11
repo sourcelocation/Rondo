@@ -2,6 +2,7 @@
 import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
 import { excerpts } from "../content/code";
 import { links } from "../content/links";
+import Kicker from "./Kicker.astro";
 import Kotlin from "./Kotlin.astro";
 
 /**
@@ -17,10 +18,8 @@ const facts: { value: string; label: string; href?: string }[] = [
 ---
 
 <section class="section source" id="open-source" aria-labelledby="source-title" data-mood="source">
-  <div class="container source__head">
-    <p class="kicker" data-reveal="fade">
-      <span class="kicker__index">02</span>Free &amp; open source
-    </p>
+  <div class="container source__head" data-depth="-0.05">
+    <Kicker>Free &amp; open source</Kicker>
     <h2 id="source-title" class="heading" data-reveal="words">
       Free, and open to <em>the last line.</em>
     </h2>
@@ -31,7 +30,7 @@ const facts: { value: string; label: string; href?: string }[] = [
   </div>
 
   <div class="container">
-    <div class="lens" data-lens data-reveal="rise">
+    <div class="lens" data-lens data-tilt>
       <div class="lens__code lens__code--soft" aria-hidden="true">
         {excerpts.map((excerpt) => (
           <div class="lens__column">
@@ -70,6 +69,13 @@ const facts: { value: string; label: string; href?: string }[] = [
     </ul>
   </div>
 </section>
+
+<script>
+  import { CodeLens } from "../motion/lens";
+  import { scene } from "../motion/scenes";
+
+  scene("[data-lens]", (root, stage) => new CodeLens(root, stage.reduced));
+</script>
 
 <style>
   .source__head {

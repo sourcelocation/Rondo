@@ -2,6 +2,8 @@
 import FileArchive from "@lucide/astro/icons/file-archive";
 import { features } from "../content/features";
 import { area, chart, curve, marks, recall, reviews } from "../content/history";
+import { links } from "../content/links";
+import Kicker from "./Kicker.astro";
 
 /**
  * Coming from Anki: what Rondo has of it, and one card's memory moving over (motion/history.ts). Its recall falls
@@ -27,10 +29,8 @@ const number = new Intl.NumberFormat("en");
 
 <section class="section anki" id="anki" aria-labelledby="anki-title" data-mood="anki">
   <div class="container anki__grid">
-    <div class="anki__copy">
-      <p class="kicker" data-reveal="fade">
-        <span class="kicker__index">01</span>Coming from Anki
-      </p>
+    <div class="anki__copy" data-depth="-0.04">
+      <Kicker>Coming from Anki</Kicker>
       <h2 id="anki-title" class="heading" data-reveal="words">
         Everything you rely on in Anki. <em>Already here.</em>
       </h2>
@@ -39,9 +39,14 @@ const number = new Intl.NumberFormat("en");
         your own. Import your .apkg and .colpkg files with their media and every past review, and each card picks up
         exactly where it left off.
       </p>
+      <p class="anki__more" data-reveal="fade">
+        <a class="link" href={`${links.docs}importing`}>
+          Bring your decks over
+        </a>
+      </p>
     </div>
 
-    <div class="anki__stage" data-reveal="rise">
+    <div class="anki__stage" data-tilt>
       <figure class="history glass" aria-hidden="true" data-history>
         <div class="history__head">
           <div class="history__card">
@@ -204,6 +209,17 @@ const number = new Intl.NumberFormat("en");
   </div>
 </section>
 
+<script>
+  import { HistoryScene } from "../motion/history";
+  import { Marquee } from "../motion/marquee";
+  import { scene } from "../motion/scenes";
+
+  scene("[data-history]", (root, stage) => new HistoryScene(root, stage.reduced));
+  scene("[data-marquee]", (row, stage) => {
+    if (!stage.reduced) new Marquee(row, row.dataset.marquee === "right" ? -1 : 1, () => stage.scroll.velocity);
+  });
+</script>
+
 <style>
   .anki__grid {
     display: grid;
@@ -220,6 +236,11 @@ const number = new Intl.NumberFormat("en");
 
   .anki__copy .lead {
     max-width: 30em;
+  }
+
+  .anki__more {
+    font-size: var(--size-small);
+    color: var(--ink-2);
   }
 
   .anki__stage {

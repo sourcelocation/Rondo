@@ -1,15 +1,20 @@
 import { gsap } from "gsap";
 import { Mesh, Program, Renderer, Triangle } from "ogl";
 import { onResize } from "./dom";
+import { damp } from "./math";
+import type { Pointer } from "./pointer";
 
 /** The page's moods: how strongly the light shows behind each section, and in which colours. */
 export const moods = {
   hero: { strength: 1, weights: [1, 0.9, 0.85, 0.7] },
-  anki: { strength: 0.5, weights: [0.55, 0.95, 1, 0.35] },
+  collection: { strength: 0.62, weights: [0.9, 0.75, 0.6, 0.55] },
   source: { strength: 0.36, weights: [0.75, 0.45, 0.25, 1] },
-  sync: { strength: 0.5, weights: [1, 0.45, 0.3, 0.95] },
+  sync: { strength: 0.16, weights: [0.8, 0.55, 0.3, 0.7] },
   apps: { strength: 0.48, weights: [0.85, 1, 0.55, 0.45] },
+  anki: { strength: 0.5, weights: [0.55, 0.95, 1, 0.35] },
+  ai: { strength: 0.56, weights: [0.95, 1, 0.4, 0.55] },
   maker: { strength: 0.34, weights: [0.45, 0.65, 1, 0.5] },
+  faq: { strength: 0.3, weights: [0.7, 0.55, 0.6, 0.9] },
   closing: { strength: 1, weights: [1, 0.95, 0.9, 0.75] },
 } as const;
 
@@ -38,6 +43,8 @@ const fragment = /* glsl */ `
   uniform vec2 uPointer;
   uniform float uStrength;
   uniform vec4 uWeights;
+  uniform float uFlare;
+  uniform vec2 uFlareAt;
   uniform vec3 uSky;
   uniform vec3 uLilac;
   uniform vec3 uPeach;
@@ -95,6 +102,12 @@ const fragment = /* glsl */ `
     colour = mix(colour, uPeach, light(q, c3, size * 0.9) * uWeights.z * uStrength);
     colour = mix(colour, uMint, light(q, c4, size * 0.85) * uWeights.w * uStrength);
 
+    // A flare: light swelling out from one point and fading as it spreads, like a ring of sound.
+    vec2 at = (uFlareAt - 0.5) * vec2(aspect, 1.0);
+    float spread = 0.18 + 0.9 * (1.0 - uFlare);
+    vec3 flash = mix(uSky, uLilac, 0.5 + 0.5 * sin(q.x * 3.0 + t * 4.0));
+    colour = mix(colour, flash, light(p, at, spread) * uFlare * 0.85);
+
     // A trace of noise keeps such soft gradients from banding; plain white stays plain.
     float grain = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
     float tint = 1.0 - min(colour.r, min(colour.g, colour.b));
@@ -110,7 +123,7 @@ function rgb(hex: string): [number, number, number] {
 
 /**
  * The light behind the page, drawn by a WebGL shader at a fraction of the screen's resolution (it is all soft):
- * four pastel lights that drift, lean toward the pointer and change with each section's mood.
+ * four pastel lights that drift, lean toward the pointer and change with each section's mood, and can flare.
  */
 export class Aurora {
   private readonly renderer: Renderer;
@@ -121,16 +134,18 @@ export class Aurora {
     uPointer: { value: [0.5, 0.5] },
     uStrength: { value: 0 },
     uWeights: { value: [1, 1, 1, 1] },
+    uFlare: { value: 0 },
+    uFlareAt: { value: [0.5, 0.5] },
   };
-  private readonly state = { strength: 0, w0: 1, w1: 1, w2: 1, w3: 1 };
-  private readonly pointer = { x: 0.5, y: 0.5 };
+  private readonly state = { strength: 0, w0: 1, w1: 1, w2: 1, w3: 1, flare: 0 };
+  private readonly lean = { x: 0.5, y: 0.5 };
   private time = 0;
   private dirty = true;
 
   /** Draws the light into `host`, or leaves its CSS gradients there when WebGL isn't available. */
-  static mount(host: HTMLElement, still: boolean): Aurora | null {
+  static mount(host: HTMLElement, still: boolean, pointer: Pointer): Aurora | null {
     try {
-      return new Aurora(host, still);
+      return new Aurora(host, still, pointer);
     } catch {
       return null;
     }
@@ -139,6 +154,7 @@ export class Aurora {
   private constructor(
     host: HTMLElement,
     private readonly still: boolean,
+    private readonly pointer: Pointer,
   ) {
     this.renderer = new Renderer({ dpr: 0.5, alpha: false, antialias: false, powerPreference: "low-power" });
     const gl = this.renderer.gl;
@@ -160,21 +176,6 @@ export class Aurora {
     host.classList.add("is-webgl");
     this.resize(host);
     onResize(host, () => this.resize(host));
-    if (!still) {
-      window.addEventListener(
-        "pointermove",
-        (event) => {
-          gsap.to(this.pointer, {
-            x: event.clientX / window.innerWidth,
-            y: 1 - event.clientY / window.innerHeight,
-            duration: 2.4,
-            ease: "power2.out",
-            overwrite: true,
-          });
-        },
-        { passive: true },
-      );
-    }
     gsap.ticker.add(this.tick);
   }
 
@@ -187,7 +188,14 @@ export class Aurora {
       this.dirty = true;
       return;
     }
-    gsap.to(this.state, { ...target, duration, ease: "sine.inOut", overwrite: true });
+    gsap.to(this.state, { ...target, duration, ease: "sine.inOut", overwrite: "auto" });
+  }
+
+  /** A swell of light from a point on the screen (in pixels), spreading out and fading. */
+  flare(clientX: number, clientY: number, amount = 1, duration = 2.2): void {
+    if (this.still) return;
+    this.uniforms.uFlareAt.value = [clientX / window.innerWidth, 1 - clientY / window.innerHeight];
+    gsap.fromTo(this.state, { flare: amount }, { flare: 0, duration, ease: "power2.out", overwrite: "auto" });
   }
 
   private resize(host: HTMLElement): void {
@@ -198,14 +206,20 @@ export class Aurora {
   }
 
   private readonly tick = (_time: number, deltaMs: number): void => {
-    const visible = this.state.strength > 0.002;
+    const visible = this.state.strength > 0.002 || this.state.flare > 0.002;
     if (this.still ? !this.dirty : !visible && !this.dirty) return;
-    if (!this.still) this.time += Math.min(deltaMs, 50) / 1000;
+    const seconds = Math.min(deltaMs, 50) / 1000;
+    if (!this.still) {
+      this.time += seconds;
+      this.lean.x = damp(this.lean.x, this.pointer.x + 0.5, 1.2, seconds);
+      this.lean.y = damp(this.lean.y, 0.5 - this.pointer.y, 1.2, seconds);
+    }
     const { uniforms, state } = this;
     uniforms.uTime.value = this.time + 40;
-    uniforms.uPointer.value = [this.pointer.x, this.pointer.y];
+    uniforms.uPointer.value = [this.lean.x, this.lean.y];
     uniforms.uStrength.value = state.strength;
     uniforms.uWeights.value = [state.w0, state.w1, state.w2, state.w3];
+    uniforms.uFlare.value = state.flare;
     this.renderer.render({ scene: this.mesh });
     this.dirty = false;
   };

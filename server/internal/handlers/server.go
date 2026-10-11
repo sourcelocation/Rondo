@@ -18,6 +18,7 @@ import (
 	"github.com/sourcelocation/dawl/appstore"
 	"github.com/sourcelocation/dawl/googleplay"
 	"github.com/sourcelocation/dawl/stripe"
+	"golang.org/x/time/rate"
 
 	"github.com/sourcelocation/rondo/server/internal/api"
 	"github.com/sourcelocation/rondo/server/internal/blob"
@@ -282,11 +283,25 @@ func (s *Server) KratosRegistration(ctx context.Context, r api.KratosRegistratio
 	return api.KratosRegistration204Response{}, s.Staff.ResolveOwner(ctx)
 }
 
+// recipients limits what Kratos mails to each address, which anyone can ask it for: five, then one
+// every five minutes, so nobody floods an inbox with codes.
+var recipients sync.Map
+
+func mailAllowed(to string) bool {
+	l, _ := recipients.LoadOrStore(strings.ToLower(to), rate.NewLimiter(rate.Every(5*time.Minute), 5))
+	return l.(*rate.Limiter).Allow()
+}
+
+// KratosCourier sends what Kratos hands over. One over the limit is dropped, not refused: Kratos
+// would only try it again.
 func (s *Server) KratosCourier(ctx context.Context, r api.KratosCourierRequestObject) (api.KratosCourierResponseObject, error) {
 	if err := s.hook(ctx); err != nil {
 		return nil, err
 	}
 	m := r.Body
+	if !mailAllowed(m.Recipient) {
+		return api.KratosCourier204Response{}, nil
+	}
 	return api.KratosCourier204Response{}, s.enqueue(ctx, jobs.Mail{Message: mail.FromKratos(m.TemplateType, m.Recipient, deref(m.Code), deref(m.Url))})
 }
 

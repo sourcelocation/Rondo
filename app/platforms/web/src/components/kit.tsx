@@ -360,6 +360,37 @@ export const DeckLook = ({ icon, color, className }: { icon?: string | null; col
     </span>
   );
 
+/**
+ * A whole number to type, given to [onCommit] when the field is left. Whoever takes it keeps it
+ * within its limits, and the field shows what was kept; what isn't a number puts [value] back.
+ */
+export function WholeInput({
+  value,
+  onCommit,
+  label,
+}: {
+  value: number;
+  onCommit: (n: number) => void;
+  label?: string;
+}) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+  return (
+    <Input
+      inputMode="numeric"
+      aria-label={label}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const n = Number.parseInt(text, 10);
+        // Until the number kept comes back, the one there was: one out of bounds may change nothing.
+        setText(String(value));
+        if (!Number.isNaN(n) && n !== value) onCommit(n);
+      }}
+    />
+  );
+}
+
 type Request =
   | { kind: "ask"; title: string; value: string; done: (v: string | null) => void }
   | { kind: "confirm"; title: string; body?: string; action: string; destructive: boolean; done: (v: boolean) => void }

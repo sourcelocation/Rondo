@@ -1,7 +1,7 @@
 import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { chart, fall, marks, recall, reviews, type Review } from "../content/history";
 import { all, one } from "./dom";
+import { loopInView } from "./loop";
 
 /** How fast time passes between reviews, in chart units a second. */
 const SPEED = 112;
@@ -36,8 +36,6 @@ export class HistoryScene {
   private readonly point: { x: number; y: number } = { x: marks.learned, y: chart.top };
   /** Where the point will have got to, as the story is put together. */
   private planned: number = marks.learned;
-  private timeline: gsap.core.Timeline | null = null;
-  private showing = false;
 
   constructor(root: HTMLElement, still: boolean) {
     this.svg = one(root, "[data-history-svg]", SVGSVGElement);
@@ -59,28 +57,7 @@ export class HistoryScene {
     if (still) return;
 
     this.clear();
-    ScrollTrigger.create({
-      trigger: root,
-      start: "top 72%",
-      end: "bottom 12%",
-      onToggle: ({ isActive }) => {
-        this.showing = isActive;
-        if (isActive) this.play();
-        else this.timeline?.pause();
-      },
-    });
-  }
-
-  /** Plays the story, again and again while it's on screen. */
-  private play(): void {
-    if (this.timeline != null) {
-      this.timeline.play();
-      return;
-    }
-    this.timeline = this.story().eventCallback("onComplete", () => {
-      this.timeline = null;
-      if (this.showing) this.play();
-    });
+    loopInView(root, () => this.story());
   }
 
   /** Everything back to before the card was learned. */

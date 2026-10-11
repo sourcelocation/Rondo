@@ -120,11 +120,11 @@ type Note struct {
 	DeckID     uuid.UUID
 	TemplateID uuid.UUID
 	Fields     json.RawMessage
+	Tags       string
 	SearchText string
 	V          int64
 	Seq        int64
 	DeletedAt  *int64
-	Tags       string
 }
 
 type NoteMedium struct {
@@ -215,16 +215,15 @@ type SecondFactorReset struct {
 }
 
 type Setting struct {
-	UserID        uuid.UUID
-	Grading       int16
-	Theme         int16
-	TextSize      int16
-	Timezone      *string
-	FsrsWeights   *string
-	V             int64
-	Seq           int64
-	ReminderAt    *int16
-	ReminderEmail *bool
+	UserID      uuid.UUID
+	Grading     int16
+	Theme       int16
+	TextSize    int16
+	Timezone    *string
+	FsrsWeights *string
+	ReminderAt  *int16
+	V           int64
+	Seq         int64
 }
 
 type Share struct {
@@ -275,8 +274,8 @@ type Subscription struct {
 	PeriodEnd      *time.Time
 	AutoRenew      bool
 	Sandbox        bool
-	UpdatedAt      time.Time
 	RenewalStopped bool
+	UpdatedAt      time.Time
 }
 
 type Summary struct {
@@ -299,18 +298,18 @@ type Template struct {
 
 type User struct {
 	ID                 uuid.UUID
-	Name               *string
-	ProUntil           *time.Time
-	StripeCustomer     *string
-	CreatedAt          time.Time
 	Username           string
 	UsernameChangedAt  *time.Time
+	Name               *string
 	Flag               *string
 	ActivityHidden     bool
 	ProfileConfirmedAt *time.Time
+	ProUntil           *time.Time
+	StripeCustomer     *string
 	RestrictedUntil    *time.Time
 	BannedUntil        *time.Time
 	EmailKey           *string
+	CreatedAt          time.Time
 }
 
 type UserIp struct {

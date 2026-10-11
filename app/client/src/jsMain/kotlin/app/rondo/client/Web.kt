@@ -5,6 +5,9 @@ import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
 import app.cash.sqldelight.driver.worker.WebWorkerDriver
+import app.rondo.client.net.SignInError
+import app.rondo.core.ErrorCode
+import app.rondo.core.Refused
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -117,10 +120,24 @@ private class WebPlatform(
     override suspend fun unzip(bytes: ByteArray): Map<String, ByteArray> = suspendCoroutine { c ->
         unzip(bytes.u8()) { error, files ->
             if (error != null) {
-                c.resumeWithException(Refused(app.rondo.core.model.ErrorCode.INVALID))
+                c.resumeWithException(Refused(ErrorCode.INVALID))
             } else {
                 val names: Array<String> = js("Object.keys(files)")
                 c.resume(names.associateWith { files[it].unsafeCast<Uint8Array>().bytes() })
+            }
+        }
+    }
+
+    override suspend fun zip(files: Map<String, ByteArray>): ByteArray = suspendCoroutine { c ->
+        val data: dynamic = js("({})")
+        for ((name, bytes) in files) data[name] = bytes.u8()
+        zip(data) { error, zipped ->
+            if (error != null ||
+                zipped == null
+            ) {
+                c.resumeWithException(Exception("zip: $error"))
+            } else {
+                c.resume(zipped.bytes())
             }
         }
     }
@@ -134,6 +151,15 @@ private class WebPlatform(
         load.bytes = bytes.u8()
         w.postMessage(load)
         return Booleans(WebWorkerDriver(w))
+    }
+
+    /** The worker answers this statement with the database's bytes (src/db.worker.ts). */
+    override suspend fun sqliteBytes(driver: SqlDriver): ByteArray {
+        val bytes = driver.executeQuery(null, EXPORT, { c ->
+            QueryResult.Value(c.next().value.let { c.getBytes(0)!! })
+        }, 0).await()
+        driver.close()
+        return bytes
     }
 
     override suspend fun passkey(options: String, register: Boolean): String {
@@ -153,6 +179,9 @@ private class WebPlatform(
         return JSON.stringify(credential.toJSON())
     }
 }
+
+/** What src/db.worker.ts answers with the database's bytes, rather than running it. */
+private const val EXPORT = "PRAGMA rondo_export"
 
 /** Opens Rondo: [worker] makes a SQLite worker (the database file, or an import's copy). */
 @OptIn(DelicateCoroutinesApi::class)

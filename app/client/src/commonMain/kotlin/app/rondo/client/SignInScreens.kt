@@ -1,10 +1,8 @@
 package app.rondo.client
 
-import app.rondo.core.model.ConsentDecision
-import app.rondo.core.model.ResetConfirm
-import app.rondo.core.model.ResetRequest
-import app.rondo.core.nowMillis
+import app.rondo.client.services.CodeFlow
 import kotlin.js.JsExport
+import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
 
 /**
@@ -93,27 +91,27 @@ class SignInScreen internal constructor(override val app: App) : Screen<SignInSt
 
     /** Sends a code to [email] to confirm removing its account's second step. */
     fun requestReset(email: String) = step {
-        online { app.rondo.net.api.requestReset(ResetRequest(email.trim())).ok() }
+        account.requestReset(email)
         lostEmail = email.trim()
         lost = "lost_code"
     }
 
     fun confirmReset(code: String) = step {
-        online { app.rondo.net.api.confirmReset(ResetConfirm(lostEmail, code.trim())).ok() }
+        account.confirmReset(lostEmail, code)
         lost = "lost_sent"
     }
 
     fun sendCode(email: String) = step {
         flow = account.sendCode(email.trim())
-        sentAt = nowMillis()
+        sentAt = now()
     }
 
     /** Sends another code to the same address, once [SignInState.resendAt] has passed. */
     fun resend() = step {
         val email = flow?.email ?: return@step
-        if (nowMillis() < sentAt + RESEND_AFTER) return@step
+        if (now() < sentAt + RESEND_AFTER) return@step
         flow = account.sendCode(email)
-        sentAt = nowMillis()
+        sentAt = now()
     }
 
     fun confirm(code: String) = step {
@@ -127,6 +125,8 @@ class SignInScreen internal constructor(override val app: App) : Screen<SignInSt
         error = null
         show(load())
     }
+
+    private fun now() = Clock.System.now().toEpochMilliseconds()
 
     private companion object {
         const val RESEND_AFTER = 30_000L
@@ -161,11 +161,11 @@ class ConsentScreen internal constructor(override val app: App, private val chal
 
     override suspend fun load(): ConsentState {
         if (!app.rondo.account.signedIn) return ConsentState(null, null, emptyArray(), false)
-        val c = online { app.rondo.net.api.getConsent(challenge) }.takeIf { it.status != 404 }?.ok()
+        val c = app.rondo.agents.consent(challenge)
         return ConsentState(c?.clientName, c?.clientUri, c?.scopes.orEmpty().toTypedArray(), true)
     }
 
     fun decide(allow: Boolean, open: (String) -> Unit) = act {
-        open(online { app.rondo.net.api.decideConsent(challenge, ConsentDecision(allow)).ok() }.url)
+        open(app.rondo.agents.decide(challenge, allow))
     }
 }

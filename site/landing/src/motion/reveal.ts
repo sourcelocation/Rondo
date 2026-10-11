@@ -15,19 +15,20 @@ function kindOf(element: HTMLElement): Kind {
 
 /**
  * Brings what is marked data-reveal into view out of a soft blur, rising a little: text word by word or line by
- * line, anything else whole. Elements marked data-reveal-manual wait for `play` (the intro's); the rest play as
- * they scroll into view. With reduced motion everything is simply shown.
+ * line, anything else whole. Elements marked data-reveal-manual wait for `play` (the page's opening); the rest play
+ * as they scroll into view, once the page has arrived (`watch`). With reduced motion everything is simply shown.
  */
 export class Reveals {
   private readonly waiting = new Map<HTMLElement, () => gsap.core.Timeline>();
+  private readonly scrolled: [HTMLElement, () => gsap.core.Timeline][] = [];
 
   constructor(
     private readonly root: ParentNode,
     private readonly reduced: boolean,
   ) {}
 
-  /** Prepares every element (splitting text) and sets the scroll-driven ones to play on entering. */
-  start(): void {
+  /** Puts every element in its starting state (splitting text), out of view until it's revealed. */
+  prepare(): void {
     for (const element of all(this.root, "[data-reveal]")) {
       // The motion takes over from the CSS fallback that would show the element on its own.
       element.style.animation = "none";
@@ -35,12 +36,16 @@ export class Reveals {
         gsap.set(element, { opacity: 1 });
         continue;
       }
-      const reveal = this.prepare(element, kindOf(element));
-      if (element.hasAttribute("data-reveal-manual")) {
-        this.waiting.set(element, reveal);
-      } else {
-        ScrollTrigger.create({ trigger: element, start: "top 90%", once: true, onEnter: () => reveal() });
-      }
+      const reveal = this.prepareOne(element, kindOf(element));
+      if (element.hasAttribute("data-reveal-manual")) this.waiting.set(element, reveal);
+      else this.scrolled.push([element, reveal]);
+    }
+  }
+
+  /** Reveals each element that isn't waiting for `play` as it scrolls into view (at once, if it's in view). */
+  watch(): void {
+    for (const [element, reveal] of this.scrolled.splice(0)) {
+      ScrollTrigger.create({ trigger: element, start: "top 90%", once: true, onEnter: () => reveal() });
     }
   }
 
@@ -53,13 +58,13 @@ export class Reveals {
     return reveal();
   }
 
-  /** Reveals everything still waiting, at once (when there is no intro to do it). */
+  /** Reveals everything still waiting, at once (when the page has no opening to do it). */
   playAll(): void {
     for (const element of [...this.waiting.keys()]) this.play(element);
   }
 
   /** Sets an element's starting state and returns what reveals it. */
-  private prepare(element: HTMLElement, kind: Kind): () => gsap.core.Timeline {
+  private prepareOne(element: HTMLElement, kind: Kind): () => gsap.core.Timeline {
     switch (kind) {
       case "words":
         return this.split(element, "words", { yPercent: 45, blur: 14, stagger: 0.06, duration: 1.5 });
@@ -94,7 +99,7 @@ export class Reveals {
       });
   }
 
-  /** The logo: out of a blur in place, its transform left alone (the intro's flight lands on it). */
+  /** The logo: out of a blur in place, its transform left alone. */
   private logo(element: HTMLElement): () => gsap.core.Timeline {
     gsap.set(element, { opacity: 0, filter: "blur(10px)" });
     return () =>
@@ -124,7 +129,7 @@ export class Reveals {
   }
 
   /**
-   * The headline: each word condenses out of a wide, blurred haze into its tight spacing, like a breath out.
+   * A headline: each word condenses out of a wide, blurred haze into its tight spacing, like a breath out.
    * Words keep their kerning (split by letters, they would lose it).
    */
   private hero(element: HTMLElement): () => gsap.core.Timeline {

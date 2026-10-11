@@ -184,7 +184,7 @@ func (q *Queries) PromoCode(ctx context.Context, code string) (PromoCodeRow, err
 }
 
 const redemption = `-- name: Redemption :one
-SELECT provider, ref, user_id, product, status, period_end, auto_renew, sandbox, updated_at, renewal_stopped FROM subscriptions WHERE provider = 'promo' AND ref = $1
+SELECT provider, ref, user_id, product, status, period_end, auto_renew, sandbox, renewal_stopped, updated_at FROM subscriptions WHERE provider = 'promo' AND ref = $1
 `
 
 func (q *Queries) Redemption(ctx context.Context, ref string) (Subscription, error) {
@@ -199,8 +199,8 @@ func (q *Queries) Redemption(ctx context.Context, ref string) (Subscription, err
 		&i.PeriodEnd,
 		&i.AutoRenew,
 		&i.Sandbox,
-		&i.UpdatedAt,
 		&i.RenewalStopped,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

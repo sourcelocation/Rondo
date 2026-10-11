@@ -1,6 +1,6 @@
 import { ArrowDownUp, Bookmark, Check, Flag, Play, Search, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useNavigate } from "react-router";
 import { ask, askTags, confirm, Empty, Header, Loading, pick } from "@/components/kit";
 import { TagFilter } from "@/components/tags";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
-import { app, date, s, useScreen, type BrowseScreen, type Choice, type NoteItem } from "@/rondo";
-import { useOverlay } from "@/routing";
+import {
+  app,
+  date,
+  s,
+  usePart,
+  useScreen,
+  type BrowseScreen,
+  type BrowseState,
+  type Choice,
+  type FilterScreen,
+  type NoteItem,
+} from "@/rondo";
+import { useOverlay, usePageAddress } from "@/routing";
 import { cn } from "cn";
 
 const STATE: Record<string, string> = {
@@ -32,7 +43,6 @@ const STATE: Record<string, string> = {
   review: "text-review",
   suspended: "text-paused",
 };
-const SORTS = ["added", "changed", "due", "alpha"];
 
 function Filter({
   value,
@@ -68,78 +78,89 @@ const stateText = (n: NoteItem) =>
     ? date(n.due)
     : ({ new: s.stateNew, suspended: s.stateSuspended, learning: s.stateLearning } as Record<string, string>)[n.state];
 
-/** The filters as an address's search params: what Browse, "Study these" and a smart deck's rules share. */
-export function filterParams(f: {
-  text: string;
-  deckId?: string | null;
-  templateId?: string | null;
-  tags: string[];
-  cardState?: string | null;
-  marked: boolean;
-}): URLSearchParams {
-  const p = new URLSearchParams();
-  if (f.text) p.set("q", f.text);
-  if (f.deckId) p.set("deck", f.deckId);
-  if (f.templateId) p.set("type", f.templateId);
-  for (const t of f.tags) p.append("tag", t);
-  if (f.cardState) p.set("state", f.cardState);
-  if (f.marked) p.set("marked", "1");
-  return p;
-}
-
-/** The filters an address holds. */
-export const readFilters = (params: URLSearchParams) => ({
-  q: params.get("q") ?? "",
-  deck: params.get("deck"),
-  type: params.get("type"),
-  tags: params.getAll("tag"),
-  state: params.get("state"),
-  marked: params.has("marked"),
-});
-
-/**
- * Notes by text, deck, type, tags, state and mark, in the order chosen; select some to change them
- * together. What's found can be studied, or kept as a smart deck; opened from one (`?smart=…`), the
- * filters become its rules.
- */
-export function Browse() {
-  const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
-  const smartId = params.get("smart");
-  const [st, browse] = useScreen(() => app.browse(params.get("deck"), smartId), [smartId]);
-  const note = useOverlay("note");
-  const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [text, setText] = useState(params.get("q") ?? "");
-
-  // The filters live in the address, so Back, a reload or a shared link brings them back.
-  const filters = { ...readFilters(params), sort: params.get("sort") ?? "added" };
-  const key = JSON.stringify(filters);
+/** A filter's pickers: text, deck, note type, card state, tags and mark; [children] at the end of the row. */
+export function FilterBar({ filter, children }: { filter: FilterScreen; children?: ReactNode }) {
+  const f = usePart(filter);
+  const [text, setText] = useState<string | null>(null);
   useEffect(() => {
-    if (!st) return;
-    const f = filters;
-    browse.filter(f.q, f.deck, f.type, f.tags, f.state, f.marked, f.sort);
-    setPicked(new Set());
-  }, [key, !!st]); // eslint-disable-line react-hooks/exhaustive-deps
-  const set = (name: string, value: string | string[] | null) => {
-    const next = new URLSearchParams(params);
-    next.delete(name);
-    for (const v of Array.isArray(value) ? value : value ? [value] : []) next.append(name, v);
-    setParams(next, { replace: true });
-  };
-  const study = filterParams({
-    text: filters.q,
-    deckId: filters.deck,
-    templateId: filters.type,
-    tags: filters.tags,
-    cardState: filters.state,
-    marked: filters.marked,
-  });
-  useEffect(() => {
-    const timer = setTimeout(() => text !== filters.q && set("q", text), 250);
+    if (text == null || !f || text === f.text) return;
+    const timer = setTimeout(() => filter.setText(text), 250);
     return () => clearTimeout(timer);
   }, [text]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!f) return null;
+  return (
+    <>
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          aria-label={s.search}
+          placeholder={s.search}
+          value={text ?? f.text}
+          onChange={(e) => setText(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Filter value={f.deckId ?? null} any={s.allDecks} options={f.decks} onChange={(v) => filter.setDeck(v)} />
+        <Filter
+          value={f.templateId ?? null}
+          any={s.allTypes}
+          options={f.templates}
+          onChange={(v) => filter.setTemplate(v)}
+        />
+        <Filter
+          value={f.cardState ?? null}
+          any={s.anyState}
+          onChange={(v) => filter.setCardState(v)}
+          options={[
+            ["new", s.stateNew],
+            ["learning", s.stateLearning],
+            ["review", s.stateReview],
+            ["suspended", s.stateSuspended],
+          ].map(([id, label]) => ({ id, label }) as Choice)}
+        />
+        <TagFilter value={f.tags} onChange={(tags) => filter.setTags(tags)} />
+        <Toggle size="sm" variant="outline" pressed={f.marked} onPressedChange={(on) => filter.setMarked(on)}>
+          <Flag /> {s.marked}
+        </Toggle>
+        <span className="flex-1" />
+        {children}
+      </div>
+    </>
+  );
+}
 
-  if (!st) return <Loading />;
+/** How the notes are sorted, and changing it. */
+export function SortMenu({ st, browse }: { st: BrowseState; browse: BrowseScreen }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" aria-label={s.sort}>
+          <ArrowDownUp /> {s.sortBy(st.sort)}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {st.sorts.map((o) => (
+          <DropdownMenuItem key={o.name} onSelect={() => browse.sortBy(o)}>
+            {s.sortBy(o)}
+            {o === st.sort && <Check className="ms-auto" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * The notes [browse] finds; select some to change them together. [bar] sits above them, sticky,
+ * while nothing is selected: the filter and what to do with what it finds.
+ */
+export function NoteList({ st, browse, bar }: { st: BrowseState; browse: BrowseScreen; bar: ReactNode }) {
+  const note = useOverlay("note");
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  // A new filter finds other notes: what was selected goes.
+  useEffect(() => setPicked(new Set()), [st.address]);
   const ids = [...picked];
   const toggle = (id: string, on: boolean) => {
     const next = new Set(picked);
@@ -147,103 +168,13 @@ export function Browse() {
     else next.delete(id);
     setPicked(next);
   };
-  const due = st.due + st.newCount;
   return (
     <>
-      <Header title={s.browse} />
-      {st.smart && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg bg-surface px-4 py-3">
-          <span className="min-w-0 flex-1 text-sm">{s.rulesOf(st.smart.label)}</span>
-          <Button variant="ghost" size="sm" asChild>
-            <Link to={`/smart/${st.smart.id}`}>{s.cancel}</Link>
-          </Button>
-          <Button size="sm" onClick={() => browse.saveRules(() => navigate(`/smart/${st.smart!.id}`))}>
-            {s.saveRules}
-          </Button>
-        </div>
-      )}
       <div className="sticky top-14 z-10 -mx-4 mb-4 grid gap-3 bg-background/95 px-4 py-3 backdrop-blur sm:-mx-8 sm:px-8 md:top-0">
         {ids.length > 0 ? (
           <Selection ids={ids} browse={browse} decks={st.decks} all={st.notes} onSelect={setPicked} />
         ) : (
-          <>
-            <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                aria-label={s.search}
-                placeholder={s.search}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Filter value={filters.deck} any={s.allDecks} options={st.decks} onChange={(v) => set("deck", v)} />
-              <Filter value={filters.type} any={s.allTypes} options={st.templates} onChange={(v) => set("type", v)} />
-              <Filter
-                value={filters.state}
-                any={s.anyState}
-                onChange={(v) => set("state", v)}
-                options={[
-                  ["new", s.stateNew],
-                  ["learning", s.stateLearning],
-                  ["review", s.stateReview],
-                  ["suspended", s.stateSuspended],
-                ].map(([id, label]) => ({ id, label }) as Choice)}
-              />
-              <TagFilter value={filters.tags} onChange={(tags) => set("tag", tags)} />
-              <Toggle
-                size="sm"
-                variant="outline"
-                pressed={filters.marked}
-                onPressedChange={(on) => set("marked", on ? "1" : null)}
-              >
-                <Flag /> {s.marked}
-              </Toggle>
-              <span className="flex-1" />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" aria-label={s.sort}>
-                    <ArrowDownUp /> {s.sortBy(filters.sort)}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {SORTS.map((o) => (
-                    <DropdownMenuItem key={o} onSelect={() => set("sort", o === "added" ? null : o)}>
-                      {s.sortBy(o)}
-                      {o === filters.sort && <Check className="ms-auto" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            {st.notes.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                {/* With nothing due it still opens: reviews not due yet can come early. */}
-                <Button size="sm" variant={due ? "secondary" : "ghost"} asChild>
-                  <Link to={`/browse/study?${study}`}>
-                    <Play /> {s.studyThese}
-                    <span className="text-muted-foreground tabular-nums">
-                      {s.studyTheseCounts(st.due, st.newCount)}
-                    </span>
-                  </Link>
-                </Button>
-                {!st.smart && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={async () => {
-                      const name = await ask(s.smartDeckName);
-                      if (name) browse.keep(name, (id) => navigate(`/smart/${id}`));
-                    }}
-                  >
-                    <Bookmark /> {s.keepAsSmartDeck}
-                  </Button>
-                )}
-              </div>
-            )}
-          </>
+          bar
         )}
       </div>
       {st.notes.length === 0 ? (
@@ -311,6 +242,61 @@ export function Browse() {
           {s.showMore}
         </Button>
       )}
+    </>
+  );
+}
+
+/**
+ * Browse: the notes a filter finds, studied as they are or kept as a smart deck. The filter and
+ * sort live in the address, so Back, a reload or a shared link brings them back.
+ */
+export function Browse() {
+  const [address, setAddress] = usePageAddress();
+  const navigate = useNavigate();
+  const [st, browse] = useScreen(() => app.browse(address), []);
+  const filter = usePart(browse?.filter ?? null);
+  // The address says what to show when it changes from outside (Back, a link), and shows what's shown.
+  useEffect(() => void browse?.open(address), [address]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => void (st && setAddress(st.address)), [st?.address]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!st || !filter) return <Loading />;
+  const due = st.due + st.newCount;
+  return (
+    <>
+      <Header title={s.browse} />
+      <NoteList
+        st={st}
+        browse={browse}
+        bar={
+          <>
+            <FilterBar filter={browse.filter}>
+              <SortMenu st={st} browse={browse} />
+            </FilterBar>
+            {st.notes.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                {/* With nothing due it still opens: reviews not due yet can come early. */}
+                <Button size="sm" variant={due ? "secondary" : "ghost"} asChild>
+                  <Link to={`/browse/study?${filter.address}`}>
+                    <Play /> {s.studyThese}
+                    <span className="text-muted-foreground tabular-nums">
+                      {s.studyTheseCounts(st.due, st.newCount)}
+                    </span>
+                  </Link>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={async () => {
+                    const name = await ask(s.smartDeckName);
+                    if (name) browse.keep(name, (id) => navigate(`/smart/${id}`));
+                  }}
+                >
+                  <Bookmark /> {s.keepAsSmartDeck}
+                </Button>
+              </div>
+            )}
+          </>
+        }
+      />
     </>
   );
 }

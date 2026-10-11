@@ -1,23 +1,17 @@
 package app.rondo.client
 
-import app.rondo.client.api.ApiApi
-import app.rondo.core.model.ActionRequest
-import app.rondo.core.model.CaseDeck
-import app.rondo.core.model.CaseItem
-import app.rondo.core.model.PromoBatch
-import app.rondo.core.model.StaffAction
-import app.rondo.core.model.UndoRequest
-import app.rondo.core.model.UserRef
-import app.rondo.core.nowMillis
+import app.rondo.client.services.CaseDeck
+import app.rondo.client.services.CaseItem
+import app.rondo.client.services.PromoBatch
+import app.rondo.client.services.StaffAction
+import app.rondo.client.services.UserRef
 import kotlin.js.JsExport
-import kotlin.time.Duration.Companion.days
-import kotlinx.datetime.Instant
 
 /** Someone as staff pages name them: [label] is @username, else their name. */
 @JsExport
-class PersonRef internal constructor(val id: String, val label: String, val username: String?)
-
-internal fun UserRef.person() = PersonRef(id, username?.let { "@$it" } ?: name ?: strings.someone, username)
+class PersonRef internal constructor(val id: String, val label: String, val username: String?) {
+    internal constructor(u: UserRef) : this(u.id, u.username?.let { "@$it" } ?: u.name ?: strings.someone, u.username)
+}
 
 /** One entry of the staff log, in words. [at], [until] and [undoneAt] are ISO times. */
 @JsExport
@@ -37,23 +31,16 @@ class LogItem internal constructor(
     val undoneBy: PersonRef?,
     val undoReason: String?,
     val undoable: Boolean,
-)
-
-internal fun StaffAction.item(): LogItem {
-    val who = user?.person()
-    return LogItem(
-        id, kind, strings.action(kind, data, who?.label ?: strings.someone, deckName), actor?.person(), who, deckId,
-        deckName, reason?.let(strings::reason), note, until?.toString(), createdAt.toString(), undoneAt != null,
-        undoneBy?.person(), undoReason, undoable,
+) {
+    internal constructor(a: StaffAction) : this(
+        a.id, a.kind, strings.action(a.kind, a.data, a.user?.let(::PersonRef)?.label ?: strings.someone, a.deckName),
+        a.actor?.let(
+            ::PersonRef,
+        ),
+        a.user?.let(::PersonRef), a.deckId, a.deckName, a.reason?.let(strings::reason), a.note,
+        a.until, a.createdAt, a.undoneAt != null, a.undoneBy?.let(::PersonRef), a.undoReason, a.undoable,
     )
 }
-
-/** [days] from now, or null for none (for good, no end). */
-internal fun inDays(days: Int): Instant? =
-    if (days > 0) Instant.fromEpochMilliseconds(nowMillis() + days.days.inWholeMilliseconds) else null
-
-/** Runs a staff action: every change staff make goes through this one call, and the log. */
-internal suspend fun App.doStaff(request: ActionRequest): StaffAction = online { rondo.net.api.doAction(request).ok() }
 
 /** [removable]: the roles you may take from them. */
 @JsExport
@@ -71,22 +58,22 @@ class TeamScreen internal constructor(override val app: App) : Screen<TeamState>
     override suspend fun load(): TeamState {
         val permissions = app.rondo.account.me?.permissions.orEmpty()
         val grantable = GRANTABLE.filter { "roles.$it" in permissions }
-        val members = online { app.rondo.net.api.listTeam().ok() }.map { m ->
+        val members = app.rondo.staff.team().map { m ->
             val removable = m.roles.filter { it in grantable && "owner" !in m.roles }
-            TeamMemberItem(m.user.person(), m.roles.toTypedArray(), removable.toTypedArray())
+            TeamMemberItem(PersonRef(m.user), m.roles.toTypedArray(), removable.toTypedArray())
         }
         return TeamState(members.toTypedArray(), grantable.toTypedArray())
     }
 
     /** Gives [userId] a [role]. */
     fun grant(userId: String, role: String) = act {
-        app.doStaff(ActionRequest("role.grant", userId = userId, data = mapOf("role" to role)))
+        app.rondo.staff.act("role.grant", userId = userId, data = mapOf("role" to role))
         show(load())
     }
 
     /** Takes [role] from [userId]. */
     fun revoke(userId: String, role: String) = act {
-        app.doStaff(ActionRequest("role.revoke", userId = userId, data = mapOf("role" to role)))
+        app.rondo.staff.act("role.revoke", userId = userId, data = mapOf("role" to role))
         show(load())
     }
 
@@ -112,11 +99,11 @@ class StaffLogScreen internal constructor(
 
     override suspend fun load(): StaffLogState {
         if (items.isEmpty()) fetch(null)
-        return StaffLogState(items.map { it.item() }.toTypedArray(), more)
+        return StaffLogState(items.map(::LogItem).toTypedArray(), more)
     }
 
     private suspend fun fetch(before: String?) {
-        val page = online { app.rondo.net.api.listActions(actor, user, deck, null, before).ok() }
+        val page = app.rondo.staff.log(actor, user, deck, before)
         items += page.items
         more = page.more
     }
@@ -129,7 +116,7 @@ class StaffLogScreen internal constructor(
 
     /** Undoes an entry, saying why. */
     fun undo(id: String, reason: String) = act {
-        val undone = online { app.rondo.net.api.undoAction(id, UndoRequest(reason)).ok() }
+        val undone = app.rondo.staff.undo(id, reason)
         val at = items.indexOfFirst { it.id == id }
         if (at >= 0) items[at] = undone
         show(load())
@@ -141,10 +128,10 @@ class StaffLogScreen internal constructor(
 class StaffActionScreen internal constructor(override val app: App, private val id: String) : Screen<LogItem>() {
     override val live get() = false
 
-    override suspend fun load(): LogItem = online { app.rondo.net.api.getAction(id).ok() }.item()
+    override suspend fun load(): LogItem = LogItem(app.rondo.staff.action(id))
 
     fun undo(reason: String) = act {
-        online { app.rondo.net.api.undoAction(id, UndoRequest(reason)).ok() }
+        app.rondo.staff.undo(id, reason)
         show(load())
     }
 }
@@ -179,18 +166,14 @@ class StaffSearchScreen internal constructor(override val app: App) : Screen<Sta
         items = if (query.isBlank()) {
             emptyList()
         } else {
-            val api = app.rondo.net.api
-            val found = online {
-                when (by) {
-                    "email" -> api.searchUsers(email = query.trim())
-                    "ip" -> api.searchUsers(ip = query.trim())
-                    else -> api.searchUsers(q = query.trim())
-                }.ok()
-            }
-            found.map {
-                val roles = it.roles.toTypedArray()
-                val restricted = it.restrictedUntil?.toString()
-                StaffPersonItem(it.user.person(), it.joined.toString(), roles, restricted, it.bannedUntil?.toString())
+            app.rondo.staff.search(query.trim(), by).map {
+                StaffPersonItem(
+                    PersonRef(it.user),
+                    it.joined,
+                    it.roles.toTypedArray(),
+                    it.restrictedUntil,
+                    it.bannedUntil,
+                )
             }
         }
         show(load())
@@ -247,23 +230,23 @@ class StaffUserScreen internal constructor(override val app: App, private val us
     override val live get() = false
 
     override suspend fun load(): StaffUserState {
-        val u = online { app.rondo.net.api.getStaffUser(userId).ok() }
+        val u = app.rondo.staff.user(userId)
         val permissions = app.rondo.account.me?.permissions.orEmpty()
         val grantable = listOf("admin", "moderator").filter { "roles.$it" in permissions && it !in u.roles }
         val removable = u.roles.filter { "roles.$it" in permissions }
         val billing = u.billing?.let { b ->
-            val parts = listOfNotNull(strings.pro, b.provider?.value, b.proUntil?.toString())
+            val parts = listOfNotNull(strings.pro, b.provider, b.proUntil)
             if (b.pro) parts.joinToString(" · ") else strings.free
         }
-        val addresses = u.ips?.map { AddressItem(it.ip, it.firstAt.toString(), it.lastAt.toString(), it.uses) }
-        val names = u.names?.map { NameItem(it.kind, it.value, it.at.toString(), it.byStaff, it.undone) }
+        val addresses = u.ips?.map { AddressItem(it.ip, it.firstAt, it.lastAt, it.uses) }
+        val names = u.names?.map { NameItem(it.kind, it.value, it.at, it.byStaff, it.undone) }
         return StaffUserState(
-            person = u.user.person(),
-            joined = u.joined.toString(),
+            person = PersonRef(u.user),
+            joined = u.joined,
             pro = u.pro,
             roles = u.roles.toTypedArray(),
-            restrictedUntil = u.restrictedUntil?.toString(),
-            bannedUntil = u.bannedUntil?.toString(),
+            restrictedUntil = u.restrictedUntil,
+            bannedUntil = u.bannedUntil,
             recent = u.recent,
             suggestedKind = u.suggestedKind,
             suggestedDays = u.suggestedDays,
@@ -272,7 +255,7 @@ class StaffUserScreen internal constructor(override val app: App, private val us
             signIn = u.signIn?.toTypedArray(),
             addresses = addresses?.toTypedArray(),
             names = names?.toTypedArray(),
-            related = u.related?.map { RelatedItem(it.user.person(), it.why.toTypedArray()) }?.toTypedArray(),
+            related = u.related?.map { RelatedItem(PersonRef(it.user), it.why.toTypedArray()) }?.toTypedArray(),
             billing = billing,
             grantable = grantable.toTypedArray(),
             removable = removable.toTypedArray(),
@@ -285,43 +268,40 @@ class StaffUserScreen internal constructor(override val app: App, private val us
      * [days]: how long a restriction or ban lasts; 0 for good.
      */
     fun moderate(kind: String, reason: String?, note: String?, days: Int) = act {
-        val until = inDays(days)
-        app.doStaff(ActionRequest(kind, userId = userId, reason = reason, note = note?.ifBlank { null }, until = until))
+        app.rondo.staff.act(kind, userId = userId, reason = reason, note = note, days = days)
         app.say(strings.done)
         show(load())
     }
 
     fun grant(role: String) = act {
-        app.doStaff(ActionRequest("role.grant", userId = userId, data = mapOf("role" to role)))
+        app.rondo.staff.act("role.grant", userId = userId, data = mapOf("role" to role))
         show(load())
     }
 
     fun revoke(role: String) = act {
-        app.doStaff(ActionRequest("role.revoke", userId = userId, data = mapOf("role" to role)))
+        app.rondo.staff.act("role.revoke", userId = userId, data = mapOf("role" to role))
         show(load())
     }
 
     /** Gives them Pro for [days], without a code or a store. */
     fun grantPro(days: Int) = act {
-        val until = inDays(days)
-        app.doStaff(ActionRequest("pro.grant", userId = userId, until = until))
+        app.rondo.staff.act("pro.grant", userId = userId, days = days)
         app.say(strings.done)
         show(load())
     }
 
     /** Restricts the addresses they were seen at, for [days] (0: for good). */
     fun restrictAddress(ip: String, days: Int) = act {
-        val until = inDays(days)
-        app.doStaff(ActionRequest("network.restrict", until = until, data = mapOf("range" to ip)))
+        app.rondo.staff.act("network.restrict", days = days, data = mapOf("range" to ip))
         app.say(strings.done)
     }
 }
 
 /** A deck in a case: its name, Discover address when listed, and author. */
 @JsExport
-class CaseDeckItem internal constructor(val id: String, val name: String, val slug: String?, val owner: PersonRef?)
-
-internal fun CaseDeck.item() = CaseDeckItem(id, name, slug, owner?.person())
+class CaseDeckItem internal constructor(val id: String, val name: String, val slug: String?, val owner: PersonRef?) {
+    internal constructor(d: CaseDeck) : this(d.id, d.name, d.slug, d.owner?.let(::PersonRef))
+}
 
 /**
  * A case in the queue. [kind]: reports, wave or flag. [summary]: what a wave measured or the rule
@@ -340,15 +320,15 @@ class CaseItemView internal constructor(
     val summary: String?,
     val opened: String,
     val resolved: Boolean,
-)
-
-internal fun CaseItem.view(): CaseItemView {
-    val why = reasons.map(strings::reportReason).toTypedArray()
-    val said = strings.caseSummary(kind, summary, today, usual?.toDouble())
-    val opened = openedAt.toString()
-    val about = deck?.item()
-    val who = person?.person()
-    return CaseItemView(id, kind, lane, score.toDouble(), reports, why, about, who, said, opened, resolvedAt != null)
+) {
+    internal constructor(c: CaseItem) : this(
+        c.id, c.kind, c.lane, c.score, c.reports, c.reasons.map(strings::reportReason).toTypedArray(),
+        c.deck?.let(
+            ::CaseDeckItem,
+        ),
+        c.person?.let(::PersonRef), strings.caseSummary(c.kind, c.summary, c.today, c.usual),
+        c.openedAt, c.resolvedAt != null,
+    )
 }
 
 @JsExport
@@ -361,8 +341,7 @@ class CasesScreen internal constructor(override val app: App) : Screen<CasesStat
     private var lane: String? = null
 
     override suspend fun load(): CasesState {
-        val filter = lane?.let { l -> ApiApi.LaneListCases.entries.firstOrNull { it.value == l } }
-        val items = online { app.rondo.net.api.listCases(filter, null).ok() }.map { it.view() }
+        val items = app.rondo.staff.cases(lane).map(::CaseItemView)
         return CasesState(lane, items.toTypedArray())
     }
 
@@ -402,45 +381,45 @@ class CaseScreen internal constructor(override val app: App, private val id: Str
     override val live get() = false
 
     override suspend fun load(): CaseState {
-        val c = online { app.rondo.net.api.getCase(id).ok() }
+        val c = app.rondo.staff.case(id)
         val reports = c.reports.map {
             val why = strings.reportReason(it.reason)
-            val law = it.law?.let(strings::law)
-            ReportView(it.reporter.person(), why, law, it.note, it.weight.toDouble(), it.createdAt.toString())
+            ReportView(PersonRef(it.reporter), why, it.law?.let(strings::law), it.note, it.weight, it.createdAt)
         }
-        val decks = c.decks.map { it.item() }.toTypedArray()
-        val people = c.people.map { it.person() }.toTypedArray()
-        val reporters = c.reporters.map { it.person() }.toTypedArray()
-        return CaseState(c.item.view(), reports.toTypedArray(), decks, people, reporters)
+        val decks = c.decks.map(::CaseDeckItem).toTypedArray()
+        val people = c.people.map(::PersonRef).toTypedArray()
+        val reporters = c.reporters.map(::PersonRef).toTypedArray()
+        return CaseState(CaseItemView(c.item), reports.toTypedArray(), decks, people, reporters)
     }
 
     /** Nothing to act on: closes the case, and its reports count against their reporters next time. */
     fun dismiss() = act {
-        app.doStaff(ActionRequest("case.dismiss", caseId = id))
+        app.rondo.staff.act("case.dismiss", caseId = id)
         app.say(strings.done)
         show(load())
     }
 
     /** Takes [decks] off Discover, with this case. */
     fun removeDecks(decks: Array<String>, reason: String, note: String?, takeDown: Boolean) = act {
-        val removal = ActionRequest(
-            "deck.remove",
-            reason = reason,
-            note = note?.ifBlank { null },
-            data = mapOf("take_down" to takeDown.toString()),
-            caseId = id,
-        )
-        for (deck in decks) app.doStaff(removal.copy(deckId = deck))
+        val data = mapOf("take_down" to takeDown.toString())
+        for (deck in decks) {
+            app.rondo.staff.act(
+                "deck.remove",
+                deckId = deck,
+                reason = reason,
+                note = note,
+                data = data,
+                caseId = id,
+            )
+        }
         app.say(strings.done)
         show(load())
     }
 
     /** Warns, restricts or bans [people] ([kind] as for a person's panel), with this case. */
     fun moderate(people: Array<String>, kind: String, reason: String?, note: String?, days: Int) = act {
-        val until = inDays(days)
-        val told = note?.ifBlank { null }
         for (person in people) {
-            app.doStaff(ActionRequest(kind, userId = person, reason = reason, note = told, until = until, caseId = id))
+            app.rondo.staff.act(kind, userId = person, reason = reason, note = note, days = days, caseId = id)
         }
         app.say(strings.done)
         show(load())
@@ -459,10 +438,11 @@ class BatchItem internal constructor(
     val created: String,
     val by: PersonRef?,
     val undone: Boolean,
-)
-
-internal fun PromoBatch.item() =
-    BatchItem(id, note, days, codes, used, redeemBy?.toString(), createdAt.toString(), by?.person(), undone)
+) {
+    internal constructor(b: PromoBatch) : this(
+        b.id, b.note, b.days, b.codes, b.used, b.redeemBy, b.createdAt, b.by?.let(::PersonRef), b.undone,
+    )
+}
 
 @JsExport
 class PromoState internal constructor(val batches: Array<BatchItem>)
@@ -472,19 +452,15 @@ class PromoState internal constructor(val batches: Array<BatchItem>)
 class PromoScreen internal constructor(override val app: App) : Screen<PromoState>() {
     override val live get() = false
 
-    override suspend fun load(): PromoState {
-        val batches = online { app.rondo.net.api.listPromoBatches().ok() }
-        return PromoState(batches.map { it.item() }.toTypedArray())
-    }
+    override suspend fun load(): PromoState = PromoState(app.rondo.staff.batches().map(::BatchItem).toTypedArray())
 
     /**
      * Makes [count] codes for [days] of Pro each, usable for [redeemDays] (0: no end), with a [note]
      * for staff. [open] gets the new batch's id.
      */
     fun create(count: Int, days: Int, redeemDays: Int, note: String?, open: (String) -> Unit) = act {
-        val until = inDays(redeemDays)
         val data = mapOf("count" to count.toString(), "days" to days.toString())
-        val made = app.doStaff(ActionRequest("promo.batch", note = note?.ifBlank { null }, until = until, data = data))
+        val made = app.rondo.staff.act("promo.batch", note = note, days = redeemDays, data = data)
         open(made.id)
     }
 }
@@ -502,15 +478,15 @@ class BatchScreen internal constructor(override val app: App, private val id: St
     override val live get() = false
 
     override suspend fun load(): BatchState {
-        val b = online { app.rondo.net.api.getPromoBatch(id).ok() }
-        val codes = b.codes.map { CodeItem(it.code, it.usedBy?.person(), it.usedAt?.toString(), it.revoked) }
+        val b = app.rondo.staff.batch(id)
+        val codes = b.codes.map { CodeItem(it.code, it.usedBy?.let(::PersonRef), it.usedAt, it.revoked) }
         val unused = codes.filter { it.usedBy == null && !it.revoked }.joinToString("\n") { it.code }
-        return BatchState(b.batch.item(), codes.toTypedArray(), unused)
+        return BatchState(BatchItem(b.batch), codes.toTypedArray(), unused)
     }
 
     /** Revokes one code; Pro from it ends. */
     fun revoke(code: String) = act {
-        app.doStaff(ActionRequest("promo.revoke", data = mapOf("code" to code)))
+        app.rondo.staff.act("promo.revoke", data = mapOf("code" to code))
         show(load())
     }
 }

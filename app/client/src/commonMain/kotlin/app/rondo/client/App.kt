@@ -1,10 +1,15 @@
 package app.rondo.client
 
-import app.cash.sqldelight.async.coroutines.awaitAsList
-import app.rondo.core.model.ErrorCode
-import app.rondo.core.model.ReportRequest
-import app.rondo.core.nowMillis
+import app.rondo.client.net.ApiError
+import app.rondo.client.net.SignInError
+import app.rondo.client.services.Subscription
+import app.rondo.core.ErrorCode
+import app.rondo.core.Filter
+import app.rondo.core.Refused
+import io.ktor.http.parseQueryString
+import io.ktor.util.toMap
 import kotlin.js.JsExport
+import kotlin.time.Clock
 import kotlinx.coroutines.launch
 
 /**
@@ -19,12 +24,7 @@ class Report(
     val law: String?,
     val note: String?,
     val goodFaith: Boolean,
-) {
-    internal fun request(): ReportRequest {
-        val target = ReportRequest.TargetKind.entries.first { it.value == kind }
-        return ReportRequest(target, id, reason, law, note?.ifBlank { null }, goodFaith)
-    }
-}
+)
 
 /**
  * A notification the server wrote, to show once: as a dialog that waits for the person ([modal]),
@@ -42,6 +42,19 @@ class NotificationItem internal constructor(
 )
 
 /**
+ * Why syncing stopped: [label] says it in a few words, for the sync line, and [message] in full.
+ * [signIn]: signing in again resumes it; otherwise trying again might. [needsYou]: it stays stopped
+ * until the person does something, unlike being offline or a sync that didn't work, which retry.
+ */
+@JsExport
+class SyncProblem internal constructor(
+    val label: String,
+    val message: String,
+    val signIn: Boolean,
+    val needsYou: Boolean,
+)
+
+/**
  * What the whole app shows around its screens. [sync] is null, or why syncing stopped.
  * [permissions] are the staff tools usable now; [staff] says whether to show them (a staff member can
  * hide them, for screenshots); [staffLocked]: the person has a role, but this session didn't sign in
@@ -54,7 +67,7 @@ class AppState internal constructor(
     val email: String?,
     val pro: Boolean,
     val syncing: Boolean,
-    val sync: String?,
+    val sync: SyncProblem?,
     val syncedAt: Double?,
     val issues: Int,
     val grading: Int,
@@ -85,10 +98,10 @@ class App internal constructor(internal val rondo: Rondo) : Screen<AppState>() {
     private val shown = HashSet<String>()
 
     override suspend fun load(): AppState {
-        val s = rondo.store.settings()
+        val s = rondo.library.settings()
         val sync = rondo.sync.value
         val me = rondo.account.me
-        val issues = rondo.store.q.rejects().awaitAsList().size
+        val issues = rondo.syncer.issues().size
         val roles = me?.roles.orEmpty()
         val permissions = me?.permissions.orEmpty()
         val next = me?.notifications.orEmpty().firstOrNull { it.id !in shown }?.let {
@@ -98,7 +111,7 @@ class App internal constructor(internal val rondo: Rondo) : Screen<AppState>() {
         val setup = unconfirmed && (setupWanted || rondo.platform.read(SETUP_ASKED) == null)
         return AppState(
             rondo.account.signedIn, me?.name, rondo.account.email, me?.pro == true, sync.busy,
-            sync.code?.let(::syncMessage), sync.at?.toDouble(), issues, s.grading, s.theme, s.textSize,
+            sync.code?.let(::syncProblem), sync.at?.toDouble(), issues, s.grading, s.theme, s.textSize,
             roles.toTypedArray(), permissions.toTypedArray(), me?.staffLocked == true,
             rondo.platform.read(STAFF_HIDDEN) == null, next, setup || setupOpen, me?.username, me?.flag,
         )
@@ -132,10 +145,7 @@ class App internal constructor(internal val rondo: Rondo) : Screen<AppState>() {
     fun seen(id: String) {
         shown += id
         reload()
-        act {
-            online { rondo.net.api.markSeen(id).ok() }
-            rondo.account.forget(id)
-        }
+        act { rondo.account.seen(id) }
     }
 
     /** Reads the account again: when the app comes back to the front. */
@@ -186,18 +196,28 @@ class App internal constructor(internal val rondo: Rondo) : Screen<AppState>() {
 
     /** Reports a deck or a person: see [Report]. [done] runs once it's received. */
     fun report(report: Report, done: () -> Unit) = act {
-        online { rondo.net.api.report(report.request()).ok() }
+        rondo.discover.report(report.kind, report.id, report.reason, report.law, report.note, report.goodFaith)
         say(strings.reportSent)
         done()
     }
 
-    private fun syncMessage(code: String) = when (code) {
-        "offline" -> strings.offline
-        "signed_out" -> strings.signedOutSync
-        "outdated" -> strings.outdated
-        "clock" -> strings.clock
-        "second_factor" -> strings.secondFactorDue
-        else -> strings.syncFailed
+    private fun syncProblem(code: String) = when (code) {
+        "offline" -> SyncProblem(strings.offlineTitle, strings.offline, signIn = false, needsYou = false)
+
+        "signed_out" -> SyncProblem(strings.signedOutTitle, strings.signedOutSync, signIn = true, needsYou = true)
+
+        "outdated" -> SyncProblem(strings.outdatedTitle, strings.outdated, signIn = false, needsYou = true)
+
+        "clock" -> SyncProblem(strings.clockTitle, strings.clock, signIn = false, needsYou = true)
+
+        "second_factor" -> SyncProblem(
+            strings.secondFactorTitle,
+            strings.secondFactorDue,
+            signIn = true,
+            needsYou = true,
+        )
+
+        else -> SyncProblem(strings.syncFailedTitle, strings.syncFailed, signIn = false, needsYou = false)
     }
 
     /** Hears messages to show briefly: why an action didn't work, or that it did. */
@@ -226,9 +246,15 @@ class App internal constructor(internal val rondo: Rondo) : Screen<AppState>() {
 
     fun syncNow() = act { rondo.syncNow() }
 
+    /** Stops borrowing [id], a deck lent to you. */
+    internal suspend fun leave(id: String) {
+        rondo.sharing.remove(id, rondo.library.me)
+        rondo.syncNow()
+    }
+
     /** Signs this account in for an agent's OAuth request (Hydra's login step); [open] goes on to consent. */
     fun acceptLogin(challenge: String, open: (String) -> Unit) = act {
-        open(online { rondo.net.api.acceptLogin(challenge).ok() }.url)
+        open(rondo.agents.acceptLogin(challenge))
     }
 
     /**
@@ -236,7 +262,7 @@ class App internal constructor(internal val rondo: Rondo) : Screen<AppState>() {
      * the question, and the UI calls again with [confirmed] once the person agrees.
      */
     fun signOut(confirmed: Boolean, ask: (String) -> Unit) = act {
-        val pending = rondo.store.pending()
+        val pending = rondo.syncer.pending()
         if (pending > 0 && !confirmed) return@act ask(strings.unsynced(pending))
         rondo.reminders.remindHere(false)
         rondo.account.signOut()
@@ -244,36 +270,37 @@ class App internal constructor(internal val rondo: Rondo) : Screen<AppState>() {
     }
 
     /** The current time, as the screens count it: for UIs that show relative times. */
-    fun now(): Double = nowMillis().toDouble()
+    fun now(): Double = Clock.System.now().toEpochMilliseconds().toDouble()
 
     fun home() = Home(this)
 
     fun deck(id: String) = DeckScreen(this, id)
 
+    fun deckSettings(deckId: String) = DeckSettingsScreen(this, deckId)
+
+    fun export(deckId: String) = ExportScreen(this, deckId)
+
     fun share(deckId: String) = ShareScreen(this, deckId)
 
     /** Studying a deck and its sub-decks, or every deck (null). */
-    fun study(deckId: String?) = StudyScreen(this) { DeckScope.of(rondo.store, deckId, it) }
+    fun study(deckId: String?) = StudyScreen(this, rondo.study.deck(deckId))
 
     /** Studying a smart deck, within its limits. */
-    fun studySmart(id: String) = StudyScreen(this) {
-        listOfNotNull(
-            rondo.store.smartDeck(id)?.takeIf {
-                it.deletedAt == null
-            }?.let { FilterScope.of(rondo.store, it) },
-        )
-    }
+    fun studySmart(id: String) = StudyScreen(this, rondo.study.smart(id))
 
-    /** Studying what Browse finds with these filters ("Study these"): see [BrowseScreen.filter]. */
-    fun studyThese(
-        text: String,
-        deckId: String?,
-        templateId: String?,
-        tags: Array<String>,
-        cardState: String?,
-        marked: Boolean,
-    ) = StudyScreen(this) {
-        listOf(FilterScope.unlimited(rondo.store, picked(text, deckId, templateId, tags, cardState, marked)))
+    /** Studying what a filter finds ("Study these"): [address] as [FilterState.address] writes it. */
+    fun studyThese(address: String) =
+        StudyScreen(this, rondo.study.filter(Filter(parseQueryString(address.removePrefix("?")).toMap())))
+
+    /**
+     * Redeems a promo code: the Pro it gives starts when the Pro there is ends. The account is read
+     * again, so everything that shows Pro does.
+     */
+    internal suspend fun redeem(code: String): Subscription {
+        val plan = rondo.billing.redeem(code)
+        rondo.account.refresh()
+        reload()
+        return plan
     }
 
     fun smartDeck(id: String) = SmartDeckScreen(this, id)
@@ -288,8 +315,8 @@ class App internal constructor(internal val rondo: Rondo) : Screen<AppState>() {
     /** A note type to edit ([id]), or a new one: from scratch, or a copy of [from]. */
     fun template(id: String?, from: String?) = TemplateScreen(this, id, from)
 
-    /** Browse, in [deckId]; with [smartId], to change that smart deck's rules. */
-    fun browse(deckId: String?, smartId: String?) = BrowseScreen(this, deckId, smartId)
+    /** Browse, opened on [address] as [BrowseState.address] writes it: its filter and sort. */
+    fun browse(address: String) = BrowseScreen(this, address)
 
     fun importer() = ImportScreen(this)
 

@@ -1,8 +1,9 @@
 import { defineConfig, envField } from "astro/config";
 
 /**
- * rondo.matthewsource.com's front page, built as static files that the site image serves at / (site/Caddyfile):
- * the landing page, the legal pages and the files that let the apps open Rondo's links.
+ * rondo.matthewsource.com's own pages, built as static files that the site image serves at / (site/Caddyfile): the
+ * landing page, the download page, the press kit and its files, the legal pages and the files that let the apps open
+ * Rondo's links.
  */
 export default defineConfig({
   site: "https://rondo.matthewsource.com",

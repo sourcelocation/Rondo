@@ -1,3 +1,5 @@
+import type { Brand } from "../brands";
+
 /**
  * What the three devices in the native-apps section study, each a deck of its own and a kind of card Rondo draws
  * natively: Japanese with furigana on the phone, cloze on the tablet, and maths on the laptop (written out in
@@ -15,20 +17,25 @@ export const tabletCards = [
   { before: "The", answer: "sinoatrial", after: "node sets the heart’s rhythm." },
 ] as const;
 
-/** Each device's platforms, the first being where it starts. */
+/** The platforms each device stands for, named under it. */
 export const devicePlatforms = {
   phone: [
-    { os: "android", name: "Android", brand: "android" },
-    { os: "ios", name: "iOS", brand: "apple" },
+    { name: "iOS", brand: "apple" },
+    { name: "Android", brand: "android" },
   ],
   tablet: [
-    { os: "ipados", name: "iPadOS", brand: "apple" },
-    { os: "android", name: "Android", brand: "android" },
+    { name: "iPadOS", brand: "apple" },
+    { name: "Android", brand: "android" },
   ],
   laptop: [
-    { os: "windows", name: "Windows", brand: "windows" },
-    { os: "linux", name: "Linux", brand: "linux" },
-    { os: "web", name: "Web", brand: "web" },
-    { os: "macos", name: "macOS", brand: "apple" },
+    { name: "macOS", brand: "apple" },
+    { name: "Windows", brand: "windows" },
+    { name: "Linux", brand: "linux" },
+    { name: "Web", brand: "web" },
   ],
-} as const;
+} as const satisfies Record<string, readonly { name: string; brand: Brand }[]>;
+
+export type Gadget = keyof typeof devicePlatforms;
+
+/** The platform each device is drawn as (its data-os): a mix, so the picture shows more than one. */
+export const shown: Record<Gadget, string> = { phone: "ios", tablet: "android", laptop: "macos" };

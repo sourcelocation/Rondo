@@ -11,7 +11,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/sourcelocation/rondo/server/internal/api"
-	"github.com/sourcelocation/rondo/server/internal/blob"
 	"github.com/sourcelocation/rondo/server/internal/pro"
 	"github.com/sourcelocation/rondo/server/internal/store"
 )
@@ -58,7 +57,7 @@ func (s *Server) RequestUpload(ctx context.Context, r api.RequestUploadRequestOb
 	if err := s.Q.AddMedia(ctx, store.AddMediaParams{Hash: hash, Size: int32(b.Size), Mime: b.Mime, UploadedBy: &id.ID}); err != nil {
 		return nil, err
 	}
-	target, headers, err := s.Blobs.UploadURL(ctx, "media/"+b.Hash, b.Mime, int64(b.Size))
+	target, headers, err := s.Blobs.UploadURL(ctx, "media/"+b.Hash, b.Mime, int64(b.Size), hash)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +72,7 @@ func (s *Server) CompleteUpload(ctx context.Context, r api.CompleteUploadRequest
 	if err != nil {
 		return nil, err
 	}
-	if err := blob.Verify(ctx, s.Blobs, r.Hash, int64(m.Size)); err != nil {
+	if err := s.Blobs.Check(ctx, "media/"+r.Hash, m.Hash, int64(m.Size)); err != nil {
 		return nil, fail(http.StatusBadRequest, api.Invalid, "The upload didn't arrive complete.")
 	}
 	return api.CompleteUpload204Response{}, s.Q.VerifyMedia(ctx, m.Hash)
@@ -116,7 +115,7 @@ func (s *Server) PutMedia(ctx context.Context, r api.PutMediaRequestObject) (api
 	if err := s.Blobs.Put(ctx, "media/"+r.Hash, m.Mime, io.LimitReader(r.Body, maxMedia+1)); err != nil {
 		return nil, err
 	}
-	if err := blob.Verify(ctx, s.Blobs, r.Hash, int64(m.Size)); err != nil {
+	if err := s.Blobs.Check(ctx, "media/"+r.Hash, m.Hash, int64(m.Size)); err != nil {
 		_ = s.Blobs.Delete(ctx, "media/"+r.Hash)
 		return nil, fail(http.StatusBadRequest, api.Invalid, "That file doesn't match its hash.")
 	}

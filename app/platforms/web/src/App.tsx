@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
 import { toast } from "sonner";
+import { DeckOverlays } from "@/components/DeckOverlays";
 import { Dialogs, NotFound } from "@/components/kit";
 import { Notifications, useRefreshOnFocus } from "@/components/Notifications";
 import { ProOverlay } from "@/components/Pro";
@@ -37,7 +38,8 @@ function Moved() {
 
 /**
  * The app's addresses. Each page sits one level below the one its Up button leads to; studying,
- * signing in and agents' consent take the whole window; the note editor and Pro open over any page.
+ * signing in and agents' consent take the whole window; the note editor, a deck's settings, sharing
+ * and export, and Pro open over any page.
  */
 export function App() {
   const theme = useTheme();
@@ -97,6 +99,7 @@ export function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <NoteOverlay />
+      <DeckOverlays />
       <ProOverlay />
       <Toaster position="bottom-right" theme={theme} />
       <Dialogs />

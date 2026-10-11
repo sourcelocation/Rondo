@@ -1,81 +1,103 @@
 package app.rondo.client
 
-import app.cash.sqldelight.async.coroutines.awaitAsList
-import app.cash.sqldelight.async.coroutines.awaitAsOne
-import app.rondo.client.db.Notes
+import app.rondo.client.services.Download
+import app.rondo.client.services.FileFormat
+import app.rondo.client.services.Overview
 import app.rondo.core.Access
+import app.rondo.core.Counts
+import app.rondo.core.Deck
+import app.rondo.core.Filter
+import app.rondo.core.NoteSort
 import app.rondo.core.Role
+import app.rondo.core.SmartDeck
 import app.rondo.core.Tree
-import app.rondo.core.model.Deck
-import app.rondo.core.model.Filter
-import app.rondo.core.model.SmartDeck
 import kotlin.js.JsExport
 
-/** A deck in a list: its place in the tree, its ring and level, and today's counts. */
+/** What can be done to a deck, as its menus offer it: see [DeckItem.actions]. */
+@JsExport
+enum class DeckAction {
+    STUDY,
+    SETTINGS,
+    SHARE,
+    BROWSE,
+    ADD_NOTE,
+    NEW_SUBDECK,
+    RENAME,
+    MOVE,
+    DUPLICATE,
+    CONVERT,
+    EXPORT,
+    LEAVE,
+    DELETE,
+}
+
+/**
+ * A deck as screens show it: its place in the tree, its ring and level, today's counts, and what it
+ * offers you. Deck [d] in [o], at [depth] in its list; [anki]: the decks with notes in Anki's format;
+ * [from]: who lent each deck.
+ */
 @JsExport
 class DeckItem internal constructor(
-    val id: String,
-    val name: String,
-    val icon: String?,
-    val color: Int,
+    o: Overview,
+    d: Deck,
     val depth: Int,
-    val parentId: String?,
-    val children: Int,
-    /** Learned percent; for a locked level, progress towards opening it. */
-    val ring: Int,
-    val locked: Boolean,
-    val level: String?,
-    val newCount: Int,
-    val learning: Int,
-    val review: Int,
-    /** owner, editor, viewer or read_only. */
-    val role: String,
-    /** Who lent it, on a shared deck at the top. */
-    val from: String?,
-    /** Notes in it and its sub-decks. */
-    val notes: Int,
-    /** Today's counts as a line ("3 new · 1 to review"), or what it waits for. */
-    val detail: String,
-)
-
-internal fun Overview.item(d: Deck, depth: Int, access: Access, from: Map<String, String?> = emptyMap()): DeckItem {
-    val level = levels[d.id]
-    val c = counts(d.id)
-    val levelName = level?.takeIf { it.of > 0 }?.let { strings.levelOf(it.index, it.of) }
-    val role = access.role(d.id).name.lowercase()
-    val notes = tree.subtree(d.id).sumOf { loads[it.id]?.notes ?: 0 }
-    val locked = level?.open == false
-    val before = tree.children(d.parentId ?: "").let { siblings -> siblings.getOrNull(siblings.indexOf(d) - 1) }
-    val detail = when {
-        locked && before != null -> strings.opensAfter(before.name)
-        locked -> strings.locked
-        notes == 0 -> strings.emptyDeck
-        else -> strings.toStudy(c.total, notes)
-    }
-    return DeckItem(
-        d.id, d.name, d.icon, d.color, depth, d.parentId, tree.children(d.id).size, level?.ring ?: 0,
-        locked, levelName, c.new, c.learning, c.review, role, from[d.id], notes, detail,
-    )
-}
-
-internal suspend fun SmartDeck.item(store: Store, day: Day): SmartDeckItem {
-    val c = FilterScope.of(store, this).counts(day)
-    val detail = if (c.total > 0) strings.due(c.total) else strings.nothingDue
-    return SmartDeckItem(id, name, icon, color, c.new, c.learning, c.review, detail)
-}
-
-internal fun Overview.items(
-    roots: List<Deck>,
     access: Access,
+    anki: Set<String>,
     from: Map<String, String?> = emptyMap(),
-): Array<DeckItem> {
-    val out = ArrayList<DeckItem>()
-    fun walk(d: Deck, depth: Int) {
-        out += item(d, depth, access, from)
-        tree.children(d.id).forEach { walk(it, depth + 1) }
+) {
+    private val opens = o.levels[d.id]
+    private val counts = o.counts(d.id)
+    val id = d.id
+    val name = d.name
+    val icon = d.icon
+    val color = d.color
+    val parentId = d.parentId
+    val children = o.tree.children(d.id).size
+
+    /** Learned percent; for a locked level, progress towards opening it. */
+    val ring = opens?.ring ?: 0
+    val locked = opens?.open == false
+    val level = opens?.takeIf { it.of > 0 }?.let { strings.levelOf(it.index, it.of) }
+    val newCount = counts.new
+    val learning = counts.learning
+    val review = counts.review
+
+    /** Who lent it, on a shared deck at the top. */
+    val from = from[d.id]
+
+    /** Notes in it and its sub-decks. */
+    val notes = o.tree.subtree(d.id).sumOf { o.loads[it.id]?.notes ?: 0 }
+
+    /** Today's counts as a line ("3 new · 1 to review"), or what it waits for. */
+    val detail = when {
+        locked -> o.tree.children(d.parentId ?: "").let { it.getOrNull(it.indexOf(d) - 1) }
+            ?.let { strings.opensAfter(it.name) } ?: strings.locked
+
+        notes == 0 -> strings.emptyDeck
+
+        else -> strings.toStudy(counts.total, notes)
     }
-    roots.forEach { walk(it, 0) }
-    return out.toTypedArray()
+
+    /** What it offers, in order, for who you are to it. */
+    val actions: Array<DeckAction> = run {
+        val owner = access.role(d.id) == Role.OWNER
+        val write = access.canWrite(d.id) == null
+        listOfNotNull(
+            DeckAction.STUDY.takeIf { notes > 0 },
+            DeckAction.SETTINGS.takeIf { write },
+            DeckAction.SHARE.takeIf { owner },
+            DeckAction.BROWSE,
+            DeckAction.ADD_NOTE.takeIf { write },
+            DeckAction.NEW_SUBDECK.takeIf { write },
+            DeckAction.RENAME.takeIf { write },
+            DeckAction.MOVE.takeIf { owner },
+            DeckAction.DUPLICATE,
+            DeckAction.CONVERT.takeIf { o.tree.subtree(d.id).any { it.id in anki } },
+            DeckAction.EXPORT,
+            DeckAction.LEAVE.takeIf { d.id in o.lends },
+            DeckAction.DELETE.takeIf { owner },
+        ).toTypedArray()
+    }
 }
 
 /** A smart deck in a list: its look and what it offers today. */
@@ -90,7 +112,24 @@ class SmartDeckItem internal constructor(
     val review: Int,
     /** Today's counts as a line, or that nothing is due. */
     val detail: String,
-)
+) {
+    internal constructor(s: SmartDeck, c: Counts) : this(
+        s.id,
+        s.name,
+        s.icon,
+        s.color,
+        c.new,
+        c.learning,
+        c.review,
+        if (c.total >
+            0
+        ) {
+            strings.due(c.total)
+        } else {
+            strings.nothingDue
+        },
+    )
+}
 
 @JsExport
 class Removed internal constructor(val id: String, val deck: Boolean, val label: String, val deletedAt: Double)
@@ -119,29 +158,37 @@ class HomeState internal constructor(
     val opened: Array<String>,
 )
 
-/** Your decks and the ones shared with you, as trees, with today's plan above and Recently deleted below. */
+/**
+ * Your decks and the ones shared with you, as trees, with today's plan above and Recently deleted
+ * below. Every UI keeps it open for its sidebar, so where decks are in the tree changes here: a
+ * new deck, and moving one.
+ */
 @JsExport
 class Home internal constructor(override val app: App) : Screen<HomeState>() {
     private val library get() = app.rondo.library
-    private val store get() = app.rondo.store
     private var tree = Tree(emptyList())
 
     override suspend fun load(): HomeState {
         val o = library.overview()
         tree = o.tree
         val access = library.access()
-        val (mine, shared) = o.tree.roots.partition { it.ownerId == store.me }
-        val from = store.q.lends().awaitAsList().associate { it.deck_id to it.owner_name }
+        val anki = library.ankiDecks()
+        val (mine, shared) = o.tree.roots.partition { it.ownerId == library.me }
+        val from = library.lenders()
         // Recently deleted: decks that aren't inside another deleted one, and notes in decks still there.
-        val decks = store.decks().filter { d ->
-            d.deletedAt != null && d.ownerId == store.me && o.tree.ancestors(d.id).none { it.deletedAt != null }
+        val decks = o.tree.byId.values.filter { d ->
+            d.deletedAt != null && d.ownerId == library.me && o.tree.ancestors(d.id).none { it.deletedAt != null }
         }
-        val notes = store.q.deletedNotes(store.me, ::Notes).awaitAsList().map { it.model() }
+        val notes = library.deletedNotes()
+        val templates = library.templates()
         val deleted = decks.map { Removed(it.id, true, it.name, it.deletedAt!!.toDouble()) } +
-            notes.filter { !o.tree.dead(it.deckId) }.map { Removed(it.id, false, label(it), it.deletedAt!!.toDouble()) }
-        val activity = store.activity()
-        val day = Day.of(store, o)
-        val smart = store.smartDecks().map { it.item(store, day) }
+            notes.filter { !o.tree.dead(it.deckId) }.map {
+                Removed(it.id, false, templates[it.templateId]?.label(it) ?: "…", it.deletedAt!!.toDouble())
+            }
+        val study = app.rondo.study
+        val activity = study.activity()
+        val day = study.day(o)
+        val smart = library.smartDecks().map { SmartDeckItem(it, study.counts(it, day)) }
         val due = o.tree.roots.sumOf { o.counts(it.id).total }
         val studied = activity.days.last()
         val (headline, summary) = when {
@@ -152,14 +199,31 @@ class Home internal constructor(override val app: App) : Screen<HomeState>() {
             else -> strings.nothingDue to strings.tomorrow(activity.tomorrow)
         }
         return HomeState(
-            o.items(mine, access),
-            o.items(shared, access, from),
+            items(o, mine, access, anki),
+            items(o, shared, access, anki, from),
             smart.toTypedArray(),
             deleted.sortedByDescending { it.deletedAt }.toTypedArray(),
             due, studied, activity.tomorrow, activity.streak, activity.days.takeLast(7).toTypedArray(),
             headline, summary,
             o.opened.mapNotNull { o.tree[it]?.name }.toTypedArray(),
         )
+    }
+
+    /** [roots] and the decks under each, in order. */
+    private fun items(
+        o: Overview,
+        roots: List<Deck>,
+        access: Access,
+        anki: Set<String>,
+        from: Map<String, String?> = emptyMap(),
+    ): Array<DeckItem> {
+        val out = ArrayList<DeckItem>()
+        fun walk(d: Deck, depth: Int) {
+            out += DeckItem(o, d, depth, access, anki, from)
+            o.tree.children(d.id).forEach { walk(it, depth + 1) }
+        }
+        roots.forEach { walk(it, 0) }
+        return out.toTypedArray()
     }
 
     /** A new deck under [parentId] (null: the top level) with its look; [then] gets its id. */
@@ -171,19 +235,15 @@ class Home internal constructor(override val app: App) : Screen<HomeState>() {
         then(deck.id)
     }
 
-    fun rename(id: String, name: String) = act {
-        if (name.isNotBlank()) library.updateDeck(id) { it.copy(name = name.trim()) }
-    }
-
-    /** Where [id] can move: the top level, or any of your decks outside it. */
+    /** Where deck [id] can go: the top level, or any of your decks outside it. */
     fun targets(id: String): Array<Choice> {
         val inside = tree.subtree(id).map { it.id }.toSet()
-        val decks = tree.byId.values.filter { it.ownerId == store.me && it.id !in inside && !tree.dead(it.id) }
-        return (listOf(Choice("", strings.topLevel)) + tree.choices(decks)).toTypedArray()
+        val decks = tree.byId.values.filter { it.ownerId == library.me && it.id !in inside && !tree.dead(it.id) }
+        return (listOf(Choice("", strings.topLevel)) + choices(tree, decks)).toTypedArray()
     }
 
     /**
-     * Moves a deck under [parentId] (null: the top level), before [beforeId] or last. A move that
+     * Moves deck [id] under [parentId] (null: the top level), before [beforeId] or last. A move that
      * takes it out of a deck others borrow asks first: [ask] gets the question, and the UI calls
      * again with [confirmed] once the person agrees.
      */
@@ -194,40 +254,19 @@ class Home internal constructor(override val app: App) : Screen<HomeState>() {
         val deck = tree[id] ?: return@act
         if (leaving != null && !confirmed) return@act ask(strings.moveOut(deck.name, leaving.name))
         val parent = parentId?.takeIf { it.isNotEmpty() }
-        if (deck.parentId == parent && (beforeId == id || beforeId == tree.after(id)?.id)) return@act
+        if (deck.parentId == parent && (beforeId == id || beforeId == tree.next(id)?.id)) return@act
         library.move(id, parent, beforeId)
     }
 
-    fun delete(id: String) = act { library.delete(id) }
-
     fun restore(id: String, deck: Boolean) = act { if (deck) library.restore(id) else library.restoreNote(id) }
-
-    /** Copies a deck into your own; [then] gets the copy's id. */
-    fun copy(id: String, then: (String) -> Unit) = act { then(library.copy(id)) }
-
-    /** Stops borrowing a shared deck. */
-    fun leave(id: String) = act { leave(app, id) }
-}
-
-/** The language [id] is in: its own, or the nearest deck above it that has one. */
-internal fun Tree.language(id: String): String? =
-    (listOfNotNull(get(id)) + ancestors(id)).firstNotNullOfOrNull { it.language }
-
-/** The sibling right after [id], if any. */
-private fun Tree.after(id: String): Deck? {
-    val siblings = get(id)?.parentId?.let { children(it) } ?: roots
-    return siblings.getOrNull(siblings.indexOfFirst { it.id == id } + 1)
 }
 
 @JsExport
 class DeckState internal constructor(
-    val deck: DeckItem,
+    /** Null: it's gone. */
+    val deck: DeckItem?,
     val path: Array<String>,
     val description: String?,
-    val language: String?,
-    val newPerDay: Int,
-    val reviewsPerDay: Int,
-    val retention: Int,
     val gated: Boolean,
     val children: Array<DeckItem>,
     /** Each sub-deck's requirement: the percent of the one before it (the first has none). */
@@ -235,71 +274,63 @@ class DeckState internal constructor(
     val notes: Int,
     val learned: Int,
     val canEdit: Boolean,
-    val owned: Boolean,
-    /** Lent to you, at the top of what you borrow: you can leave it. */
-    val lent: Boolean,
     /** Its author removed it. */
     val frozen: Boolean,
-    /** Some notes keep Anki's format: it can be converted. */
-    val anki: Boolean,
-    val gone: Boolean,
-)
+    /** What its menu offers: the deck's actions, but those the page shows as buttons. */
+    val menu: Array<DeckAction>,
+) {
+    /** A deck that's gone. */
+    internal constructor() :
+        this(null, emptyArray(), null, false, emptyArray(), emptyArray(), 0, 0, false, false, emptyArray())
+}
 
-/** One deck: its header, sub-decks and levels, and the settings sheet. */
+/**
+ * A deck: what its page shows (its header and menu, its notes, its sub-decks and levels) and what
+ * can be done to it. It reads nothing until it's watched, so any menu of the deck acts through one.
+ */
 @JsExport
 class DeckScreen internal constructor(override val app: App, val id: String) : Screen<DeckState>() {
     private val library get() = app.rondo.library
-    private val store get() = app.rondo.store
 
     override suspend fun load(): DeckState {
         val o = library.overview()
         val access = library.access()
         val d = o.tree[id]
         if (d == null || o.tree.dead(id)) {
-            val none = DeckItem(id, "", null, 0, 0, null, 0, 0, false, null, 0, 0, 0, "none", null, 0, "")
-            return DeckState(
-                none, emptyArray(), null, null, 0, 0, 90, false, emptyArray(), emptyArray(), 0, 0,
-                false, false, false, false, false, true,
-            )
+            return DeckState()
         }
-        val subtree = o.tree.subtree(id)
+        val anki = library.ankiDecks()
         val kids = o.tree.children(id)
-        val role = access.role(id)
-        val loads = subtree.mapNotNull { o.loads[it.id] }
-        val anki = store.q.ankiNotes(subtree.map { it.id }).awaitAsOne() > 0
+        val loads = o.tree.subtree(id).mapNotNull { o.loads[it.id] }
+        val item = DeckItem(o, d, 0, access, anki)
         return DeckState(
-            o.item(d, 0, access), o.tree.path(id).toTypedArray(), d.description, d.language, d.newPerDay,
-            d.reviewsPerDay, d.retention, d.gated, kids.map { o.item(it, 1, access) }.toTypedArray(),
-            kids.map { it.unlockAt }.toTypedArray(), loads.sumOf { it.notes }, loads.sumOf { it.learnedNotes },
-            access.canWrite(id) == null, role == Role.OWNER, id in o.lends, d.ownerId == null, anki, false,
+            item, o.tree.path(id).toTypedArray(), d.description, d.gated,
+            kids.map { DeckItem(o, it, 1, access, anki) }.toTypedArray(), kids.map { it.unlockAt }.toTypedArray(),
+            loads.sumOf { it.notes }, loads.sumOf { it.learnedNotes }, access.canWrite(id) == null, d.ownerId == null,
+            item.actions.filter { it !in ON_PAGE }.toTypedArray(),
         )
     }
 
-    fun save(
-        name: String,
-        icon: String?,
-        color: Int,
-        description: String?,
-        language: String?,
-        newPerDay: Int,
-        reviewsPerDay: Int,
-        retention: Int,
-        gated: Boolean,
-    ) = act {
-        library.updateDeck(id) {
-            it.copy(
-                name = name.trim(),
-                icon = icon?.ifBlank { null },
-                color = color,
-                description = description?.trim()?.ifBlank { null },
-                language = language?.ifBlank { null },
-                newPerDay = newPerDay,
-                reviewsPerDay = reviewsPerDay,
-                retention = retention,
-                gated = gated,
-            )
-        }
+    fun rename(name: String) = act {
+        if (name.isNotBlank()) library.updateDeck(id) { it.copy(name = name.trim()) }
     }
+
+    /** Copies it into your own decks; [then] gets the copy's id. */
+    fun copy(then: (String) -> Unit) = act { then(library.copy(id)) }
+
+    /** An editable copy of a deck kept in Anki's format; [then] gets its id. */
+    fun convert(then: (String) -> Unit) = act { then(library.copy(id, convert = true)) }
+
+    fun delete() = act { library.delete(id) }
+
+    /** Stops borrowing it (lent to you); [then] runs once it's gone. */
+    fun leave(then: () -> Unit) = act {
+        app.leave(id)
+        then()
+    }
+
+    /** Whether its sub-decks are levels, opening in order. */
+    fun setGated(gated: Boolean) = act { library.updateDeck(id) { it.copy(gated = gated) } }
 
     /** How much of the sub-deck before [childId] must be learned for it to open: 50 to 100, by tens. */
     fun setUnlockAt(childId: String, percent: Int) = act { library.updateDeck(childId) { it.copy(unlockAt = percent) } }
@@ -307,18 +338,107 @@ class DeckScreen internal constructor(override val app: App, val id: String) : S
     /** Opens a locked level now, whatever the one before it says. */
     fun unlock(childId: String) = act { library.unlock(childId) }
 
-    fun delete() = act { library.delete(id) }
+    private companion object {
+        /** What the page offers as buttons of its own, so its menu doesn't. */
+        val ON_PAGE = setOf(DeckAction.STUDY, DeckAction.BROWSE, DeckAction.ADD_NOTE, DeckAction.NEW_SUBDECK)
+    }
+}
 
-    /** Copies the deck into your own; [then] gets the copy's id. */
-    fun copy(then: (String) -> Unit) = act { then(library.copy(id)) }
+@JsExport
+class DeckSettingsState internal constructor(
+    val name: String,
+    val icon: String?,
+    val color: Int,
+    val description: String?,
+    val language: String?,
+    val newPerDay: Int,
+    val reviewsPerDay: Int,
+    val retention: Int,
+    /** The retention it can aim for, from [minRetention] to [maxRetention] percent: see [Deck.RETENTION]. */
+    val minRetention: Int,
+    val maxRetention: Int,
+    /** It's gone, or no longer yours to change. */
+    val gone: Boolean,
+)
 
-    /** An editable copy of a deck kept in Anki's format; [then] gets its id. */
-    fun convert(then: (String) -> Unit) = act { then(library.copy(id, convert = true)) }
+/** A deck's settings: everything set once and rarely changed. Opened from the deck's page or any menu of it. */
+@JsExport
+class DeckSettingsScreen internal constructor(override val app: App, val deckId: String) :
+    Screen<DeckSettingsState>() {
+    private val library get() = app.rondo.library
 
-    /** Stops borrowing this deck (lent to you); [then] runs once it's gone. */
-    fun leave(then: () -> Unit) = act {
-        leave(app, id)
-        then()
+    override suspend fun load(): DeckSettingsState {
+        val tree = library.tree()
+        val d = tree[deckId]?.takeIf { !tree.dead(deckId) && library.access().canWrite(deckId) == null }
+        val r = Deck.RETENTION
+        if (d == null) return DeckSettingsState("", null, 0, null, null, 0, 0, 0, r.first, r.last, true)
+        return DeckSettingsState(
+            d.name, d.icon, d.color, d.description, d.language, d.newPerDay, d.reviewsPerDay, d.retention, r.first,
+            r.last, false,
+        )
+    }
+
+    /** Changes one thing about the deck, as it's stored now: changes made together never undo each other. */
+    private fun change(change: (Deck) -> Deck) = act { library.updateDeck(deckId, change) }
+
+    /** A blank name keeps the one it has. */
+    fun setName(name: String) = change { if (name.isBlank()) it else it.copy(name = name.trim()) }
+
+    fun setIcon(icon: String?) = change { it.copy(icon = icon?.ifBlank { null }) }
+
+    fun setColor(color: Int) = change { it.copy(color = color) }
+
+    fun setDescription(description: String) = change { it.copy(description = description.trim().ifBlank { null }) }
+
+    /** A BCP 47 code; null: none. */
+    fun setLanguage(language: String?) = change { it.copy(language = language?.ifBlank { null }) }
+
+    /** Kept within what a deck can give: see [Deck.NEW_PER_DAY]. */
+    fun setNewPerDay(newPerDay: Int) = change { it.copy(newPerDay = newPerDay.coerceIn(Deck.NEW_PER_DAY)) }
+
+    /** Kept within what a deck can give: see [Deck.REVIEWS_PER_DAY]. */
+    fun setReviewsPerDay(reviewsPerDay: Int) =
+        change { it.copy(reviewsPerDay = reviewsPerDay.coerceIn(Deck.REVIEWS_PER_DAY)) }
+
+    /** In percent, kept within [Deck.RETENTION]. */
+    fun setRetention(retention: Int) = change { it.copy(retention = retention.coerceIn(Deck.RETENTION)) }
+}
+
+@JsExport
+class ExportState internal constructor(
+    val formats: Array<FileFormat>,
+    /** The format being made now, if one is. */
+    val busy: FileFormat?,
+    val gone: Boolean,
+)
+
+/** A deck as a file to save. Anyone who can copy a deck can export it. Opened from the deck's page or any menu of it. */
+@JsExport
+class ExportScreen internal constructor(override val app: App, val deckId: String) : Screen<ExportState>() {
+    private var busy: FileFormat? = null
+
+    override suspend fun load(): ExportState {
+        val tree = app.rondo.library.tree()
+        val formats = arrayOf(FileFormat.RONDO, FileFormat.CSV, FileFormat.ANKI)
+        return ExportState(formats, busy, tree[deckId] == null || tree.dead(deckId))
+    }
+
+    /**
+     * Makes the file as [format]; with [progress] (when it [FileFormat.keepsProgress]), where your
+     * cards stand and your reviews. [then] gets the file, or null when it couldn't be made (the
+     * notice says why).
+     */
+    fun run(format: FileFormat, progress: Boolean, then: (Download?) -> Unit) = act {
+        busy = format
+        reload()
+        var file: Download? = null
+        try {
+            file = app.rondo.exports.run(deckId, format, progress)
+        } finally {
+            busy = null
+            reload()
+            then(file)
+        }
     }
 }
 
@@ -327,69 +447,56 @@ class SmartDeckState internal constructor(
     val item: SmartDeckItem,
     val newPerDay: Int,
     val reviewsPerDay: Int,
-    /** Its rules in words, one a line. */
-    val rules: Array<String>,
-    /** Its rules as Browse's filters, to open Browse with them: see [BrowseScreen.filter]. */
-    val text: String,
-    val deckId: String?,
-    val templateId: String?,
-    val tags: Array<String>,
-    val cardState: String?,
-    val marked: Boolean,
     val gone: Boolean,
 )
 
 /**
- * One smart deck: what it offers today, its rules (changed in Browse), and its settings. Its cards
- * stay in their decks, scheduled by them.
+ * One smart deck: what it offers today, its settings, and its rules: a filter, changed here and kept
+ * as it changes, above the notes it finds. Its cards stay in their decks, scheduled by them.
  */
 @JsExport
 class SmartDeckScreen internal constructor(override val app: App, val id: String) : Screen<SmartDeckState>() {
     private val library get() = app.rondo.library
-    private val store get() = app.rondo.store
+
+    /** Its rules, and the notes they find. */
+    val notes = part(
+        BrowseScreen(app, { library.smartDeck(id)?.filter ?: Filter() }, NoteSort.ADDED) { filter ->
+            library.updateSmartDeck(id) { it.copy(filter = filter) }
+            app.rondo.syncSoon()
+        },
+    )
 
     override suspend fun load(): SmartDeckState {
-        val smart = store.smartDeck(id)?.takeIf { it.deletedAt == null }
-        val day = Day.of(store, library.overview())
-        if (smart == null) {
-            val none = SmartDeckItem(id, "", null, 0, 0, 0, 0, "")
-            return SmartDeckState(none, 0, 0, emptyArray(), "", null, null, emptyArray(), null, false, true)
-        }
-        val f = smart.filter
+        val smart = library.smartDeck(id)?.takeIf { it.deletedAt == null }
+        val day = app.rondo.study.day(library.overview())
+        if (smart == null) return SmartDeckState(SmartDeckItem(id, "", null, 0, 0, 0, 0, ""), 0, 0, true)
         return SmartDeckState(
-            smart.item(store, day), smart.newPerDay, smart.reviewsPerDay, rules(f, day.tree).toTypedArray(),
-            f.text.orEmpty(), f.deckIds?.firstOrNull(), f.templateIds?.firstOrNull(), f.tags.orEmpty().toTypedArray(),
-            f.state, f.marked == true, false,
+            SmartDeckItem(smart, app.rondo.study.counts(smart, day)),
+            smart.newPerDay,
+            smart.reviewsPerDay,
+            false,
         )
     }
 
-    /** [f] in words: where its cards come from, then what they must be. */
-    private suspend fun rules(f: Filter, tree: Tree): List<String> {
-        val templates = store.templates()
-        val out = ArrayList<String>()
-        for (deck in f.deckIds.orEmpty()) {
-            out += if (tree.dead(deck)) strings.ruleGoneDeck else strings.ruleDeck(tree.path(deck).joinToString(" › "))
-        }
-        f.templateIds.orEmpty().mapNotNull { templates[it]?.name }.forEach { out += strings.ruleType(it) }
-        f.tags?.takeIf { it.isNotEmpty() }?.let { out += strings.ruleTags(it.joinToString(", ")) }
-        f.state?.let { out += strings.ruleState(it) }
-        if (f.marked == true) out += strings.marked
-        f.text?.let { out += strings.ruleText(it) }
-        return out.ifEmpty { listOf(strings.ruleEverything) }
-    }
-
-    fun save(name: String, icon: String?, color: Int, newPerDay: Int, reviewsPerDay: Int) = act {
-        library.updateSmartDeck(id) {
-            it.copy(
-                name = name.trim(),
-                icon = icon?.ifBlank { null },
-                color = color,
-                newPerDay = newPerDay,
-                reviewsPerDay = reviewsPerDay,
-            )
-        }
+    /** Changes one thing about it, as it's stored now: changes made together never undo each other. */
+    private fun change(change: (SmartDeck) -> SmartDeck) = act {
+        library.updateSmartDeck(id, change)
         app.rondo.syncSoon()
     }
+
+    /** A blank name keeps the one it has. */
+    fun setName(name: String) = change { if (name.isBlank()) it else it.copy(name = name.trim()) }
+
+    fun setIcon(icon: String?) = change { it.copy(icon = icon?.ifBlank { null }) }
+
+    fun setColor(color: Int) = change { it.copy(color = color) }
+
+    /** Kept within what a deck can give: see [Deck.NEW_PER_DAY]. */
+    fun setNewPerDay(newPerDay: Int) = change { it.copy(newPerDay = newPerDay.coerceIn(Deck.NEW_PER_DAY)) }
+
+    /** Kept within what a deck can give: see [Deck.REVIEWS_PER_DAY]. */
+    fun setReviewsPerDay(reviewsPerDay: Int) =
+        change { it.copy(reviewsPerDay = reviewsPerDay.coerceIn(Deck.REVIEWS_PER_DAY)) }
 
     /** Deletes the smart deck alone: its cards stay where they are. */
     fun delete() = act {

@@ -1,0 +1,2 @@
+-- Reminders aren't sent by email any more.
+ALTER TABLE settings DROP COLUMN reminder_email;

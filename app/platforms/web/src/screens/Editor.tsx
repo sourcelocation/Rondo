@@ -121,6 +121,7 @@ export function NoteEditor({ id, deck, onDone }: { id: string | null; deck: stri
   if (st.gone) return <Empty title={s.notFound}>{s.error("not_found")}</Empty>;
   const front = st.fields.filter((f) => f.side === "front");
   const back = st.fields.filter((f) => f.side === "back");
+  const unshown = st.fields.filter((f) => f.side === "none");
   return (
     <div ref={box} className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -158,6 +159,18 @@ export function NoteEditor({ id, deck, onDone }: { id: string | null; deck: stri
                 </section>
               ),
           )}
+          {unshown.length > 0 && (
+            <details className="border-t pt-5">
+              <summary className="cursor-pointer text-xs font-medium tracking-wider text-muted-foreground uppercase">
+                {s.notOnCards(unshown.length)}
+              </summary>
+              <div className="mt-5 grid gap-5">
+                {unshown.map((f) => (
+                  <FieldInput key={f.id} f={f} st={st} ed={ed} first={f === st.fields[0]} />
+                ))}
+              </div>
+            </details>
+          )}
         </CardSurface>
       )}
       <TagInput value={st.tags} disabled={!st.canTag} onAdd={(t) => ed.addTags(t)} onRemove={(t) => ed.removeTag(t)} />
@@ -167,6 +180,7 @@ export function NoteEditor({ id, deck, onDone }: { id: string | null; deck: stri
             {st.problem}
           </p>
         )}
+        {st.duplicate && <p role="status">{st.duplicate}</p>}
         {st.canUndoAdd && (
           <p role="status" className="text-subtle">
             {s.added}.{" "}

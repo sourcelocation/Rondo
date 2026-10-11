@@ -1,0 +1,745 @@
+---
+import ArrowUp from "@lucide/astro/icons/arrow-up";
+import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
+import Check from "@lucide/astro/icons/check";
+import PenLine from "@lucide/astro/icons/pen-line";
+import Play from "@lucide/astro/icons/play";
+import Search from "@lucide/astro/icons/search";
+import Sparkles from "@lucide/astro/icons/sparkles";
+import { assistantNames, conversation, enriched, requests } from "../content/assistants";
+import { links } from "../content/links";
+import Kicker from "./Kicker.astro";
+
+/**
+ * AI assistants: any assistant, inside Rondo or out, can work on your decks, and what people want most is for it to
+ * make the cards they already have better. The stage shows that happening (motion/assistant.ts): a request typed to
+ * an assistant, which finds the notes and works through them, each card gaining an example sentence and audio as a
+ * light passes over it, the count running to all of them; then its answer, streamed in. A different assistant each
+ * time round. Beside it, everything else one can ask for. Drawn here as it ends, so it reads without the motion.
+ */
+// A recording's bars (their heights are in the styles below).
+const bars = Array.from({ length: 14 });
+---
+
+<section class="section assistants" id="ai" aria-labelledby="ai-title" data-mood="ai">
+  <div class="container assistants__grid">
+    <div class="assistants__copy">
+      <Kicker>AI assistants</Kicker>
+      <h2 id="ai-title" class="heading" data-reveal="words">
+        Ask any AI. <em>Richer cards.</em>
+      </h2>
+      <p class="lead" data-reveal="lines">
+        Connect the assistant you already use, inside Rondo or out, and have it enrich the cards you have: example
+        sentences, readings, audio and transcriptions, written right into your notes. Or have it make whole decks from
+        whatever you’re reading. Free on every plan.
+      </p>
+      <div class="asks" data-reveal="fade">
+        <p class="asks__title">Or ask it to</p>
+        <ul class="asks__list">
+          {requests.map((request) => (
+            <li class="ask">{request}</li>
+          ))}
+        </ul>
+      </div>
+      <p class="assistants__more" data-reveal="fade">
+        <a class="link" href={`${links.docs}agents`}>
+          Connect an assistant <ArrowUpRight aria-hidden="true" />
+        </a>
+        <span>Claude, ChatGPT, Gemini, Codex, Cursor and any MCP client.</span>
+      </p>
+    </div>
+
+    <div class="studio" aria-hidden="true" data-studio data-tilt>
+      <div class="chat">
+        <div class="chat__head">
+          <span class="chat__avatar">
+            <Sparkles stroke-width={1.75} />
+          </span>
+          <span class="chat__name roll" data-chat-name>
+            <span>{assistantNames[0]}</span>
+          </span>
+          <span class="chat__tag">
+            <i></i>Rondo connected
+          </span>
+        </div>
+
+        <div class="chat__log">
+          <p class="bubble" data-chat-ask>
+            {conversation.ask}
+          </p>
+          <p class="thinking" data-chat-thinking>
+            Looking through your decks
+          </p>
+          <p class="tool" data-chat-tool="search">
+            <span class="tool__icon">
+              <Search />
+            </span>
+            <code>{conversation.search.tool}</code>
+            <span class="tool__note">{conversation.search.found}</span>
+            <span class="tool__state">
+              <i class="tool__spin"></i>
+              <Check class="tool__done" />
+            </span>
+          </p>
+          <p class="tool" data-chat-tool="update">
+            <span class="tool__icon">
+              <PenLine />
+            </span>
+            <code>{conversation.update.tool}</code>
+            <span class="tool__note">
+              <b data-chat-progress>{conversation.update.total}</b> of {conversation.update.total} cards
+            </span>
+            <span class="tool__state">
+              <i class="tool__spin"></i>
+              <Check class="tool__done" />
+            </span>
+          </p>
+          <p class="reply" data-chat-reply>
+            {conversation.reply}
+          </p>
+        </div>
+
+        <div class="chat__input">
+          <span class="chat__typed" data-chat-typed>
+            Ask anything
+          </span>
+          <span class="chat__send">
+            <ArrowUp stroke-width={2.25} />
+          </span>
+        </div>
+      </div>
+
+      <ul class="enrich" data-depth="-0.05">
+        {enriched.map((card) => (
+          <li class="note" data-note>
+            <i class="note__scan" data-note-scan></i>
+            <div class="note__head">
+              <span class="note__word" lang="ja">
+                <ruby>
+                  {card.word}
+                  <rt>{card.reading}</rt>
+                </ruby>
+              </span>
+              <span class="note__meaning">{card.meaning}</span>
+              <span class="note__tag" data-note-tag>
+                <Sparkles stroke-width={2} /> Enriched
+              </span>
+            </div>
+            <div class="note__more" data-note-more>
+              <div class="note__inner">
+                <p class="note__example" lang="ja">
+                  {card.marked[0]}
+                  <mark>{card.marked[1]}</mark>
+                  {card.marked[2]}
+                </p>
+                <p class="note__gloss">{card.gloss}</p>
+                <span class="note__audio">
+                  <span class="note__play">
+                    <Play />
+                  </span>
+                  <span class="note__bars">
+                    {bars.map(() => (
+                      <i data-note-bar />
+                    ))}
+                  </span>
+                  <small>0:0{card.seconds}</small>
+                </span>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { Assistant } from "../motion/assistant";
+  import { scene } from "../motion/scenes";
+
+  scene("[data-studio]", (root, stage) => new Assistant(root, stage));
+</script>
+
+<style>
+  /* The stage on one side, the words on the other: the other way round from the sections either side. */
+  .assistants__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-areas: "studio copy";
+    gap: clamp(48px, 6vw, 112px);
+    align-items: center;
+  }
+
+  .assistants__copy {
+    grid-area: copy;
+    display: grid;
+    justify-items: start;
+    gap: clamp(20px, 3vh, 30px);
+  }
+
+  .assistants__copy .lead {
+    max-width: 30em;
+  }
+
+  .asks {
+    display: grid;
+    gap: 12px;
+  }
+
+  .asks__title {
+    font-size: var(--size-small);
+    color: var(--ink-3);
+  }
+
+  .asks__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Each request as an assistant would show a suggestion: a quiet pill, which lifts toward a mouse. */
+  .ask {
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 64%);
+    box-shadow:
+      0 0 0 1px var(--line) inset,
+      0 1px 0 var(--glass-edge) inset;
+    font-size: 14px;
+    color: var(--ink-2);
+    transition:
+      transform 0.5s var(--ease-spring),
+      background-color 0.4s var(--ease-out),
+      color 0.4s var(--ease-out);
+  }
+
+  .ask:hover {
+    background: #fff;
+    color: var(--ink);
+    transform: translateY(-2px);
+  }
+
+  .assistants__more {
+    display: grid;
+    gap: 6px;
+    font-size: var(--size-small);
+    color: var(--ink-3);
+  }
+
+  .assistants__more a {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  .assistants__more :global(svg) {
+    width: 15px;
+    height: 15px;
+  }
+
+  /* The stage: the conversation behind, the cards it's working on in front of it and lower down. */
+  .studio {
+    grid-area: studio;
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .chat {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 16px;
+    min-height: 470px;
+    padding: 18px;
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgb(255 255 255 / 82%), rgb(255 255 255 / 60%));
+    box-shadow:
+      0 0 0 1px rgb(11 11 13 / 6%),
+      0 1px 0 var(--glass-edge) inset,
+      var(--shadow-2);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    backdrop-filter: blur(24px) saturate(1.5);
+  }
+
+  .chat__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .chat__avatar {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(140deg, var(--sky), var(--lilac) 55%, var(--peach));
+    color: #fff;
+  }
+
+  .chat__avatar :global(svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .chat__name {
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .chat__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgb(20 168 115 / 9%);
+    font-size: 12px;
+    font-weight: 500;
+    color: #0f7a54;
+  }
+
+  .chat__tag i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--signal);
+  }
+
+  .chat__log {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .bubble {
+    align-self: flex-end;
+    max-width: 86%;
+    padding: 10px 14px;
+    border-radius: 18px 18px 6px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .thinking {
+    font-size: 13px;
+    font-weight: 450;
+    color: transparent;
+    background: linear-gradient(90deg, var(--ink-3) 0 30%, var(--ink) 45%, var(--ink-3) 60% 100%) 0 0 / 300% 100%;
+    background-clip: text;
+    animation: thinking 1.6s linear infinite;
+  }
+
+  @keyframes thinking {
+    from {
+      background-position: 100% 0;
+    }
+
+    to {
+      background-position: 0% 0;
+    }
+  }
+
+  /* Shown only while the assistant thinks, in the motion. */
+  .thinking {
+    display: none;
+  }
+
+  :global(.studio.is-thinking) .thinking {
+    display: block;
+  }
+
+  /* An assistant's tool at work: its name, what it found or did, and a spinner that turns to a tick. */
+  .tool {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgb(11 11 13 / 4%);
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  .tool code {
+    font: 500 12px var(--mono);
+    color: var(--ink);
+  }
+
+  .tool__icon {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: #fff;
+    box-shadow: 0 0 0 1px var(--line);
+  }
+
+  .tool__icon :global(svg) {
+    width: 12px;
+    height: 12px;
+  }
+
+  .tool__note b {
+    font-weight: 500;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tool__state {
+    display: grid;
+    margin-left: auto;
+  }
+
+  .tool__state > :global(*) {
+    grid-area: 1 / 1;
+  }
+
+  .tool__spin {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgb(11 11 13 / 12%);
+    border-top-color: var(--ink);
+    opacity: 0;
+    animation: tool-spin 0.8s linear infinite;
+  }
+
+  @keyframes tool-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  .tool :global(.tool__done) {
+    width: 15px;
+    height: 15px;
+    color: var(--signal);
+    stroke-width: 2.6;
+  }
+
+  .tool.is-working .tool__spin {
+    opacity: 1;
+  }
+
+  .tool.is-working :global(.tool__done) {
+    opacity: 0;
+  }
+
+  .reply {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+
+  .chat__input {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 46px;
+    padding: 6px 6px 6px 16px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow:
+      0 0 0 1px var(--line-2),
+      0 6px 16px -10px rgb(30 40 80 / 25%);
+    font-size: 14px;
+    color: var(--ink-3);
+  }
+
+  .chat__typed {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .chat__typed.is-typing {
+    color: var(--ink);
+  }
+
+  /* The caret, blinking at the end of what's being typed. */
+  .chat__typed.is-typing::after {
+    content: "";
+    display: inline-block;
+    width: 1.5px;
+    height: 1.1em;
+    margin-left: 1px;
+    vertical-align: -0.2em;
+    background: var(--ink);
+    animation: caret 1s steps(1) infinite;
+  }
+
+  @keyframes caret {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .chat__send {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: #fff;
+  }
+
+  .chat__send :global(svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* The cards being enriched, in front of the conversation. */
+  /* Just over the conversation's edge, and lower: in front of it without hiding any of it. */
+  .enrich {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    gap: 12px;
+    margin: 44px 0 0 -12px;
+  }
+
+  .note {
+    position: relative;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: linear-gradient(165deg, #fff 40%, #f7f8fb);
+    box-shadow:
+      0 0 0 1px rgb(11 11 13 / 6%),
+      0 1px 0 #fff inset,
+      0 18px 36px -22px rgb(30 40 80 / 40%);
+    overflow: hidden;
+  }
+
+  /* The light the assistant passes over a card as it works on it. */
+  .note__scan {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 30%,
+      rgb(169 202 255 / 55%) 45%,
+      rgb(207 191 255 / 55%) 55%,
+      transparent 70%
+    );
+    transform: translateX(-100%);
+    pointer-events: none;
+  }
+
+  .note__head {
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .note__word {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  .note__word rt {
+    font-size: 10px;
+    color: var(--ink-3);
+  }
+
+  .note__meaning {
+    font: italic 340 15px / 1.2 var(--serif);
+    color: var(--ink-3);
+  }
+
+  .note__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: linear-gradient(120deg, rgb(169 202 255 / 40%), rgb(207 191 255 / 45%));
+    font-size: 11px;
+    font-weight: 500;
+    color: #3b46a8;
+    white-space: nowrap;
+  }
+
+  .note__tag :global(svg) {
+    width: 11px;
+    height: 11px;
+  }
+
+  .note__more {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .note__inner {
+    display: grid;
+    justify-items: start;
+    gap: 4px;
+    padding-top: 10px;
+  }
+
+  .note__example {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .note__example mark {
+    padding: 0 2px;
+    border-radius: 4px;
+    background: rgb(169 202 255 / 45%);
+    color: inherit;
+  }
+
+  .note__gloss {
+    font: italic 340 14px / 1.35 var(--serif);
+    color: var(--ink-2);
+  }
+
+  .note__audio {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding: 4px 10px 4px 4px;
+    border-radius: 999px;
+    background: rgb(11 11 13 / 5%);
+    font-size: 11px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .note__play {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: #fff;
+  }
+
+  .note__play :global(svg) {
+    width: 10px;
+    height: 10px;
+    margin-left: 1px;
+    fill: currentcolor;
+  }
+
+  .note__bars {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 16px;
+  }
+
+  .note__bars i {
+    width: 2px;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--ink-2);
+    transform-origin: 50% 50%;
+  }
+
+  /* A recording's shape, each bar its own height (motion/assistant.ts grows them in). */
+  .note__bars i:nth-child(1) {
+    transform: scaleY(0.35);
+  }
+
+  .note__bars i:nth-child(2) {
+    transform: scaleY(0.6);
+  }
+
+  .note__bars i:nth-child(3) {
+    transform: scaleY(0.9);
+  }
+
+  .note__bars i:nth-child(4) {
+    transform: scaleY(0.55);
+  }
+
+  .note__bars i:nth-child(5) {
+    transform: scaleY(1);
+  }
+
+  .note__bars i:nth-child(6) {
+    transform: scaleY(0.7);
+  }
+
+  .note__bars i:nth-child(7) {
+    transform: scaleY(0.4);
+  }
+
+  .note__bars i:nth-child(8) {
+    transform: scaleY(0.85);
+  }
+
+  .note__bars i:nth-child(9) {
+    transform: scaleY(0.5);
+  }
+
+  .note__bars i:nth-child(10) {
+    transform: scaleY(0.75);
+  }
+
+  .note__bars i:nth-child(11) {
+    transform: scaleY(0.3);
+  }
+
+  .note__bars i:nth-child(12) {
+    transform: scaleY(0.6);
+  }
+
+  .note__bars i:nth-child(13) {
+    transform: scaleY(0.45);
+  }
+
+  .note__bars i:nth-child(14) {
+    transform: scaleY(0.25);
+  }
+
+  @media (width < 1100px) {
+    .assistants__grid {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        "copy"
+        "studio";
+    }
+  }
+
+  @media (width < 640px) {
+    .studio {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .chat {
+      min-height: 0;
+    }
+
+    .enrich {
+      margin: -28px 12px 0;
+    }
+
+    .note:nth-child(3) {
+      display: none;
+    }
+  }
+</style>

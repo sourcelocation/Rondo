@@ -16,16 +16,17 @@ import Square from "@lucide/astro/icons/square";
 import User from "@lucide/astro/icons/user";
 import Wifi from "@lucide/astro/icons/wifi";
 import X from "@lucide/astro/icons/x";
-import { devicePlatforms, phoneCards, tabletCards } from "../content/devices";
+import { devicePlatforms, phoneCards, shown, tabletCards } from "../content/devices";
 import BrandIcon from "./BrandIcon.astro";
+import Kicker from "./Kicker.astro";
 import Logo from "./Logo.astro";
 
 /**
- * Six native apps, zero lag: a phone, a tablet and a laptop, each running Rondo as its platform draws it. One device
- * at a time turns into another platform (the phone and the tablet between Apple's and Android, the laptop between
- * Windows, Linux, the web and macOS), its mark changing beneath it, and then studies a card, answered the instant
- * it's touched (motion/platforms.ts). The styles draw each platform from the device's data-os; everything is sized
- * in units of the stage's width, so it scales as one picture.
+ * Six native apps, zero lag: a phone, a tablet and a laptop, each running Rondo as its platform draws it (content/
+ * devices.ts says which), each studying a card now and then, answered the instant it's touched (motion/platforms.ts).
+ * They move a little with the scroll, at their own depths, and with the pointer. Under each, the platforms it stands
+ * for. The styles draw each screen from its data-os; everything is sized in units of the stage's width, so it scales
+ * as one picture.
  */
 const places = [
   { label: "Home", icon: House },
@@ -38,77 +39,223 @@ const decks = ["Japanese", "Calculus", "Cardiology", "History"];
 const ratings = ["Again", "Hard", "Good", "Easy"];
 ---
 
-<section class="section platforms" id="apps" aria-labelledby="apps-title" data-mood="apps">
-  <div class="container platforms__inner">
-    <div class="platforms__copy">
-      <p class="kicker" data-reveal="fade">
-        <span class="kicker__index">04</span>Native everywhere
-      </p>
-      <h2 id="apps-title" class="heading" data-reveal="words">
-        Six native apps. <em>Zero lag.</em>
-      </h2>
-      <p class="lead" data-reveal="lines">
-        Rondo is made for each platform it runs on: iPhone, iPad, Android, Mac, Windows and Linux, and the web too. It
-        answers from your device instead of a server, so every tap is instant, even on a plane.
-      </p>
-    </div>
+<section class="platforms" id="apps" aria-labelledby="apps-title" data-mood="apps">
+  <div class="container platforms__copy" data-depth="-0.06">
+    <Kicker>Native everywhere</Kicker>
+    <h2 id="apps-title" class="heading" data-reveal="words">
+      Six native apps. <em>Zero lag.</em>
+    </h2>
+    <p class="lead" data-reveal="lines">
+      Rondo is made for each platform it runs on: iPhone, iPad, Android, Mac, Windows and Linux, and the web too. It
+      answers from your device instead of a server, so every tap is instant, even on a plane.
+    </p>
+  </div>
 
-    <div class="trio" aria-hidden="true" data-trio data-reveal="rise">
-      {/* The laptop: one window, in each desktop's own frame, or a browser's. */}
-      <div class="dev dev--laptop" data-dev="laptop" data-os={devicePlatforms.laptop[0].os}>
+  <div class="platforms__stage container" data-platforms>
+    <div class="trio" aria-hidden="true" data-trio>
+      {/* The laptop: one window, in each desktop's own frame, or a browser's; its lid opens as the stage arrives. */}
+      <div class="dev dev--laptop" data-dev="laptop">
         <div class="dev__float" data-float>
           <div class="laptop">
-            <div class="laptop__screen">
-              <div class="bar bar--mac" data-chrome="macos">
-                <span class="lights">
-                  <i></i>
-                  <i></i>
-                  <i></i>
-                </span>
-                <span class="bar__title">Rondo</span>
-              </div>
-              <div class="bar bar--windows" data-chrome="windows">
-                <span class="bar__app">
-                  <Logo mark /> Rondo
-                </span>
-                <span class="bar__controls">
-                  <Minus />
-                  <Square />
-                  <X />
-                </span>
-              </div>
-              <div class="bar bar--linux" data-chrome="linux">
-                <span class="bar__title">Rondo</span>
-                <span class="bar__close">
-                  <X />
-                </span>
-              </div>
-              <div class="bar bar--web" data-chrome="web">
-                <div class="browser__tabs">
-                  <span class="lights">
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                  </span>
-                  <span class="browser__tab">
-                    <Logo mark /> Rondo <X />
-                  </span>
-                  <Plus class="browser__new" />
-                </div>
-                <div class="browser__address">
-                  <ChevronLeft />
-                  <ChevronRight />
-                  <RotateCw />
-                  <span class="browser__url">
-                    <Lock /> rondo.matthewsource.com/app
-                  </span>
-                </div>
-              </div>
+            <div class="laptop__lid frame" data-lid>
+              <div class="laptop__screen" data-screen>
+                <div class="os" data-os={shown.laptop}>
+                  <div class="bar bar--mac" data-chrome="macos">
+                    <span class="lights">
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                    </span>
+                    <span class="bar__title">Rondo</span>
+                  </div>
+                  <div class="bar bar--windows" data-chrome="windows">
+                    <span class="bar__app">
+                      <Logo mark /> Rondo
+                    </span>
+                    <span class="bar__controls">
+                      <Minus />
+                      <Square />
+                      <X />
+                    </span>
+                  </div>
+                  <div class="bar bar--linux" data-chrome="linux">
+                    <span class="bar__title">Rondo</span>
+                    <span class="bar__close">
+                      <X />
+                    </span>
+                  </div>
+                  <div class="bar bar--web" data-chrome="web">
+                    <div class="browser__tabs">
+                      <span class="lights">
+                        <i></i>
+                        <i></i>
+                        <i></i>
+                      </span>
+                      <span class="browser__tab">
+                        <Logo mark /> Rondo <X />
+                      </span>
+                      <Plus class="browser__new" />
+                    </div>
+                    <div class="browser__address">
+                      <ChevronLeft />
+                      <ChevronRight />
+                      <RotateCw />
+                      <span class="browser__url">
+                        <Lock /> rondo.matthewsource.com/app
+                      </span>
+                    </div>
+                  </div>
 
-              <div class="app">
-                <div class="app__side">
+                  <div class="app">
+                    <div class="app__side">
+                      <ul class="side-places">
+                        {places.map(({ label, icon: Icon }, index) => (
+                          <li class:list={{ "is-current": index === 0 }}>
+                            <Icon />
+                            {label}
+                          </li>
+                        ))}
+                      </ul>
+                      <p class="side-heading">Decks</p>
+                      <ul class="side-decks">
+                        {decks.map((deck) => (
+                          <li class:list={{ "is-current": deck === "Calculus" }}>{deck}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div class="app__main">
+                      <p class="deck-head">
+                        <b>Calculus</b>
+                        <span>12 due</span>
+                      </p>
+                      <div class="study" data-study>
+                        <div class="study__cards">
+                          <div class="study__card" data-card data-current>
+                            <p class="study__front">
+                              <span class="math">
+                                <span class="math__int">∫</span>
+                                <span class="math__limits">
+                                  <span>1</span>
+                                  <span>0</span>
+                                </span>
+                                <i>x</i>
+                                <sup>2</sup>&thinsp;d<i>x</i>
+                              </span>
+                            </p>
+                            <div class="study__answer">
+                              <i class="study__rule"></i>
+                              <p class="study__back">
+                                <span class="math">
+                                  <span class="frac">
+                                    <span>1</span>
+                                    <span>3</span>
+                                  </span>
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                          <div class="study__card" data-card>
+                            <p class="study__front">
+                              <span class="math">
+                                <span class="frac">
+                                  <span>d</span>
+                                  <span>
+                                    d<i>x</i>
+                                  </span>
+                                </span>
+                                &thinsp;sin&thinsp;<i>x</i>
+                              </span>
+                            </p>
+                            <div class="study__answer">
+                              <i class="study__rule"></i>
+                              <p class="study__back">
+                                <span class="math">
+                                  cos&thinsp;<i>x</i>
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                          <div class="study__card" data-card>
+                            <p class="study__front">
+                              <span class="math">
+                                <span class="math__lim">
+                                  lim
+                                  <small>
+                                    <i>x</i>→0
+                                  </small>
+                                </span>
+                                <span class="frac">
+                                  <span>
+                                    sin&thinsp;<i>x</i>
+                                  </span>
+                                  <span>
+                                    <i>x</i>
+                                  </span>
+                                </span>
+                              </span>
+                            </p>
+                            <div class="study__answer">
+                              <i class="study__rule"></i>
+                              <p class="study__back">
+                                <span class="math">1</span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="study__actions">
+                          <span class="study__show" data-show>
+                            Show answer
+                          </span>
+                          <span class="study__rates">
+                            {ratings.map((rating) => (
+                              <span data-rate={rating}>{rating}</span>
+                            ))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <svg class="cursor" viewBox="0 0 16 22" data-cursor>
+                  <path d="M1.5 1.5v16.2l4.3-4.1 2.9 6.6 2.9-1.3-2.9-6.5h5.9z"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="laptop__base">
+              <i></i>
+            </div>
+          </div>
+        </div>
+        <span class="badge">
+          {devicePlatforms.laptop.map((platform) => (
+            <span class="badge__item">
+              <BrandIcon name={platform.brand} />
+              {platform.name}
+            </span>
+          ))}
+        </span>
+      </div>
+
+      {/* The tablet: a sidebar on iPadOS, a navigation rail on Android. */}
+      <div class="dev dev--tablet" data-dev="tablet">
+        <div class="dev__float" data-float>
+          <div class="tablet frame">
+            <div class="tablet__screen" data-screen>
+              <div class="os" data-os={shown.tablet}>
+                <div class="status status--tablet">
+                  <span>9:41&ensp;Thu 8 Oct</span>
+                  <span class="status__icons">
+                    <Wifi />
+                    <BatteryFull />
+                  </span>
+                </div>
+                <div class="tablet__side" data-chrome="ipados">
+                  <p class="tablet__brand">
+                    <Logo mark /> Rondo
+                  </p>
                   <ul class="side-places">
-                    {places.map(({ label, icon: Icon }, index) => (
+                    {places.slice(0, 4).map(({ label, icon: Icon }, index) => (
                       <li class:list={{ "is-current": index === 0 }}>
                         <Icon />
                         {label}
@@ -118,88 +265,36 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
                   <p class="side-heading">Decks</p>
                   <ul class="side-decks">
                     {decks.map((deck) => (
-                      <li class:list={{ "is-current": deck === "Calculus" }}>{deck}</li>
+                      <li class:list={{ "is-current": deck === "Cardiology" }}>{deck}</li>
                     ))}
                   </ul>
                 </div>
-                <div class="app__main">
+                <div class="tablet__rail" data-chrome="android">
+                  {places.map(({ icon: Icon }, index) => (
+                    <span class:list={{ "is-current": index === 0 }}>
+                      <Icon />
+                    </span>
+                  ))}
+                </div>
+                <div class="tablet__main">
                   <p class="deck-head">
-                    <b>Calculus</b>
-                    <span>12 due</span>
+                    <b>Cardiology</b>
+                    <span>8 due</span>
                   </p>
-                  <div class="study" data-study>
+                  <div class="study study--cloze" data-study>
                     <div class="study__cards">
-                      <div class="study__card" data-card data-current>
-                        <p class="study__front">
-                          <span class="math">
-                            <span class="math__int">∫</span>
-                            <span class="math__limits">
-                              <span>1</span>
-                              <span>0</span>
-                            </span>
-                            <i>x</i>
-                            <sup>2</sup>&thinsp;d<i>x</i>
-                          </span>
-                        </p>
-                        <div class="study__answer">
-                          <i class="study__rule"></i>
-                          <p class="study__back">
-                            <span class="math">
-                              <span class="frac">
-                                <span>1</span>
-                                <span>3</span>
-                              </span>
-                            </span>
+                      {tabletCards.map((card, index) => (
+                        <div class="study__card" data-card data-current={index === 0 ? "" : undefined}>
+                          <p class="study__front">
+                            {card.before}{" "}
+                            <span class="cloze">
+                              <span class="cloze__blank">[…]</span>
+                              <span class="cloze__word">{card.answer}</span>
+                            </span>{" "}
+                            {card.after}
                           </p>
                         </div>
-                      </div>
-                      <div class="study__card" data-card>
-                        <p class="study__front">
-                          <span class="math">
-                            <span class="frac">
-                              <span>d</span>
-                              <span>
-                                d<i>x</i>
-                              </span>
-                            </span>
-                            &thinsp;sin&thinsp;<i>x</i>
-                          </span>
-                        </p>
-                        <div class="study__answer">
-                          <i class="study__rule"></i>
-                          <p class="study__back">
-                            <span class="math">
-                              cos&thinsp;<i>x</i>
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                      <div class="study__card" data-card>
-                        <p class="study__front">
-                          <span class="math">
-                            <span class="math__lim">
-                              lim
-                              <small>
-                                <i>x</i>→0
-                              </small>
-                            </span>
-                            <span class="frac">
-                              <span>
-                                sin&thinsp;<i>x</i>
-                              </span>
-                              <span>
-                                <i>x</i>
-                              </span>
-                            </span>
-                          </span>
-                        </p>
-                        <div class="study__answer">
-                          <i class="study__rule"></i>
-                          <p class="study__back">
-                            <span class="math">1</span>
-                          </p>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                     <div class="study__actions">
                       <span class="study__show" data-show>
@@ -215,80 +310,60 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
                 </div>
               </div>
 
-              <svg class="cursor" viewBox="0 0 16 22" data-cursor>
-                <path d="M1.5 1.5v16.2l4.3-4.1 2.9 6.6 2.9-1.3-2.9-6.5h5.9z"></path>
-              </svg>
+              <i class="touch" data-touch></i>
             </div>
           </div>
-          <div class="laptop__base">
-            <i></i>
-          </div>
         </div>
-        <div class="badge">
-          {devicePlatforms.laptop.map((platform) => (
-            <span class="badge__item" data-chrome={platform.os}>
+        <span class="badge">
+          {devicePlatforms.tablet.map((platform) => (
+            <span class="badge__item">
               <BrandIcon name={platform.brand} />
               {platform.name}
             </span>
           ))}
-        </div>
+        </span>
       </div>
 
-      {/* The tablet: a sidebar on iPadOS, a navigation rail on Android. */}
-      <div class="dev dev--tablet" data-dev="tablet" data-os={devicePlatforms.tablet[0].os}>
+      {/* The phone: the Dynamic Island and a tab bar on iOS, a camera hole and a navigation bar on Android. */}
+      <div class="dev dev--phone" data-dev="phone">
         <div class="dev__float" data-float>
-          <div class="tablet">
-            <div class="tablet__screen">
-              <div class="status status--tablet">
-                <span>9:41&ensp;Thu 8 Oct</span>
-                <span class="status__icons">
-                  <Wifi />
-                  <BatteryFull />
-                </span>
-              </div>
-              <div class="tablet__side" data-chrome="ipados">
-                <p class="tablet__brand">
-                  <Logo mark /> Rondo
-                </p>
-                <ul class="side-places">
-                  {places.slice(0, 4).map(({ label, icon: Icon }, index) => (
-                    <li class:list={{ "is-current": index === 0 }}>
-                      <Icon />
-                      {label}
-                    </li>
-                  ))}
-                </ul>
-                <p class="side-heading">Decks</p>
-                <ul class="side-decks">
-                  {decks.map((deck) => (
-                    <li class:list={{ "is-current": deck === "Cardiology" }}>{deck}</li>
-                  ))}
-                </ul>
-              </div>
-              <div class="tablet__rail" data-chrome="android">
-                {places.map(({ icon: Icon }, index) => (
-                  <span class:list={{ "is-current": index === 0 }}>
-                    <Icon />
+          <div class="phone frame">
+            <div class="phone__screen" data-screen>
+              <div class="os" data-os={shown.phone}>
+                <i class="phone__island" data-camera></i>
+                <div class="status status--phone">
+                  <span>9:41</span>
+                  <span class="status__icons">
+                    <Signal />
+                    <Wifi />
+                    <BatteryFull />
                   </span>
-                ))}
-              </div>
-              <div class="tablet__main">
-                <p class="deck-head">
-                  <b>Cardiology</b>
-                  <span>8 due</span>
-                </p>
-                <div class="study study--cloze" data-study>
+                </div>
+                <div class="phone__heads">
+                  <p class="phone__head phone__head--ios" data-chrome="ios">
+                    <b>Japanese</b>
+                    <span>24 due</span>
+                  </p>
+                  <p class="phone__head phone__head--android" data-chrome="android">
+                    <b>Japanese</b>
+                    <span>24 due</span>
+                    <EllipsisVertical />
+                  </p>
+                </div>
+                <div class="study" data-study>
                   <div class="study__cards">
-                    {tabletCards.map((card, index) => (
+                    {phoneCards.map((card, index) => (
                       <div class="study__card" data-card data-current={index === 0 ? "" : undefined}>
-                        <p class="study__front">
-                          {card.before}{" "}
-                          <span class="cloze">
-                            <span class="cloze__blank">[…]</span>
-                            <span class="cloze__word">{card.answer}</span>
-                          </span>{" "}
-                          {card.after}
+                        <p class="study__front" lang="ja">
+                          <ruby>
+                            {card.word}
+                            <rt>{card.reading}</rt>
+                          </ruby>
                         </p>
+                        <div class="study__answer">
+                          <i class="study__rule"></i>
+                          <p class="study__back">{card.meaning}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -303,122 +378,58 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
                     </span>
                   </div>
                 </div>
-              </div>
-              <i class="touch" data-touch></i>
-            </div>
-          </div>
-        </div>
-        <div class="badge">
-          {devicePlatforms.tablet.map((platform) => (
-            <span class="badge__item" data-chrome={platform.os}>
-              <BrandIcon name={platform.brand} />
-              {platform.name}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* The phone: the Dynamic Island and a tab bar on iOS, a camera hole and a navigation bar on Android. */}
-      <div class="dev dev--phone" data-dev="phone" data-os={devicePlatforms.phone[0].os}>
-        <div class="dev__float" data-float>
-          <div class="phone">
-            <div class="phone__screen">
-              <i class="phone__island"></i>
-              <div class="status status--phone">
-                <span>9:41</span>
-                <span class="status__icons">
-                  <Signal />
-                  <Wifi />
-                  <BatteryFull />
-                </span>
-              </div>
-              <div class="phone__heads">
-                <p class="phone__head phone__head--ios" data-chrome="ios">
-                  <b>Japanese</b>
-                  <span>24 due</span>
-                </p>
-                <p class="phone__head phone__head--android" data-chrome="android">
-                  <b>Japanese</b>
-                  <span>24 due</span>
-                  <EllipsisVertical />
-                </p>
-              </div>
-              <div class="study" data-study>
-                <div class="study__cards">
-                  {phoneCards.map((card, index) => (
-                    <div class="study__card" data-card data-current={index === 0 ? "" : undefined}>
-                      <p class="study__front" lang="ja">
-                        <ruby>
-                          {card.word}
-                          <rt>{card.reading}</rt>
-                        </ruby>
-                      </p>
-                      <div class="study__answer">
-                        <i class="study__rule" />
-                        <p class="study__back">{card.meaning}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div class="study__actions">
-                  <span class="study__show" data-show>
-                    Show answer
-                  </span>
-                  <span class="study__rates">
-                    {ratings.map((rating) => (
-                      <span data-rate={rating}>{rating}</span>
-                    ))}
-                  </span>
-                </div>
-              </div>
-              <div class="phone__tabs">
-                <div class="tabs tabs--ios" data-chrome="ios">
-                  {places.map(({ label, icon: Icon }, index) => (
-                    <span class:list={{ "is-current": index === 0 }}>
-                      <Icon />
-                      {label}
-                    </span>
-                  ))}
-                </div>
-                <div class="tabs tabs--android" data-chrome="android">
-                  {places.map(({ label, icon: Icon }, index) => (
-                    <span class:list={{ "is-current": index === 0 }}>
-                      <i>
+                <div class="phone__tabs">
+                  <div class="tabs tabs--ios" data-chrome="ios">
+                    {places.map(({ label, icon: Icon }, index) => (
+                      <span class:list={{ "is-current": index === 0 }}>
                         <Icon />
-                      </i>
-                      {label}
-                    </span>
-                  ))}
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                  <div class="tabs tabs--android" data-chrome="android">
+                    {places.map(({ label, icon: Icon }, index) => (
+                      <span class:list={{ "is-current": index === 0 }}>
+                        <i>
+                          <Icon />
+                        </i>
+                        {label}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
+
               <i class="touch" data-touch></i>
             </div>
           </div>
         </div>
-        <div class="badge">
+        <span class="badge">
           {devicePlatforms.phone.map((platform) => (
-            <span class="badge__item" data-chrome={platform.os}>
+            <span class="badge__item">
               <BrandIcon name={platform.brand} />
               {platform.name}
             </span>
           ))}
-        </div>
+        </span>
       </div>
     </div>
   </div>
 </section>
 
-<style>
-  .platforms__inner {
-    display: grid;
-    justify-items: center;
-    gap: clamp(48px, 8vh, 88px);
-  }
+<script>
+  import { Platforms } from "../motion/platforms";
+  import { scene } from "../motion/scenes";
 
+  scene("[data-platforms]", (root, stage) => new Platforms(root, stage));
+</script>
+
+<style>
   .platforms__copy {
     display: grid;
     justify-items: center;
     gap: clamp(20px, 3vh, 32px);
+    padding-top: var(--section);
     text-align: center;
   }
 
@@ -426,10 +437,20 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
     max-width: 36em;
   }
 
-  /* The stage: everything inside is measured in its width (cqw), so the picture scales as one. */
+  /* The stage: the devices, a little apart from the words. */
+  .platforms__stage {
+    display: grid;
+    justify-items: center;
+    padding-block: clamp(40px, 7vh, 88px) var(--section);
+  }
+
+  /*
+   * The stage: everything inside is measured in its width (cqw), so the picture scales as one; it's as wide as the
+   * screen's height leaves room for.
+   */
   .trio {
     position: relative;
-    width: min(100%, 1180px);
+    width: min(100%, 1180px, (100svh - 230px) * 1.85);
     aspect-ratio: 100 / 54;
     container-type: inline-size;
     font-size: 1cqw;
@@ -476,9 +497,7 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
   }
 
   /* Frames: light aluminium around a white screen. */
-  .laptop,
-  .tablet,
-  .phone {
+  .frame {
     position: relative;
     background: linear-gradient(150deg, #fdfdfe 0%, #eceef2 55%, #e3e6eb 100%);
     box-shadow:
@@ -497,15 +516,23 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
     box-shadow: 0 0 0 0.08cqw rgb(11 11 13 / 12%);
   }
 
+  /* The laptop's lid turns on its hinge, seen from a little above, as the scroll brings it up. */
   .laptop {
+    perspective: 110cqw;
+    perspective-origin: 50% 10%;
+  }
+
+  .laptop__lid {
     width: 62cqw;
+    margin-inline: auto;
     padding: 0.75cqw;
     border-radius: 1.6cqw 1.6cqw 0.5cqw 0.5cqw;
+    transform-origin: 50% 100%;
   }
 
   .laptop__screen {
     aspect-ratio: 16 / 10;
-    border-radius: 0.9cqw 0.9cqw 0.2cqw 0.2cqw;
+    border-radius: 0.6cqw;
   }
 
   .laptop__base {
@@ -552,50 +579,34 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
     border-radius: 2.1cqw;
   }
 
-  /* Each platform's parts: shown on that platform, cross-fading through a blur as the device turns. */
-  .dev :global([data-chrome]) {
-    opacity: 0;
+  /* The screen as its platform draws it (data-os). */
+  .os {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+  }
+
+  /* Each platform's parts, shown on the screen drawing that platform. */
+  [data-chrome] {
     visibility: hidden;
-    filter: blur(0.35cqw);
-    transition:
-      opacity 0.45s var(--ease-out),
-      filter 0.45s var(--ease-out),
-      visibility 0s linear 0.45s;
   }
 
-  .dev[data-os="ios"] :global([data-chrome~="ios"]),
-  .dev[data-os="ipados"] :global([data-chrome~="ipados"]),
-  .dev[data-os="android"] :global([data-chrome~="android"]),
-  .dev[data-os="macos"] :global([data-chrome~="macos"]),
-  .dev[data-os="windows"] :global([data-chrome~="windows"]),
-  .dev[data-os="linux"] :global([data-chrome~="linux"]),
-  .dev[data-os="web"] :global([data-chrome~="web"]) {
-    opacity: 1;
+  .os[data-os="ios"] [data-chrome~="ios"],
+  .os[data-os="ipados"] [data-chrome~="ipados"],
+  .os[data-os="android"] [data-chrome~="android"],
+  .os[data-os="macos"] [data-chrome~="macos"],
+  .os[data-os="windows"] [data-chrome~="windows"],
+  .os[data-os="linux"] [data-chrome~="linux"],
+  .os[data-os="web"] [data-chrome~="web"] {
     visibility: visible;
-    filter: none;
-    transition:
-      opacity 0.7s var(--ease-out) 0.2s,
-      filter 0.7s var(--ease-out) 0.2s,
-      visibility 0s;
   }
 
-  /* The platform's mark under each device. */
+  /* The platforms each device stands for, under it. */
   .badge {
-    display: grid;
-    margin-top: 2.2cqw;
-    font-size: max(10px, 1.05cqw);
-  }
-
-  .dev--laptop .badge {
-    margin-top: 2.6cqw;
-  }
-
-  .badge__item {
-    grid-area: 1 / 1;
     display: inline-flex;
-    align-items: center;
     justify-content: center;
-    gap: 0.55em;
+    gap: 1.1em;
+    margin-top: 2.2cqw;
     padding: 0.5em 1em 0.5em 0.85em;
     border-radius: 999px;
     background: rgb(255 255 255 / 72%);
@@ -603,9 +614,20 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
       0 0 0 1px var(--line) inset,
       0 1px 0 var(--glass-edge) inset,
       var(--shadow-1);
+    font-size: max(10px, 1.05cqw);
     font-weight: 500;
     white-space: nowrap;
     color: var(--ink);
+  }
+
+  .dev--laptop .badge {
+    margin-top: 2.6cqw;
+  }
+
+  .badge__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55em;
   }
 
   .badge__item :global(.brand-icon) {
@@ -666,21 +688,16 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
     border-radius: 0.6cqw;
     background: var(--ink);
     translate: -50% 0;
-    transition:
-      width 0.9s var(--ease-spring),
-      height 0.9s var(--ease-spring),
-      top 0.9s var(--ease-spring),
-      border-radius 0.9s var(--ease-spring);
   }
 
-  .dev--phone[data-os="android"] .phone__island {
+  .os[data-os="android"] .phone__island {
     top: 0.7cqw;
     width: 0.8cqw;
     height: 0.8cqw;
     border-radius: 50%;
   }
 
-  .phone__screen {
+  .dev--phone .os {
     display: grid;
     grid-template-rows: 2.3cqw auto 1fr auto;
   }
@@ -856,10 +873,9 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
     display: grid;
     grid-template-rows: auto 1fr;
     padding: 1cqw 1.2cqw 1.3cqw;
-    transition: left 0.9s var(--ease-spring);
   }
 
-  .dev--tablet[data-os="android"] .tablet__main {
+  .os[data-os="android"] .tablet__main {
     left: 3.2cqw;
   }
 
@@ -1109,14 +1125,13 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
     inset: 2.1cqw 0 0;
     display: grid;
     grid-template-columns: 11.5cqw 1fr;
-    transition: inset 0.9s var(--ease-spring);
   }
 
-  .dev--laptop[data-os="linux"] .app {
+  .os[data-os="linux"] .app {
     inset: 2.6cqw 0 0;
   }
 
-  .dev--laptop[data-os="web"] .app {
+  .os[data-os="web"] .app {
     inset: 4.4cqw 0 0;
   }
 
@@ -1125,18 +1140,17 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
     font-size: 0.68cqw;
     background: rgb(240 242 246 / 86%);
     box-shadow: -0.06cqw 0 0 rgb(11 11 13 / 7%) inset;
-    transition: background-color 0.8s var(--ease-out);
   }
 
-  .dev--laptop[data-os="windows"] .app__side {
+  .os[data-os="windows"] .app__side {
     background: #f3f6fb;
   }
 
-  .dev--laptop[data-os="linux"] .app__side {
+  .os[data-os="linux"] .app__side {
     background: #f5f5f4;
   }
 
-  .dev--laptop[data-os="web"] .app__side {
+  .os[data-os="web"] .app__side {
     background: #f6f7f9;
   }
 
@@ -1469,14 +1483,5 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
     stroke-linejoin: round;
     filter: drop-shadow(0 0.15cqw 0.25cqw rgb(0 0 0 / 25%));
     opacity: 0;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .dev :global([data-chrome]),
-    .phone__island,
-    .tablet__main,
-    .app {
-      transition: none;
-    }
   }
 </style>

@@ -1,6 +1,7 @@
 import { gsap } from "gsap";
 import { all } from "./dom";
 import { clamp, damp } from "./math";
+import type { Pointer } from "./pointer";
 
 /** The gap between the pointer and the picture's edge. */
 const GAP = 28;
@@ -24,34 +25,24 @@ export class WorkPreview {
   private blur = 12;
   private lean = 0;
   private readonly at = { x: 0, y: 0 };
-  private readonly pointer = { x: 0, y: 0 };
   private running = false;
 
   constructor(
     list: HTMLElement,
     private readonly preview: HTMLElement,
+    private readonly pointer: Pointer,
     private readonly still: boolean,
   ) {
     this.images = all(preview, ".preview__image");
     all(list, "[data-work-link]").forEach((link, index) => {
       link.addEventListener("pointerenter", (event) => {
-        if (event.pointerType === "mouse") this.enter(index, event);
+        if (event.pointerType === "mouse") this.enter(index);
       });
     });
     list.addEventListener("pointerleave", () => (this.hovered = null));
-    window.addEventListener(
-      "pointermove",
-      (event) => {
-        this.pointer.x = event.clientX;
-        this.pointer.y = event.clientY;
-      },
-      { passive: true },
-    );
   }
 
-  private enter(index: number, event: PointerEvent): void {
-    this.pointer.x = event.clientX;
-    this.pointer.y = event.clientY;
+  private enter(index: number): void {
     this.images.forEach((image, position) => image.classList.toggle("is-current", position === index));
     if (this.opacity < 0.35) {
       const target = this.target();
@@ -71,8 +62,8 @@ export class WorkPreview {
     const width = this.preview.offsetWidth;
     const height = this.preview.offsetHeight;
     return {
-      x: Math.max(MARGIN, this.pointer.x - GAP - width),
-      y: clamp(this.pointer.y - height / 2, TOP, window.innerHeight - height - MARGIN),
+      x: Math.max(MARGIN, this.pointer.clientX - GAP - width),
+      y: clamp(this.pointer.clientY - height / 2, TOP, window.innerHeight - height - MARGIN),
     };
   }
 

@@ -44,45 +44,6 @@ func (e BillingProvider) Valid() bool {
 	}
 }
 
-// Defines values for BlockAlign.
-const (
-	Center BlockAlign = "center"
-	Start  BlockAlign = "start"
-)
-
-// Valid indicates whether the value is a known member of the BlockAlign enum.
-func (e BlockAlign) Valid() bool {
-	switch e {
-	case Center:
-		return true
-	case Start:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for BlockSize.
-const (
-	Large  BlockSize = "large"
-	Normal BlockSize = "normal"
-	Small  BlockSize = "small"
-)
-
-// Valid indicates whether the value is a known member of the BlockSize enum.
-func (e BlockSize) Valid() bool {
-	switch e {
-	case Large:
-		return true
-	case Normal:
-		return true
-	case Small:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for CheckoutRequestPlan.
 const (
 	Monthly CheckoutRequestPlan = "monthly"
@@ -203,30 +164,6 @@ func (e ErrorCode) Valid() bool {
 	}
 }
 
-// Defines values for FieldDefKind.
-const (
-	Audio     FieldDefKind = "audio"
-	Image     FieldDefKind = "image"
-	Occlusion FieldDefKind = "occlusion"
-	Text      FieldDefKind = "text"
-)
-
-// Valid indicates whether the value is a known member of the FieldDefKind enum.
-func (e FieldDefKind) Valid() bool {
-	switch e {
-	case Audio:
-		return true
-	case Image:
-		return true
-	case Occlusion:
-		return true
-	case Text:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for LinkRequestProvider.
 const (
 	LinkRequestProviderApple  LinkRequestProvider = "apple"
@@ -260,36 +197,6 @@ func (e PushDevicePlatform) Valid() bool {
 	case Fcm:
 		return true
 	case Web:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for RejectionEntity.
-const (
-	RejectionEntityDeck      RejectionEntity = "deck"
-	RejectionEntityEvent     RejectionEntity = "event"
-	RejectionEntityNote      RejectionEntity = "note"
-	RejectionEntitySettings  RejectionEntity = "settings"
-	RejectionEntitySmartDeck RejectionEntity = "smart_deck"
-	RejectionEntityTemplate  RejectionEntity = "template"
-)
-
-// Valid indicates whether the value is a known member of the RejectionEntity enum.
-func (e RejectionEntity) Valid() bool {
-	switch e {
-	case RejectionEntityDeck:
-		return true
-	case RejectionEntityEvent:
-		return true
-	case RejectionEntityNote:
-		return true
-	case RejectionEntitySettings:
-		return true
-	case RejectionEntitySmartDeck:
-		return true
-	case RejectionEntityTemplate:
 		return true
 	default:
 		return false
@@ -466,35 +373,6 @@ type Billing struct {
 // BillingProvider defines model for Billing.Provider.
 type BillingProvider string
 
-// Block Exactly one of field, divider, label or typein.
-type Block struct {
-	Align   *BlockAlign `json:"align,omitempty"`
-	Divider *bool       `json:"divider,omitempty"`
-	Field   *int        `json:"field,omitempty"`
-	Label   *string     `json:"label,omitempty"`
-	Size    *BlockSize  `json:"size,omitempty"`
-	Typein  *int        `json:"typein,omitempty"`
-}
-
-// BlockAlign defines model for Block.Align.
-type BlockAlign string
-
-// BlockSize defines model for Block.Size.
-type BlockSize string
-
-// CardDef defines model for CardDef.
-type CardDef struct {
-	AnkiBack  *string `json:"anki_back,omitempty"`
-	AnkiFront *string `json:"anki_front,omitempty"`
-	Back      []Block `json:"back"`
-
-	// Each One card per cloze number or mask group of this field.
-	Each  *int    `json:"each,omitempty"`
-	Front []Block `json:"front"`
-	Id    int     `json:"id"`
-	Name  string  `json:"name"`
-}
-
 // Case defines model for Case.
 type Case struct {
 	// Decks A wave's decks.
@@ -568,40 +446,6 @@ type ConsentDecision struct {
 	Accept bool `json:"accept"`
 }
 
-// Deck defines model for Deck.
-type Deck struct {
-	Color       int     `json:"color"`
-	DeletedAt   *int64  `json:"deleted_at,omitempty"`
-	Description *string `json:"description,omitempty"`
-
-	// Gated Sub-decks unlock in order.
-	Gated bool               `json:"gated"`
-	Icon  *string            `json:"icon,omitempty"`
-	Id    openapi_types.UUID `json:"id"`
-
-	// Language BCP 47
-	Language  *string `json:"language,omitempty"`
-	Name      string  `json:"name"`
-	NewPerDay int     `json:"new_per_day"`
-
-	// OwnerId NULL: the author removed it; read-only.
-	OwnerId  *openapi_types.UUID `json:"owner_id,omitempty"`
-	ParentId *openapi_types.UUID `json:"parent_id,omitempty"`
-
-	// Position A fractional index among its siblings.
-	Position string `json:"position"`
-
-	// Retention Percent.
-	Retention     int `json:"retention"`
-	ReviewsPerDay int `json:"reviews_per_day"`
-
-	// UnlockAt Percent of the deck before this one that must be learned.
-	UnlockAt int `json:"unlock_at"`
-
-	// V The row's clock (last writer wins).
-	V int64 `json:"v"`
-}
-
 // DiscoverItem defines model for DiscoverItem.
 type DiscoverItem struct {
 	Color       *int               `json:"color,omitempty"`
@@ -635,56 +479,6 @@ type EmailChange struct {
 
 // ErrorCode defines model for ErrorCode.
 type ErrorCode string
-
-// Event defines model for Event.
-type Event struct {
-	At         int64              `json:"at"`
-	Card       int                `json:"card"`
-	Difficulty *float32           `json:"difficulty,omitempty"`
-	Due        *int64             `json:"due,omitempty"`
-	DurationMs *int               `json:"duration_ms,omitempty"`
-	Id         openapi_types.UUID `json:"id"`
-
-	// Kind 1 review, 2 reset, 3 suspend, 4 unsuspend, 5 bury, 6 flag, 7 snapshot, 8 void, 9 unlock.
-	Kind      int                `json:"kind"`
-	Lapses    *int               `json:"lapses,omitempty"`
-	Reps      *int               `json:"reps,omitempty"`
-	Stability *float32           `json:"stability,omitempty"`
-	SubjectId openapi_types.UUID `json:"subject_id"`
-	UserId    openapi_types.UUID `json:"user_id"`
-	Value     *int               `json:"value,omitempty"`
-}
-
-// FetchRequest defines model for FetchRequest.
-type FetchRequest struct {
-	Decks     *[]openapi_types.UUID `json:"decks,omitempty"`
-	Templates *[]openapi_types.UUID `json:"templates,omitempty"`
-}
-
-// FieldDef defines model for FieldDef.
-type FieldDef struct {
-	Id   int          `json:"id"`
-	Kind FieldDefKind `json:"kind"`
-	Name string       `json:"name"`
-	Tts  *bool        `json:"tts,omitempty"`
-}
-
-// FieldDefKind defines model for FieldDef.Kind.
-type FieldDefKind string
-
-// Filter Browse's filters as picked: a deck stands for it and its sub-decks, a tag for it and the tags under it.
-type Filter struct {
-	DeckIds *[]openapi_types.UUID `json:"deck_ids,omitempty"`
-	Marked  *bool                 `json:"marked,omitempty"`
-
-	// State new, learning, review or suspended.
-	State *string `json:"state,omitempty"`
-
-	// Tags Any of them.
-	Tags        *[]string             `json:"tags,omitempty"`
-	TemplateIds *[]openapi_types.UUID `json:"template_ids,omitempty"`
-	Text        *string               `json:"text,omitempty"`
-}
 
 // IPUse defines model for IPUse.
 type IPUse struct {
@@ -818,23 +612,6 @@ type NameUse struct {
 	Value  *string `json:"value,omitempty"`
 }
 
-// Note defines model for Note.
-type Note struct {
-	DeckId    openapi_types.UUID `json:"deck_id"`
-	DeletedAt *int64             `json:"deleted_at,omitempty"`
-
-	// Fields Field id to content.
-	Fields  map[string]string   `json:"fields"`
-	Id      openapi_types.UUID  `json:"id"`
-	OwnerId *openapi_types.UUID `json:"owner_id,omitempty"`
-
-	// Tags Space-separated, sorted, without repeats; `::` nests them ("Cardio::Arrhythmia"). Absent
-	// on a push from an app that predates tags: the stored ones stay.
-	Tags       *string            `json:"tags,omitempty"`
-	TemplateId openapi_types.UUID `json:"template_id"`
-	V          int64              `json:"v"`
-}
-
 // Notification Written by the server, shown once on whichever device opens next.
 type Notification struct {
 	Body      string             `json:"body"`
@@ -902,10 +679,12 @@ type PromoCodeItem struct {
 
 // PublicDeck defines model for PublicDeck.
 type PublicDeck struct {
-	// Decks The deck and everything under it.
-	Decks   []Deck       `json:"decks"`
-	Item    DiscoverItem `json:"item"`
-	Samples Rows         `json:"samples"`
+	// Decks The deck and everything under it, each as its table's row (the sync server's records).
+	Decks []map[string]interface{} `json:"decks"`
+	Item  DiscoverItem             `json:"item"`
+
+	// Samples A few of a deck's notes, and the note types they use, each as its table's row.
+	Samples Samples `json:"samples"`
 }
 
 // PublicProfile defines model for PublicProfile.
@@ -932,17 +711,6 @@ type Publication struct {
 	// Removed Moderators took it off Discover; it can't be listed again.
 	Removed *bool  `json:"removed,omitempty"`
 	Slug    string `json:"slug"`
-}
-
-// PullRequest defines model for PullRequest.
-type PullRequest struct {
-	Streams []StreamPosition `json:"streams"`
-}
-
-// PullResponse defines model for PullResponse.
-type PullResponse struct {
-	Lends   []Lend       `json:"lends"`
-	Streams []StreamPage `json:"streams"`
 }
 
 // PushDevice defines model for PushDevice.
@@ -974,17 +742,6 @@ type PushKey struct {
 	Key string `json:"key"`
 }
 
-// PushRequest defines model for PushRequest.
-type PushRequest struct {
-	Rows Rows `json:"rows"`
-}
-
-// PushResponse defines model for PushResponse.
-type PushResponse struct {
-	Accepted int         `json:"accepted"`
-	Rejected []Rejection `json:"rejected"`
-}
-
 // RedeemRequest defines model for RedeemRequest.
 type RedeemRequest struct {
 	Code string `json:"code"`
@@ -994,16 +751,6 @@ type RedeemRequest struct {
 type Redirect struct {
 	Url string `json:"url"`
 }
-
-// Rejection defines model for Rejection.
-type Rejection struct {
-	Code   ErrorCode          `json:"code"`
-	Entity RejectionEntity    `json:"entity"`
-	Id     openapi_types.UUID `json:"id"`
-}
-
-// RejectionEntity defines model for Rejection.Entity.
-type RejectionEntity string
 
 // Related defines model for Related.
 type Related struct {
@@ -1068,37 +815,10 @@ type RoleUpdate struct {
 	Role int `json:"role"`
 }
 
-// Rows defines model for Rows.
-type Rows struct {
-	Decks      *[]Deck      `json:"decks,omitempty"`
-	Events     *[]Event     `json:"events,omitempty"`
-	Notes      *[]Note      `json:"notes,omitempty"`
-	Settings   *[]Settings  `json:"settings,omitempty"`
-	SmartDecks *[]SmartDeck `json:"smart_decks,omitempty"`
-	Templates  *[]Template  `json:"templates,omitempty"`
-}
-
-// Settings defines model for Settings.
-type Settings struct {
-	FsrsWeights *string `json:"fsrs_weights,omitempty"`
-
-	// Grading 4 or 2 answer buttons.
-	Grading int `json:"grading"`
-
-	// ReminderAt Minutes after midnight to be reminded at; absent: no reminders.
-	ReminderAt *int `json:"reminder_at,omitempty"`
-
-	// ReminderEmail Reminders by email too.
-	ReminderEmail *bool `json:"reminder_email,omitempty"`
-
-	// TextSize Percent.
-	TextSize int `json:"text_size"`
-
-	// Theme 0 system, 1 light, 2 dark.
-	Theme    int                `json:"theme"`
-	Timezone *string            `json:"timezone,omitempty"`
-	UserId   openapi_types.UUID `json:"user_id"`
-	V        int64              `json:"v"`
+// Samples A few of a deck's notes, and the note types they use, each as its table's row.
+type Samples struct {
+	Notes     []map[string]interface{} `json:"notes"`
+	Templates []map[string]interface{} `json:"templates"`
 }
 
 // Share defines model for Share.
@@ -1108,25 +828,6 @@ type Share struct {
 	Role     int                `json:"role"`
 	UserId   openapi_types.UUID `json:"user_id"`
 	Username *string            `json:"username,omitempty"`
-}
-
-// SmartDeck A learner's own saved filter, studied like a deck. Never lent or published.
-type SmartDeck struct {
-	Color     int    `json:"color"`
-	DeletedAt *int64 `json:"deleted_at,omitempty"`
-
-	// Filter Browse's filters as picked: a deck stands for it and its sub-decks, a tag for it and the tags under it.
-	Filter    Filter             `json:"filter"`
-	Icon      *string            `json:"icon,omitempty"`
-	Id        openapi_types.UUID `json:"id"`
-	Name      string             `json:"name"`
-	NewPerDay int                `json:"new_per_day"`
-	OwnerId   openapi_types.UUID `json:"owner_id"`
-
-	// Position A fractional index among the owner's smart decks.
-	Position      string `json:"position"`
-	ReviewsPerDay int    `json:"reviews_per_day"`
-	V             int64  `json:"v"`
 }
 
 // StaffAction defines model for StaffAction.
@@ -1204,30 +905,6 @@ type StoreProof struct {
 	Proof string `json:"proof"`
 }
 
-// StreamPage defines model for StreamPage.
-type StreamPage struct {
-	Cursor int64 `json:"cursor"`
-
-	// DeckIds Set when the fingerprint changed: every deck now in the stream.
-	DeckIds     *[]openapi_types.UUID `json:"deck_ids,omitempty"`
-	Fingerprint *string               `json:"fingerprint,omitempty"`
-	Key         string                `json:"key"`
-	More        bool                  `json:"more"`
-
-	// Resync The cursor is older than purged deletions: start the stream again.
-	Resync bool `json:"resync"`
-	Rows   Rows `json:"rows"`
-}
-
-// StreamPosition defines model for StreamPosition.
-type StreamPosition struct {
-	Cursor      int64   `json:"cursor"`
-	Fingerprint *string `json:"fingerprint,omitempty"`
-
-	// Key `me`, or the id of a lent deck.
-	Key string `json:"key"`
-}
-
 // Summary defines model for Summary.
 type Summary struct {
 	// Due Cards due on each of the next days, today first.
@@ -1239,28 +916,6 @@ type Summary struct {
 type TeamMember struct {
 	Roles []string `json:"roles"`
 	User  UserRef  `json:"user"`
-}
-
-// Template defines model for Template.
-type Template struct {
-	Def       TemplateDef        `json:"def"`
-	DeletedAt *int64             `json:"deleted_at,omitempty"`
-	Id        openapi_types.UUID `json:"id"`
-
-	// Kind 1 Rondo, 2 Anki HTML (read-only).
-	Kind    int                 `json:"kind"`
-	Name    string              `json:"name"`
-	OwnerId *openapi_types.UUID `json:"owner_id,omitempty"`
-	V       int64               `json:"v"`
-}
-
-// TemplateDef defines model for TemplateDef.
-type TemplateDef struct {
-	Cards []CardDef `json:"cards"`
-
-	// Css Anki HTML templates only.
-	Css    *string    `json:"css,omitempty"`
-	Fields []FieldDef `json:"fields"`
 }
 
 // UndoRequest defines model for UndoRequest.

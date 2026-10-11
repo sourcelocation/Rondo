@@ -501,11 +501,6 @@ export function Reminders() {
                 />
               }
             />
-            <Row
-              label
-              title={s.remindByEmail}
-              action={<Switch checked={st.email} onCheckedChange={(v) => reminders.setEmail(v)} />}
-            />
           </>
         )}
       </Rows>

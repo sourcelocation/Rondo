@@ -1,62 +1,59 @@
 package app.rondo.core
 
-import app.rondo.core.model.Event
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LearningTest {
-    private val me = Ids.new()
+    private val me = newId()
 
-    private fun event(
-        kind: Int,
-        at: Long,
-        value: Int? = null,
-        subject: String = "n",
-        id: String = Ids.new(),
-        due: Long? = null,
-    ) = Event(id, me, subject, 1, kind, at, value, due = due)
+    private fun review(at: Long, rating: Int, due: Long? = null) =
+        Event.Review(newId(), me, "n", 1, at, rating, due = due)
+
+    private fun state(vararg events: Event) = Card("n", 1, events.toList()).state(Fsrs(fuzz = false))
 
     @Test
-    fun foldMergesOfflineDevicesAndHonoursVoidsAndSnapshots() {
-        val fsrs = Fsrs(fuzz = false)
-        val good = event(Learning.REVIEW, 0, 3)
-        val again = event(Learning.REVIEW, 60_000, 1)
-        val graduate = event(Learning.REVIEW, 120_000, 3)
-        val merged = Learning.fold("k", listOf(graduate, good, again), fsrs)
-        assertEquals(Learning.fold("k", listOf(good, again, graduate), fsrs), merged)
+    fun aCardFoldsOfflineDevicesAndHonoursVoidsAndSnapshots() {
+        val good = review(0, 3)
+        val again = review(60_000, 1)
+        val graduate = review(120_000, 3)
+        val merged = state(graduate, good, again)
+        assertEquals(state(good, again, graduate), merged)
         assertEquals(3, merged.memory.reps)
         assertEquals(0L, merged.introducedAt)
 
-        val undone = Learning.fold(
-            "k",
-            listOf(good, again, graduate, event(Learning.VOID, 130_000, subject = graduate.id)),
-            fsrs,
-        )
+        val undone = state(good, again, graduate, Event.Void(newId(), me, graduate.id, 130_000))
         assertEquals(2, undone.memory.reps)
 
-        val stored = Learning.fold("k", listOf(event(Learning.REVIEW, 0, 4, due = 42)), fsrs)
+        val stored = state(review(0, 4, due = 42))
         assertEquals(42L, stored.memory.due)
         assertEquals(0L, stored.learnedAt)
 
-        val snapshot =
-            Event(
-                Ids.new(), me, "n", 1, Learning.SNAPSHOT, 500, Memory.REVIEW,
-                due = 9_000, stability = 12.0, difficulty = 4.0, reps = 7, lapses = 1,
-            )
-        val copied = Learning.fold(
-            "k",
-            listOf(snapshot, event(Learning.FLAG, 600, 3), event(Learning.SUSPEND, 700)),
-            fsrs,
+        val snapshot = Event.Snapshot(newId(), me, "n", 1, Memory(Memory.REVIEW, 0, 12.0, 4.0, 9_000, 500, 7, 1))
+        val copied = state(
+            snapshot,
+            Event.Flag(newId(), me, "n", 1, 600, 3),
+            Event.Suspend(newId(), me, "n", 1, 700),
         )
         assertEquals(Memory(Memory.REVIEW, 0, 12.0, 4.0, 9_000, 500, 7, 1), copied.memory)
         assertEquals(500L, copied.learnedAt)
         assertEquals(3, copied.flag)
         assertTrue(copied.suspended)
-        assertEquals(
-            CardState(),
-            Learning.fold("k", listOf(good, event(Learning.RESET, 10)), fsrs).copy(buriedAt = null),
-        )
+        assertEquals(CardState(), state(good, Event.Reset(newId(), me, "n", 1, 10)).copy(buriedAt = null))
+    }
+
+    @Test
+    fun aSnapshotKeepsWhereACardStandsWithoutItsReviews() {
+        val learned =
+            CardState(Memory(Memory.REVIEW, stability = 12.0, difficulty = 5.0, due = 100, last = 50, reps = 3))
+        val snapshot = learned.snapshot("n", 2, "you", 1_000)!!
+        assertEquals("n", snapshot.subjectId)
+        assertEquals(2, snapshot.card)
+        assertEquals("you", snapshot.userId)
+        assertEquals(50L, snapshot.at)
+        assertEquals(learned.memory, Card("n", 2, listOf(snapshot)).state(Fsrs()).memory)
+        assertNull(CardState().snapshot("n", 1, "you", 1_000), "a new card needs none")
     }
 
     /** HSK 1 (500 notes), HSK 2 (800, needs 100% of HSK 1), HSK 3 (1,200, needs 90% of HSK 2). */
@@ -65,7 +62,7 @@ class LearningTest {
         learned2: Int = 0,
         unlocked: Set<String> = emptySet(),
     ): Triple<Map<String, Level>, List<String>, Set<String>> {
-        val owner = Ids.new()
+        val owner = newId()
         val hsk = deck(owner, gated = true, id = "hsk")
         val levels =
             listOf(
@@ -76,7 +73,7 @@ class LearningTest {
         val notes = mapOf("1" to 500, "2" to 800, "3" to 1200)
         val learned = mapOf("1" to learned1, "2" to learned2)
         val opened = mutableSetOf<String>()
-        val result = Learning.levels(Tree(listOf(hsk) + levels), {
+        val result = Tree(listOf(hsk) + levels).levels({
             DeckLoad(
                 notes = notes[it] ?: 0,
                 learnedNotes =
@@ -115,7 +112,7 @@ class LearningTest {
 
     @Test
     fun countsSumTheSubtreeUnderTheOpenedDecksLimits() {
-        val owner = Ids.new()
+        val owner = newId()
         val parent = deck(owner, id = "p").copy(newPerDay = 20, reviewsPerDay = 5)
         val child = deck(owner, "p", "c")
         val tree = Tree(listOf(parent, child))
@@ -124,9 +121,9 @@ class LearningTest {
             "c" to DeckLoad(newAvailable = 8, learningDue = 2, reviewDue = 4, reviewsToday = 1),
         )
         val open = mapOf("p" to Level(true, 0), "c" to Level(true, 0))
-        assertEquals(Counts(16, 2, 4), Learning.counts(tree, "p", { loads.getValue(it) }, open))
+        assertEquals(Counts(16, 2, 4), tree.counts("p", { loads.getValue(it) }, open))
         val locked = open + ("c" to Level(false, 0))
-        assertEquals(Counts(8, 2, 4), Learning.counts(tree, "p", { loads.getValue(it) }, locked))
-        assertEquals(Counts(8, 2, 4), Learning.counts(tree, "c", { loads.getValue(it) }, open))
+        assertEquals(Counts(8, 2, 4), tree.counts("p", { loads.getValue(it) }, locked))
+        assertEquals(Counts(8, 2, 4), tree.counts("c", { loads.getValue(it) }, open))
     }
 }

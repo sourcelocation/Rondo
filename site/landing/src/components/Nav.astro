@@ -6,7 +6,7 @@ import Logo from "./Logo.astro";
 /**
  * The bar over every page: the downloads, the docs and the Discord on one side, the site's two actions on the other
  * (Actions.astro), and the logo in the middle. On the landing page (`animated`) the motion brings them in after its
- * intro, whose mark lands in the logo's. It loads the launch's script, which every page with a bar needs for its
+ * intro, whose mark lands in the logo's, and keeps the actions away while the hero's own are in view (motion/hero.ts). It loads the launch's script, which every page with a bar needs for its
  * launch list.
  */
 interface Props {
@@ -129,6 +129,31 @@ const revealLogo = animated ? { "data-reveal": "logo", "data-reveal-manual": "" 
   .nav__side--end {
     grid-column: 3;
     justify-content: flex-end;
+  }
+
+  /* Over the hero, which has the actions itself, the bar's stay away (motion/hero.ts). */
+  .nav__side--end > :global(*) {
+    transition:
+      opacity 0.6s var(--ease-out),
+      translate 0.6s var(--ease-out),
+      filter 0.6s var(--ease-out),
+      visibility 0s;
+  }
+
+  .nav.is-over-hero .nav__side--end > :global(*) {
+    visibility: hidden;
+    opacity: 0;
+    translate: 0 -8px;
+    filter: blur(8px);
+    transition-duration: 0.4s, 0.4s, 0.4s, 0s;
+    transition-delay: 0s, 0s, 0s, 0.4s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav.is-over-hero .nav__side--end > :global(*) {
+      translate: none;
+      filter: none;
+    }
   }
 
   .nav__home {

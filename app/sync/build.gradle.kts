@@ -7,6 +7,10 @@ plugins {
 
 application { mainClass = "app.rondo.sync.MainKt" }
 
+kotlin {
+    compilerOptions { optIn.add("kotlin.uuid.ExperimentalUuidApi") }
+}
+
 dependencies {
     implementation(project(":core"))
     implementation(project(":mcp"))

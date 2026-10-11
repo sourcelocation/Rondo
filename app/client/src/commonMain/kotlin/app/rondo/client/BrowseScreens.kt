@@ -1,11 +1,14 @@
 package app.rondo.client
 
-import app.cash.sqldelight.async.coroutines.awaitAsList
+import app.rondo.core.AnkiTemplate
+import app.rondo.core.Filter
 import app.rondo.core.Memory
+import app.rondo.core.NoteSort
 import app.rondo.core.Tags
-import app.rondo.core.Templates
-import app.rondo.core.model.Filter
-import app.rondo.core.notes
+import io.ktor.http.formUrlEncode
+import io.ktor.http.parametersOf
+import io.ktor.http.parseQueryString
+import io.ktor.util.toMap
 import kotlin.js.JsExport
 
 /** A note in Browse. [state]: new, learning, review or suspended (its least advanced card). */
@@ -23,120 +26,185 @@ class NoteItem internal constructor(
 )
 
 @JsExport
-class BrowseState internal constructor(
-    val notes: Array<NoteItem>,
-    val more: Boolean,
+class FilterState internal constructor(
     val text: String,
     val deckId: String?,
     val templateId: String?,
-    val cardState: String?,
-    val marked: Boolean,
-    /** added, changed, due or alpha. */
-    val sort: String,
-    val decks: Array<Choice>,
-    val templates: Array<Choice>,
     /** Tags picked: notes with any of them, or with a tag under one. */
     val tags: Array<String>,
+    /** new, learning, review or suspended. */
+    val cardState: String?,
+    val marked: Boolean,
+    /** Decks to pick from: every live one, and the one picked when it's gone. */
+    val decks: Array<Choice>,
+    val templates: Array<Choice>,
+    /** The filter as an address's search params, to open "Study these" with: see [App.studyThese]. */
+    val address: String,
+)
+
+/**
+ * A filter as its pickers show it: text, deck, note type, tags, card state and mark. Whoever makes
+ * it says where it starts ([start]) and where each change is kept ([save]). While it's open, it is
+ * the filter, as the note editor is the note being edited: it reads [start] once, so nothing
+ * changes under the person's hands. A change made elsewhere meanwhile gives way to the next one
+ * made here, as the newest whole row wins anywhere in sync.
+ */
+@JsExport
+class FilterScreen internal constructor(
+    override val app: App,
+    private val start: suspend () -> Filter,
+    private val save: suspend (Filter) -> Unit,
+) : Screen<FilterState>() {
+    private val library get() = app.rondo.library
+    private var filter: Filter? = null
+
+    /** The filter now. */
+    internal suspend fun value(): Filter = filter ?: start().also { filter = it }
+
+    override suspend fun load(): FilterState {
+        val f = value()
+        val tree = library.tree()
+        val live = tree.byId.values.filter { !tree.dead(it.id) }
+        val deckId = f.deckIds?.firstOrNull()
+        val gone = deckId?.takeIf { tree.dead(it) }?.let { Choice(it, strings.ruleGoneDeck) }
+        val types = library.templates().values.filter { it.deletedAt == null }.map { Choice(it.id, it.name) }
+            .sortedBy { it.label.lowercase() }
+        return FilterState(
+            f.text.orEmpty(), deckId, f.templateIds?.firstOrNull(), f.tags.orEmpty().toTypedArray(), f.state,
+            f.marked == true, (listOfNotNull(gone) + choices(tree, live)).toTypedArray(), types.toTypedArray(),
+            parametersOf(f.params).formUrlEncode(),
+        )
+    }
+
+    private fun change(change: (Filter) -> Filter) = act { set(change(value())) }
+
+    /** Makes the filter [f], when it's another. */
+    internal suspend fun set(f: Filter) {
+        if (f == value()) return
+        filter = f
+        save(f)
+        reload()
+    }
+
+    fun setText(text: String) = change { it.withText(text) }
+
+    /** Notes in [deckId] and its sub-decks; null: every deck. */
+    fun setDeck(deckId: String?) = change { it.withDeck(deckId) }
+
+    fun setTemplate(templateId: String?) = change { it.withTemplate(templateId) }
+
+    /** Notes with any of [tags], or a tag under one; none: any notes. */
+    fun setTags(tags: Array<String>) = change { it.withTags(tags.toList()) }
+
+    /** new, learning, review or suspended; null: any. */
+    fun setCardState(cardState: String?) = change { it.withState(cardState) }
+
+    fun setMarked(marked: Boolean) = change { it.withMarked(marked) }
+}
+
+@JsExport
+class BrowseState internal constructor(
+    val notes: Array<NoteItem>,
+    val more: Boolean,
+    val sort: NoteSort,
+    /** The orders to choose from. */
+    val sorts: Array<NoteSort>,
+    /** Decks notes can move to. */
+    val decks: Array<Choice>,
     /** What "Study these" offers now: cards due (learning and review), and new ones. */
     val due: Int,
     val newCount: Int,
-    /** The smart deck whose rules these filters are, while Browse changes them. */
-    val smart: Choice?,
+    /** The filter and the sort as an address's search params: see [App.browse]. */
+    val address: String,
 )
-
-/** Browse's filters as a smart deck keeps them, empty ones left out. */
-internal fun picked(
-    text: String,
-    deckId: String?,
-    templateId: String?,
-    tags: Array<String>,
-    cardState: String?,
-    marked: Boolean,
-) = Filter(
-    text = text.trim().ifEmpty { null },
-    deckIds = listOfNotNull(deckId?.ifBlank { null }).ifEmpty { null },
-    templateIds = listOfNotNull(templateId?.ifBlank { null }).ifEmpty { null },
-    tags = tags.mapNotNull(Tags::clean).distinctBy { it.lowercase() }.ifEmpty { null },
-    state = cardState?.takeIf { it in STATES },
-    marked = marked.takeIf { it },
-)
-
-private val STATES = setOf("new", "learning", "review", "suspended")
 
 /**
- * Finding notes with filter pickers, and changing many at once. The filters can be studied as
- * they are, kept as a smart deck, or, opened from a smart deck ([smartId]), become its rules.
+ * The notes a filter finds, in the order chosen, and changing many at once. Browse is this with its
+ * filter kept in the address; a smart deck's notes are this with its rules as the filter.
  */
 @JsExport
-class BrowseScreen internal constructor(override val app: App, deckId: String?, private val smartId: String?) :
-    Screen<BrowseState>() {
-    private val store get() = app.rondo.store
+class BrowseScreen internal constructor(
+    override val app: App,
+    start: suspend () -> Filter,
+    private var sort: NoteSort,
+    save: suspend (Filter) -> Unit,
+) : Screen<BrowseState>() {
     private val library get() = app.rondo.library
-    private var filter = Filter(deckIds = listOfNotNull(deckId).ifEmpty { null })
-    private var sort = "added"
     private var limit = 200
 
+    /** Opened on an [address] (see [BrowseState.address]); its filter is kept there alone. */
+    internal constructor(app: App, address: String) :
+        this(app, { Filter(parseQueryString(address.removePrefix("?")).toMap()) }, sortIn(address), {})
+
+    /** What it finds, as pickers. */
+    val filter: FilterScreen = part(
+        FilterScreen(app, start) {
+            save(it)
+            limit = 200
+            reload()
+        },
+    )
+
     override suspend fun load(): BrowseState {
-        val day = Day.of(store, library.overview())
+        val study = app.rondo.study
+        val day = study.day(library.overview())
         val tree = day.tree
         val access = library.access()
-        val templates = store.templates()
-        val found = store.search(filter.notes(tree), limit + 1, sort)
+        val templates = library.templates()
+        val f = filter.value()
+        val found = library.search(f.notes(tree), limit + 1, sort)
         val notes = found.take(limit)
-        val cards = notes.map { it.id }.chunked(500).flatMap { store.q.cardsOfNotes(it).awaitAsList() }
-            .groupBy { it.note_id }
+        val cards = library.cards(notes.map { it.id }).groupBy { it.noteId }
         val items = notes.map { n ->
-            val c = cards[n.id].orEmpty()
+            val c = cards[n.id].orEmpty().map { it.state }
             val live = c.filter { !it.suspended }
             val state = when {
                 live.isEmpty() -> "suspended"
-                live.any { it.state == Memory.NEW.toLong() } -> "new"
-                live.any { it.state != Memory.REVIEW.toLong() } -> "learning"
+                live.any { it.memory.state == Memory.NEW } -> "new"
+                live.any { it.memory.state != Memory.REVIEW } -> "learning"
                 else -> "review"
             }
             val template = templates[n.templateId]
             NoteItem(
                 id = n.id,
-                text = label(n),
+                text = template?.label(n) ?: "…",
                 deck = tree.path(n.deckId).joinToString(" › "),
                 template = template?.name.orEmpty(),
                 state = state,
-                due = live.mapNotNull { it.due }.minOrNull()?.toDouble(),
+                due = live.mapNotNull { it.memory.due }.minOrNull()?.toDouble(),
                 marked = c.any { it.flag > 0 },
-                canEdit = access.canWrite(n.deckId) == null && template?.kind != Templates.ANKI,
-                tags = Tags.of(n).list.toTypedArray(),
+                canEdit = access.canWrite(n.deckId) == null && template !is AnkiTemplate,
+                tags = Tags(n.tags).list.toTypedArray(),
             )
         }
-        val decks = tree.choices(tree.byId.values.filter { !tree.dead(it.id) })
-        val types = templates.values.filter { it.deletedAt == null }.map { Choice(it.id, it.name) }
-            .sortedBy { it.label.lowercase() }
-        val offer = FilterScope.unlimited(store, filter).counts(day)
-        val smart = smartId?.let { store.smartDeck(it) }?.takeIf { it.deletedAt == null }
+        val decks = choices(tree, tree.byId.values.filter { !tree.dead(it.id) })
+        val offer = study.counts(f, day)
+        val address =
+            f.params + listOfNotNull(("sort" to listOf(sort.name.lowercase())).takeIf { sort != NoteSort.ADDED })
         return BrowseState(
-            items.toTypedArray(), found.size > limit, filter.text.orEmpty(), filter.deckIds?.firstOrNull(),
-            filter.templateIds?.firstOrNull(), filter.state, filter.marked == true, sort, decks.toTypedArray(),
-            types.toTypedArray(), filter.tags.orEmpty().toTypedArray(), offer.learning + offer.review, offer.new,
-            smart?.let { Choice(it.id, it.name) },
+            items.toTypedArray(),
+            found.size > limit,
+            sort,
+            SORTS.toTypedArray(),
+            decks.toTypedArray(),
+            offer.learning + offer.review,
+            offer.new,
+            parametersOf(address).formUrlEncode(),
         )
     }
 
-    /**
-     * Sets every filter at once; null or empty means any. [tags]: any of them; [cardState]: new,
-     * learning, review or suspended; [sort]: added, changed, due or alpha.
-     */
-    fun filter(
-        text: String,
-        deckId: String?,
-        templateId: String?,
-        tags: Array<String>,
-        cardState: String?,
-        marked: Boolean,
-        sort: String,
-    ) = act {
-        filter = picked(text, deckId, templateId, tags, cardState, marked)
-        this.sort = sort.takeIf { it in SORTS } ?: "added"
+    /** One of [BrowseState.sorts]. */
+    fun sortBy(sort: NoteSort) = act {
+        this.sort = sort.takeIf { it in SORTS } ?: NoteSort.ADDED
         limit = 200
         reload()
+    }
+
+    /** Shows what [address] says (see [BrowseState.address]) when it says something else: after Back, or a link. */
+    fun open(address: String) = act {
+        val sort = sortIn(address)
+        if (sort != this.sort) sortBy(sort)
+        filter.set(Filter(parseQueryString(address.removePrefix("?")).toMap()))
     }
 
     fun more() = act {
@@ -144,19 +212,12 @@ class BrowseScreen internal constructor(override val app: App, deckId: String?, 
         reload()
     }
 
-    /** Keeps the filters as a smart deck called [name]; [then] gets its id. */
+    /** Keeps the filter as a smart deck called [name]; [then] gets its id. */
     fun keep(name: String, then: (String) -> Unit) = act {
         if (name.isBlank()) return@act
-        val smart = library.createSmartDeck(name, filter)
+        val smart = library.createSmartDeck(name, filter.value())
         app.rondo.syncSoon()
         then(smart.id)
-    }
-
-    /** Makes the filters the smart deck's rules; [then] runs once they are. */
-    fun saveRules(then: () -> Unit) = act {
-        library.updateSmartDeck(smartId ?: return@act) { it.copy(filter = filter) }
-        app.rondo.syncSoon()
-        then()
     }
 
     private fun each(ids: Array<String>, block: suspend (String) -> Unit) = act {
@@ -178,9 +239,7 @@ class BrowseScreen internal constructor(override val app: App, deckId: String?, 
 
     fun reset(ids: Array<String>) = each(ids) { library.reset(it) }
 
-    fun mark(ids: Array<String>, on: Boolean) = each(ids) { id ->
-        store.q.cardsOf(id).awaitAsList().forEach { library.flag(id, it.card.toInt(), if (on) 1 else 0) }
-    }
+    fun mark(ids: Array<String>, on: Boolean) = each(ids) { library.mark(it, on) }
 
     /** Adds [added] to the notes' tags and takes [removed] off, on the notes you can change. */
     fun tag(ids: Array<String>, added: Array<String>, removed: Array<String>) = act {
@@ -189,7 +248,13 @@ class BrowseScreen internal constructor(override val app: App, deckId: String?, 
     }
 
     private companion object {
-        val SORTS = setOf("added", "changed", "due", "alpha")
+        val SORTS = listOf(NoteSort.ADDED, NoteSort.CHANGED, NoteSort.DUE, NoteSort.ALPHA)
+
+        /** The sort [address] asks for; none: the newest first. */
+        fun sortIn(address: String): NoteSort {
+            val asked = parseQueryString(address.removePrefix("?"))["sort"]
+            return SORTS.firstOrNull { it.name.equals(asked, ignoreCase = true) } ?: NoteSort.ADDED
+        }
     }
 }
 
@@ -202,7 +267,7 @@ class TagsScreen internal constructor(override val app: App) : Screen<TagsState>
     override val live get() = false
     private var query = ""
 
-    override suspend fun load() = TagsState(query, app.rondo.store.tags(query, 50).toTypedArray())
+    override suspend fun load() = TagsState(query, app.rondo.library.tags(query, 50).toTypedArray())
 
     fun search(query: String) {
         this.query = query

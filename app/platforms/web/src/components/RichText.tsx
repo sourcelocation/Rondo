@@ -28,9 +28,7 @@ import { ask } from "@/components/kit";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
-import { Editor as Documents, s } from "@/rondo";
-
-const documents = Documents.getInstance();
+import { EditorDocument, Markup, s } from "@/rondo";
 
 /** The next cloze number in the document. */
 function nextCloze(editor: Editor) {
@@ -224,7 +222,7 @@ export function RichText({
         onClick: (n, pos) => editMath(n.attrs.latex, pos, false),
       }),
     ],
-    content: JSON.parse(documents.toDocument(value)),
+    content: JSON.parse(new Markup(value).document),
     editorProps: {
       attributes: {
         class: cn(
@@ -236,7 +234,7 @@ export function RichText({
       },
     },
     onUpdate: ({ editor }) => {
-      last.current = documents.toMarkup(JSON.stringify(editor.getJSON()));
+      last.current = new EditorDocument(JSON.stringify(editor.getJSON())).markup;
       onChange(last.current);
     },
   });
@@ -244,7 +242,7 @@ export function RichText({
   useEffect(() => {
     if (editor && value !== last.current) {
       last.current = value;
-      editor.commands.setContent(JSON.parse(documents.toDocument(value)));
+      editor.commands.setContent(JSON.parse(new Markup(value).document));
     }
   }, [editor, value]);
   const on = useEditorState({

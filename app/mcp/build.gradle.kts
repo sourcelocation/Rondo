@@ -8,3 +8,7 @@ dependencies {
     api(project(":core"))
     api(libs.mcp)
 }
+
+kotlin {
+    compilerOptions { optIn.add("kotlin.uuid.ExperimentalUuidApi") }
+}

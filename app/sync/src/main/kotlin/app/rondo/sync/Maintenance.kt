@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
  * Hourly, on one replica at a time (an advisory lock): purge deletions older than 30 days, and
  * delete rows without an author that nobody borrows any more.
  */
-class Maintenance(private val db: Db) {
+class Maintenance(private val postgres: Postgres) {
     private val log = LoggerFactory.getLogger("rondo.maintenance")
 
     fun start() = thread(isDaemon = true, name = "maintenance") {
@@ -19,7 +19,7 @@ class Maintenance(private val db: Db) {
         }
     }
 
-    fun run(cutoff: Long) = db.transaction { c ->
+    fun run(cutoff: Long) = postgres.transaction { c ->
         if (!c.query("SELECT pg_try_advisory_xact_lock(4242)") { it.getBoolean(1) }.single()) return@transaction
         val purged = c.query(
             "WITH RECURSIVE gone AS (SELECT id FROM decks WHERE deleted_at < ? AND owner_id IS NOT NULL " +

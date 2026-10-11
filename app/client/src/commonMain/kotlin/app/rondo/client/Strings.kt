@@ -1,5 +1,9 @@
 package app.rondo.client
 
+import app.rondo.client.anki.AnkiConversion
+import app.rondo.client.services.FileFormat
+import app.rondo.core.NoteSort
+import app.rondo.core.Template
 import kotlin.js.JsExport
 import kotlin.math.roundToLong
 
@@ -24,6 +28,7 @@ open class Strings {
     open val restore = "Restore"
     open val rename = "Rename"
     open val copy = "Copy"
+    open val duplicateDeck = "Duplicate"
     open val moveTo = "Move to…"
     open val topLevel = "Top level"
     open val undo = "Undo"
@@ -58,6 +63,7 @@ open class Strings {
     fun unsynced(n: Int) = (if (n == 1) "1 change hasn't" else "$n changes haven't") +
         " reached the server yet. Signing out now discards them."
     fun issues(n: Int) = if (n == 1) "1 change couldn't sync." else "$n changes couldn't sync."
+    fun issueCount(n: Int) = if (n == 1) "1 sync issue" else "$n sync issues"
     open val pro = "Pro"
     open val free = "Free"
     open val select = "Select"
@@ -65,11 +71,17 @@ open class Strings {
     open val lower = "Lower"
     open val raise = "Raise"
 
-    // Sync banners
+    // Why syncing stopped: a few words for the sync line, then in full
+    open val offlineTitle = "Offline"
     open val offline = "You're offline. Changes stay on this device until you're back."
+    open val signedOutTitle = "Sign in to sync"
     open val signedOutSync = "Sign in to sync your decks across devices."
+    open val outdatedTitle = "Update to sync"
     open val outdated = "This version of Rondo is too old to sync. Update to continue."
+    open val clockTitle = "Clock is off"
     open val clock = "Your device's clock is off, so syncing paused. Set the time automatically."
+    open val secondFactorTitle = "Enter your code to sync"
+    open val syncFailedTitle = "Couldn't sync"
     open val syncFailed = "Syncing didn't work. Rondo will try again."
 
     // Home
@@ -90,7 +102,7 @@ open class Strings {
     open val doneToday = "Well done!"
     open val nothingDue = "Nothing due right now"
     open val thisWeek = "This week"
-    open val importDecks = "Import from Anki"
+    open val importDecks = "Import"
     open val discoverDecks = "Discover decks"
     open val emptyDeck = "Empty: open it to add notes"
     open val namePlaceholder = "Name, like Spanish or Anatomy"
@@ -101,7 +113,7 @@ open class Strings {
     open val browseDeck = "Browse notes"
     open val moveQuestion = "Move this deck?"
     open val locked = "Locked"
-    open val removedByAuthor = "Removed by its author. You can still study it, or copy it."
+    open val removedByAuthor = "Removed by its author. You can still study it, or duplicate it."
     open val leave = "Leave"
     open val convert = "Convert to Rondo format"
     open val convertHint = "Makes an editable copy; your progress comes along."
@@ -169,6 +181,7 @@ open class Strings {
     open val linkHint = "Anyone with the link can join. It works for 7 days."
     open val copyLink = "Copy link"
     open val copied = "Copied"
+    open val duplicated = "Duplicated"
     open val revoke = "Revoke"
     open val remove = "Remove"
     open val pending = "Invited"
@@ -256,7 +269,9 @@ open class Strings {
     open val stop = "Stop"
     open val noMicrophone = "Rondo can't use the microphone. Allow it in the browser's settings."
     fun fillIn(field: String) = "Fill in “$field” to make a card."
+    fun alreadyThere(field: String, deck: String) = "Another note in “$deck” has the same “$field”."
     fun makes(n: Int) = if (n == 1) "Makes 1 card." else "Makes $n cards."
+    fun notOnCards(n: Int) = if (n == 1) "1 field on no card" else "$n fields on no card"
     open val ankiReadOnly = "This note keeps Anki's format, so it can't be edited here. Convert the deck to edit it."
     open val cloze = "Cloze"
     open val clozeHintLabel = "Hint, shown in the blank"
@@ -300,12 +315,12 @@ open class Strings {
         if (n == 1) "1 note uses this type; changes apply to it." else "$n notes use this type; changes apply to all."
     fun copyOf(name: String) = "My $name"
     fun summary(template: String) = when (template) {
-        app.rondo.core.Templates.BASIC -> "A question and its answer."
-        app.rondo.core.Templates.REVERSE -> "Asked both ways round."
-        app.rondo.core.Templates.TYPE -> "Type the answer before you see it."
-        app.rondo.core.Templates.CLOZE -> "Hide words in a sentence."
-        app.rondo.core.Templates.OCCLUSION -> "Cover parts of a picture."
-        app.rondo.core.Templates.VOCABULARY -> "A word with its reading, meaning, sound and an example."
+        app.rondo.core.Template.BASIC.id -> "A question and its answer."
+        app.rondo.core.Template.REVERSE.id -> "Asked both ways round."
+        app.rondo.core.Template.TYPE.id -> "Type the answer before you see it."
+        app.rondo.core.Template.CLOZE.id -> "Hide words in a sentence."
+        app.rondo.core.Template.OCCLUSION.id -> "Cover parts of a picture."
+        app.rondo.core.Template.VOCABULARY.id -> "A word with its reading, meaning, sound and an example."
         else -> ""
     }
     open val fields = "Fields"
@@ -358,11 +373,12 @@ open class Strings {
     open val selectAll = "Select all"
     open val clear = "Clear"
     open val sort = "Sort"
-    fun sortBy(sort: String) = when (sort) {
-        "changed" -> "Recently changed"
-        "due" -> "Due soonest"
-        "alpha" -> "A–Z"
-        else -> "Newest"
+    fun sortBy(sort: NoteSort) = when (sort) {
+        NoteSort.ADDED -> "Newest"
+        NoteSort.OLDEST -> "Oldest"
+        NoteSort.CHANGED -> "Recently changed"
+        NoteSort.DUE -> "Due soonest"
+        NoteSort.ALPHA -> "A–Z"
     }
     fun selected(n: Int) = "$n selected"
     open val tags = "Tags"
@@ -376,8 +392,6 @@ open class Strings {
     fun studyTheseCounts(due: Int, new: Int) = "$due due · $new new"
     open val keepAsSmartDeck = "Keep as smart deck"
     open val smartDeckName = "Name the smart deck"
-    fun rulesOf(name: String) = "The rules of “$name”"
-    open val saveRules = "Save rules"
 
     // Smart decks
     open val smartDecks = "Smart decks"
@@ -386,35 +400,124 @@ open class Strings {
         "The cards these rules pick, from any deck. Each is still scheduled by its own deck, and what you " +
             "study here counts there too."
     open val smartRules = "Rules"
-    open val editRules = "Edit rules"
     open val deleteSmartDeckHint = "Only the smart deck goes; its cards stay in their decks."
-    open val ruleEverything = "Every card"
     open val ruleGoneDeck = "A deck that's gone: nothing"
-    fun ruleDeck(path: String) = "In $path"
-    fun ruleType(name: String) = "$name notes"
-    fun ruleTags(tags: String) = "Tagged $tags"
-    fun ruleText(text: String) = "Containing “$text”"
-    fun ruleState(state: String) = when (state) {
-        "new" -> "New cards"
-        "learning" -> "Cards in learning"
-        "review" -> "Cards in review"
-        else -> "Suspended cards"
-    }
 
     // Import
-    open val importTitle = "Import from Anki"
-    open val importHint = "Choose a .apkg or .colpkg file exported from Anki."
-    open val dropPackage = "Drop a .apkg or .colpkg file here, or choose one."
-    open val translate = "Make it editable"
-    open val translateHint =
-        "Turns Anki's HTML into Rondo cards. Off keeps cards exactly as they look in Anki, read-only."
+    open val importTitle = "Import"
+    open val importHint = "A deck from Anki or another Rondo, or a spreadsheet of cards."
+    open val dropAnyFile = "Drop a file here, or choose one"
+    open val fileKinds = "Anki packages (.apkg, .colpkg), Rondo files (.rondo), and CSV or TSV (.csv, .tsv, .txt)"
+    open val orPaste = "Or paste rows"
+    open val pasteHint = "A card a line, its sides separated by tabs or commas: copied from a spreadsheet, " +
+        "Quizlet's export or an assistant's answer."
+    open val pastePlaceholder = "hola\thello\nadiós\tgoodbye"
+    open val readRows = "Read rows"
+    open val chooseAnother = "Choose another file"
+    open val keepAnkiLook = "Keep Anki's look"
+    open val keepAnkiLookHint =
+        "Cards show exactly as in Anki, and can't be edited. Off makes them Rondo's own, to edit."
+    open val ankiDecks = "Decks"
+    open val ankiTypes = "Note types"
+    fun ankiDeck(notes: Int, existing: Boolean) = (if (existing) "Into your deck · " else "New deck · ") + notes(notes)
+    fun ankiSummary(notes: Int, cards: Int, media: Int, reviews: Int) = listOfNotNull(
+        notes(notes),
+        cards(cards),
+        media.takeIf { it > 0 }?.let(::pictures),
+        reviews.takeIf { it > 0 }?.let { if (it == 1) "1 past review" else "$it past reviews" },
+    ).joinToString(" · ")
+    internal fun keptAnki(why: AnkiConversion.Kept) = "Keeps Anki's look: " + when (why) {
+        AnkiConversion.Kept.CARDS -> "Rondo would make other cards from its notes."
+        AnkiConversion.Kept.LAYOUT -> "its cards are laid out in a way Rondo's can't follow."
+        AnkiConversion.Kept.CONTENT -> "some of its notes hold more than a Rondo note can."
+    }
+    open val suggestions = "Suggestions"
+    fun suggestTitle(field: String) = "Title notes by «$field»"
+    fun suggestLarge(field: String) = "Show «$field» large"
+
+    /** [language] is the language's name, in the reader's language. */
+    fun suggestLanguage(deck: String, language: String) = "«$deck» is in $language: read it aloud"
     open val withHistory = "Include review history"
     open val withHistoryHint = "Brings every past review, for insights and better scheduling."
+    open val withProgress = "Include progress"
+    open val withProgressHint = "Brings the file's reviews and where each card stands. Off starts every card new."
+    open val ankiPackage = "Anki package"
+    open val rondoFile = "Rondo file"
+    open val spreadsheet = "Spreadsheet"
+
+    /** What a file being imported is. */
+    fun importFormat(format: FileFormat) = when (format) {
+        FileFormat.RONDO -> rondoFile
+        FileFormat.ANKI -> ankiPackage
+        FileFormat.CSV -> spreadsheet
+    }
     open val importing = "Importing…"
-    open val importFailed = "That file isn't an Anki package Rondo can read."
+    open val importAction = "Import"
+    open val importFailed = "Rondo can't read that file. It takes Anki packages, Rondo files and CSV."
     fun imported(notes: Int, media: Int) = "Imported $notes notes and $media media files."
+    fun importedAnki(notes: Int, cards: Int, media: Int): String {
+        val files = if (media == 0) "" else " and ${pictures(media)}"
+        return "Imported ${notes(notes)} (${cards(cards)})$files."
+    }
+    private fun pictures(n: Int) = if (n == 1) "1 picture or sound" else "$n pictures and sounds"
+    fun repeated(n: Int) = if (n == 1) {
+        "1 note was in your decks already and was left out."
+    } else {
+        "$n notes were in your decks already and were left out."
+    }
+    fun importedNotes(n: Int) = if (n == 1) "Imported 1 note." else "Imported $n notes."
     fun skipped(n: Int) =
         if (n == 1) "1 note didn't fit and was left out." else "$n notes didn't fit and were left out."
+    fun rowsLeftOut(n: Int) = if (n == 1) {
+        "1 row was left out: already in the deck, or without what its first card needs."
+    } else {
+        "$n rows were left out: already in the deck, or without what their first card needs."
+    }
+
+    // Import: CSV
+    open val pasted = "Pasted cards"
+    open val separator = "Separated by"
+    fun separatorName(separator: String) = when (separator) {
+        "\t" -> "Tabs"
+        ";" -> "Semicolons"
+        "|" -> "Bars"
+        else -> "Commas"
+    }
+    open val noteType = "Note type"
+    open val firstRowNames = "The first row names the columns"
+    open val columns = "Columns"
+    open val leaveOut = "Leave out"
+    fun column(n: Int) = "Column $n"
+    fun rows(n: Int) = if (n == 1) "1 row" else "$n rows"
+    open val firstCard = "The first card"
+    open val noFirstCard = "The first row makes no card yet: send a column to the field the card shows."
+    open val htmlCells = "Its cells are HTML: their formatting becomes Rondo's."
+    open val fromAnkiText =
+        "This is Anki's text export. A package from Anki (.apkg) keeps pictures, sounds and progress too."
+    fun importRows(n: Int) = if (n == 1) "Import 1 note" else "Import $n notes"
+
+    // Export
+    open val exportDeck = "Export"
+    open val exportTitle = "Export"
+    open val exportRondo = "Rondo file"
+    open val exportRondoHint = "Everything in the deck, with its pictures and sounds: a backup, or for another Rondo."
+    open val exportCsv = "CSV"
+    open val exportCsvHint = "The notes as rows, for a spreadsheet or another app. One file a note type."
+    open val exportAnki = "Anki package"
+    open val exportAnkiHint = "For Anki, AnkiDroid and AnkiMobile."
+    fun exportFormat(format: FileFormat) = when (format) {
+        FileFormat.RONDO -> exportRondo
+        FileFormat.ANKI -> exportAnki
+        FileFormat.CSV -> exportCsv
+    }
+    fun exportFormatHint(format: FileFormat) = when (format) {
+        FileFormat.RONDO -> exportRondoHint
+        FileFormat.ANKI -> exportAnkiHint
+        FileFormat.CSV -> exportCsvHint
+    }
+    open val exportProgress = "Include your progress"
+    open val exportProgressHint = "Where each card stands, and your reviews."
+    open val exporting = "Preparing…"
 
     // Discover
     open val discoverHint = "Decks people share for everyone."
@@ -497,7 +600,7 @@ open class Strings {
     open val serverSignedIn = "Sign out to change it."
     open val useServer = "Use"
     open val templatesHint = "The built-in types, and the ones you make."
-    open val importDecksHint = "Decks exported from Anki, with their media and history."
+    open val importDecksHint = "Decks from Anki or another Rondo, and spreadsheets of cards."
     open val agents = "AI assistants"
     open val throughRondo = "Through Rondo"
     open val serverUrl = "Server URL"
@@ -729,7 +832,6 @@ open class Strings {
     open val dailyReminder = "Daily reminder"
     open val remindAt = "Remind me at"
     open val remindHere = "On this device"
-    open val remindByEmail = "By email"
     open val remindersBlocked = "Notifications are blocked here. Allow them in your browser or system settings."
     open val remindersImpossible = "This device can't show notifications."
     fun reminderTitle(cards: Int) = if (cards == 1) "1 card is waiting" else "$cards cards are waiting"

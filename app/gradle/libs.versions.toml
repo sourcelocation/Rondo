@@ -7,7 +7,6 @@ okio = "3.18.2"
 ktor = "3.6.0"
 sqldelight = "2.4.1"
 ksoup = "0.2.6"
-openapi = "7.14.0"
 mcp = "0.15.0"
 ktlint = "1.8.0"
 
@@ -20,6 +19,7 @@ datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "d
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 zstd = { module = "com.squareup.zstd:zstd-kmp-okio", version = "0.4.0" }
 ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
+csv = { module = "com.jsoizo:kotlin-csv", version = "2.0.0" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
@@ -45,5 +45,4 @@ multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotl
 jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
-openapi = { id = "org.openapi.generator", version.ref = "openapi" }
 spotless = { id = "com.diffplug.spotless", version = "8.10.3" }

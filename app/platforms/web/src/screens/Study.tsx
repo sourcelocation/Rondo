@@ -1,7 +1,6 @@
 import { Flag, MoreHorizontal, Pencil, Undo2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
-import { readFilters } from "@/screens/Browse";
 import { toast } from "sonner";
 import { CardSurface, Side, speak, speechOf } from "@/components/Card";
 import { Button } from "@/components/ui/button";
@@ -42,9 +41,8 @@ function useSession(source: "deck" | "smart" | "these") {
   const [params] = useSearchParams();
   if (source === "smart") return { make: () => app.studySmart(id!), key: id, up: `/smart/${id}` };
   if (source === "these") {
-    const f = readFilters(params);
     const up = `/browse?${params}`;
-    return { make: () => app.studyThese(f.q, f.deck, f.type, f.tags, f.state, f.marked), key: up, up };
+    return { make: () => app.studyThese(params.toString()), key: up, up };
   }
   return { make: () => app.study(id ?? null), key: id, up: id ? `/decks/${id}` : "/" };
 }

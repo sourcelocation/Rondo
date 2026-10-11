@@ -3,16 +3,15 @@ info:
   title: Rondo API
   version: "1"
   description: |
-    The Rondo API on one host. `/api` and `/media` are served by the Go server, `/sync` and `/mcp`
-    by the Kotlin sync server. Every request carries `Rondo-Protocol: 1`; a client the server no
-    longer supports gets `426` with code `client_outdated`.
+    The Go server's part of the Rondo API: `/api` and `/media`. `/sync` and `/mcp` are the Kotlin
+    sync server's, which speaks Rondo's data in its own classes (Rondo-Protocol 1). Every request
+    carries `Rondo-Protocol`; a client the server no longer supports gets `426` with code
+    `client_outdated`.
 servers:
   - url: https://rondo.matthewsource.com
 tags:
   - name: api
     description: Accounts, sharing, Discover, media, billing, agents and export (Go).
-  - name: sync
-    description: Pulling and pushing rows (Kotlin).
   - name: webhooks
     description: Notifications from the stores, verified by dawl (Go).
 security:
@@ -239,7 +238,7 @@ paths:
     post:
       tags: [api]
       operationId: createInvite
-      description: A link anyone can use for 30 days, or (with `email`) a single-use invitation sent to that address.
+      description: A link anyone can use for 30 days, or (with `email`) a single-use invitation sent to that address. Invitations by email are limited to twenty, then one every ten minutes (`rate_limited`); links aren't.
       requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/InviteRequest" } } } }
       responses:
         "201": { description: Created., content: { application/json: { schema: { $ref: "#/components/schemas/Invite" } } } }
@@ -612,31 +611,6 @@ paths:
         "200": { description: Undone., content: { application/json: { schema: { $ref: "#/components/schemas/RevertResult" } } } }
         default: { $ref: "#/components/responses/Problem" }
 
-  /sync/pull:
-    post:
-      tags: [sync]
-      operationId: pull
-      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PullRequest" } } } }
-      responses:
-        "200": { description: Rows newer than each cursor., content: { application/json: { schema: { $ref: "#/components/schemas/PullResponse" } } } }
-        default: { $ref: "#/components/responses/Problem" }
-  /sync/push:
-    post:
-      tags: [sync]
-      operationId: push
-      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/PushRequest" } } } }
-      responses:
-        "200": { description: What the server kept and refused., content: { application/json: { schema: { $ref: "#/components/schemas/PushResponse" } } } }
-        default: { $ref: "#/components/responses/Problem" }
-  /sync/fetch:
-    post:
-      tags: [sync]
-      operationId: fetch
-      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/FetchRequest" } } } }
-      responses:
-        "200": { description: The rows you can read., content: { application/json: { schema: { $ref: "#/components/schemas/Rows" } } } }
-        default: { $ref: "#/components/responses/Problem" }
-
 components:
   securitySchemes:
     session: { type: http, scheme: bearer, bearerFormat: JWT, description: A Kratos session tokenized as a JWT. }
@@ -695,209 +669,6 @@ components:
         code: { $ref: "#/components/schemas/ErrorCode" }
         message: { type: string }
 
-    # Rows: each is literally a table row (server/db/migrations), without server-only columns.
-    Deck:
-      type: object
-      required: [id, name, position, color, new_per_day, reviews_per_day, retention, gated, unlock_at, v]
-      properties:
-        id: { type: string, format: uuid }
-        owner_id: { type: string, format: uuid, nullable: true, description: "NULL: the author removed it; read-only." }
-        parent_id: { type: string, format: uuid, nullable: true }
-        name: { type: string, minLength: 1, maxLength: 100 }
-        position: { type: string, description: A fractional index among its siblings. }
-        icon: { type: string, nullable: true }
-        color: { type: integer, minimum: 0, maximum: 7 }
-        description: { type: string, nullable: true }
-        language: { type: string, nullable: true, description: BCP 47 }
-        new_per_day: { type: integer, minimum: 0, maximum: 9999 }
-        reviews_per_day: { type: integer, minimum: 0, maximum: 99999 }
-        retention: { type: integer, minimum: 70, maximum: 99, description: Percent. }
-        gated: { type: boolean, description: Sub-decks unlock in order. }
-        unlock_at: { type: integer, minimum: 50, maximum: 100, description: "Percent of the deck before this one that must be learned." }
-        v: { type: integer, format: int64, description: The row's clock (last writer wins). }
-        deleted_at: { type: integer, format: int64, nullable: true }
-    Template:
-      type: object
-      required: [id, name, kind, def, v]
-      properties:
-        id: { type: string, format: uuid }
-        owner_id: { type: string, format: uuid, nullable: true }
-        name: { type: string, minLength: 1, maxLength: 100 }
-        kind: { type: integer, description: "1 Rondo, 2 Anki HTML (read-only)." }
-        def: { $ref: "#/components/schemas/TemplateDef" }
-        v: { type: integer, format: int64 }
-        deleted_at: { type: integer, format: int64, nullable: true }
-    TemplateDef:
-      type: object
-      required: [fields, cards]
-      properties:
-        fields: { type: array, items: { $ref: "#/components/schemas/FieldDef" } }
-        cards: { type: array, items: { $ref: "#/components/schemas/CardDef" } }
-        css: { type: string, nullable: true, description: Anki HTML templates only. }
-    FieldDef:
-      type: object
-      required: [id, name, kind]
-      properties:
-        id: { type: integer }
-        name: { type: string }
-        kind: { type: string, enum: [text, image, audio, occlusion] }
-        tts: { type: boolean, nullable: true }
-    CardDef:
-      type: object
-      required: [id, name, front, back]
-      properties:
-        id: { type: integer }
-        name: { type: string }
-        front: { type: array, items: { $ref: "#/components/schemas/Block" } }
-        back: { type: array, items: { $ref: "#/components/schemas/Block" } }
-        each: { type: integer, nullable: true, description: "One card per cloze number or mask group of this field." }
-        anki_front: { type: string, nullable: true }
-        anki_back: { type: string, nullable: true }
-    Block:
-      type: object
-      description: Exactly one of field, divider, label or typein.
-      properties:
-        field: { type: integer, nullable: true }
-        size: { type: string, nullable: true, enum: [small, normal, large] }
-        align: { type: string, nullable: true, enum: [start, center] }
-        divider: { type: boolean, nullable: true }
-        label: { type: string, nullable: true }
-        typein: { type: integer, nullable: true }
-    Note:
-      type: object
-      required: [id, deck_id, template_id, fields, v]
-      properties:
-        id: { type: string, format: uuid }
-        owner_id: { type: string, format: uuid, nullable: true }
-        deck_id: { type: string, format: uuid }
-        template_id: { type: string, format: uuid }
-        fields: { type: object, additionalProperties: { type: string }, description: Field id to content. }
-        v: { type: integer, format: int64 }
-        deleted_at: { type: integer, format: int64, nullable: true }
-        tags:
-          type: string
-          nullable: true
-          description: |
-            Space-separated, sorted, without repeats; `::` nests them ("Cardio::Arrhythmia"). Absent
-            on a push from an app that predates tags: the stored ones stay.
-    SmartDeck:
-      type: object
-      description: A learner's own saved filter, studied like a deck. Never lent or published.
-      required: [id, owner_id, name, position, color, filter, new_per_day, reviews_per_day, v]
-      properties:
-        id: { type: string, format: uuid }
-        owner_id: { type: string, format: uuid }
-        name: { type: string, minLength: 1, maxLength: 100 }
-        position: { type: string, description: A fractional index among the owner's smart decks. }
-        icon: { type: string, nullable: true }
-        color: { type: integer, minimum: 0, maximum: 7 }
-        filter: { $ref: "#/components/schemas/Filter" }
-        new_per_day: { type: integer, minimum: 0, maximum: 9999 }
-        reviews_per_day: { type: integer, minimum: 0, maximum: 99999 }
-        v: { type: integer, format: int64 }
-        deleted_at: { type: integer, format: int64, nullable: true }
-    Filter:
-      type: object
-      description: "Browse's filters as picked: a deck stands for it and its sub-decks, a tag for it and the tags under it."
-      properties:
-        text: { type: string, nullable: true }
-        deck_ids: { type: array, nullable: true, items: { type: string, format: uuid } }
-        template_ids: { type: array, nullable: true, items: { type: string, format: uuid } }
-        tags: { type: array, nullable: true, items: { type: string }, description: Any of them. }
-        state: { type: string, nullable: true, description: "new, learning, review or suspended." }
-        marked: { type: boolean, nullable: true }
-    Event:
-      type: object
-      required: [id, user_id, subject_id, card, kind, at]
-      properties:
-        id: { type: string, format: uuid }
-        user_id: { type: string, format: uuid }
-        subject_id: { type: string, format: uuid }
-        card: { type: integer }
-        kind: { type: integer, description: "1 review, 2 reset, 3 suspend, 4 unsuspend, 5 bury, 6 flag, 7 snapshot, 8 void, 9 unlock." }
-        value: { type: integer, nullable: true }
-        at: { type: integer, format: int64 }
-        duration_ms: { type: integer, nullable: true }
-        due: { type: integer, format: int64, nullable: true }
-        stability: { type: number, nullable: true }
-        difficulty: { type: number, nullable: true }
-        reps: { type: integer, nullable: true }
-        lapses: { type: integer, nullable: true }
-    Settings:
-      type: object
-      required: [user_id, grading, theme, text_size, v]
-      properties:
-        user_id: { type: string, format: uuid }
-        grading: { type: integer, description: 4 or 2 answer buttons. }
-        theme: { type: integer, description: "0 system, 1 light, 2 dark." }
-        text_size: { type: integer, description: Percent. }
-        timezone: { type: string, nullable: true }
-        fsrs_weights: { type: string, nullable: true }
-        reminder_at: { type: integer, nullable: true, minimum: 0, maximum: 1439, description: "Minutes after midnight to be reminded at; absent: no reminders." }
-        reminder_email: { type: boolean, nullable: true, description: Reminders by email too. }
-        v: { type: integer, format: int64 }
-    Rows:
-      type: object
-      properties:
-        decks: { type: array, items: { $ref: "#/components/schemas/Deck" } }
-        templates: { type: array, items: { $ref: "#/components/schemas/Template" } }
-        notes: { type: array, items: { $ref: "#/components/schemas/Note" } }
-        events: { type: array, items: { $ref: "#/components/schemas/Event" } }
-        settings: { type: array, items: { $ref: "#/components/schemas/Settings" } }
-        smart_decks: { type: array, items: { $ref: "#/components/schemas/SmartDeck" } }
-
-    PullRequest:
-      type: object
-      required: [streams]
-      properties:
-        streams: { type: array, items: { $ref: "#/components/schemas/StreamPosition" } }
-    StreamPosition:
-      type: object
-      required: [key, cursor]
-      properties:
-        key: { type: string, description: "`me`, or the id of a lent deck." }
-        cursor: { type: integer, format: int64 }
-        fingerprint: { type: string, nullable: true }
-    PullResponse:
-      type: object
-      required: [lends, streams]
-      properties:
-        lends: { type: array, items: { $ref: "#/components/schemas/Lend" } }
-        streams: { type: array, items: { $ref: "#/components/schemas/StreamPage" } }
-    StreamPage:
-      type: object
-      required: [key, rows, cursor, more, resync]
-      properties:
-        key: { type: string }
-        rows: { $ref: "#/components/schemas/Rows" }
-        cursor: { type: integer, format: int64 }
-        more: { type: boolean }
-        fingerprint: { type: string, nullable: true }
-        deck_ids: { type: array, nullable: true, items: { type: string, format: uuid }, description: "Set when the fingerprint changed: every deck now in the stream." }
-        resync: { type: boolean, description: "The cursor is older than purged deletions: start the stream again." }
-    PushRequest:
-      type: object
-      required: [rows]
-      properties:
-        rows: { $ref: "#/components/schemas/Rows" }
-    PushResponse:
-      type: object
-      required: [accepted, rejected]
-      properties:
-        accepted: { type: integer }
-        rejected: { type: array, items: { $ref: "#/components/schemas/Rejection" } }
-    Rejection:
-      type: object
-      required: [entity, id, code]
-      properties:
-        entity: { type: string, enum: [deck, template, note, event, settings, smart_deck] }
-        id: { type: string, format: uuid }
-        code: { $ref: "#/components/schemas/ErrorCode" }
-    FetchRequest:
-      type: object
-      properties:
-        decks: { type: array, items: { type: string, format: uuid } }
-        templates: { type: array, items: { type: string, format: uuid } }
     Lend:
       type: object
       required: [deck_id, role]
@@ -1038,8 +809,18 @@ components:
       required: [item, decks, samples]
       properties:
         item: { $ref: "#/components/schemas/DiscoverItem" }
-        decks: { type: array, items: { $ref: "#/components/schemas/Deck" }, description: The deck and everything under it. }
-        samples: { $ref: "#/components/schemas/Rows" }
+        decks:
+          type: array
+          items: { type: object, additionalProperties: true }
+          description: The deck and everything under it, each as its table's row (the sync server's records).
+        samples: { $ref: "#/components/schemas/Samples" }
+    Samples:
+      type: object
+      description: A few of a deck's notes, and the note types they use, each as its table's row.
+      required: [notes, templates]
+      properties:
+        notes: { type: array, items: { type: object, additionalProperties: true } }
+        templates: { type: array, items: { type: object, additionalProperties: true } }
     UploadRequest:
       type: object
       required: [hash, size, mime]

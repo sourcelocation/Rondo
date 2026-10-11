@@ -236,7 +236,7 @@ button {
 }
 
 /*
- * What shows depends on whether Rondo is out (data-release) and on the device (data-device), which /launch.js puts on
+ * What shows depends on whether Rondo is out (data-release) and on the device (data-device), which /head.js puts on
  * <html> before the page paints: [data-when] marks what belongs to a release, [data-on] what belongs to a device.
  */
 html[data-release="pre"] [data-when="live"],
@@ -272,7 +272,7 @@ html[data-device="desktop"] [data-on="mobile"] {
 
 /* Type */
 
-/* A section's number and name, a hairline between them. */
+/* A section's number and name, a hairline between them; sections number themselves (Kicker.astro). */
 .kicker {
   display: inline-flex;
   align-items: center;
@@ -282,6 +282,7 @@ html[data-device="desktop"] [data-on="mobile"] {
   line-height: 1;
   letter-spacing: -0.005em;
   color: var(--ink-2);
+  counter-increment: section;
 }
 
 .kicker__index {
@@ -290,6 +291,10 @@ html[data-device="desktop"] [data-on="mobile"] {
   gap: 14px;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+
+.kicker__index::before {
+  content: counter(section, decimal-leading-zero);
 }
 
 .kicker__index::after {
@@ -442,7 +447,7 @@ html[data-device="desktop"] [data-on="mobile"] {
   }
 }
 
-/* The install button's mark: the visitor's platform's (from /launch.js), or a plain download arrow. */
+/* The install button's mark: the visitor's platform's (from /head.js), or a plain download arrow. */
 .os-icon {
   display: none;
 }
@@ -524,6 +529,18 @@ html[data-os="web"] .os-icon--any {
 
 .link:hover {
   background-size: 100% 1px;
+}
+
+/* Text that rolls to its next value (motion/roll.ts): its spans share one cell, the old rising away as the new comes. */
+
+.roll {
+  display: inline-grid;
+  overflow: clip;
+  overflow-clip-margin: 0.15em;
+}
+
+.roll > span {
+  grid-area: 1 / 1;
 }
 
 /* Frosted glass: a translucent panel with a bright edge. */

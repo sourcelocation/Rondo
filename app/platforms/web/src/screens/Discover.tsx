@@ -207,7 +207,7 @@ export function Preview() {
             </Choice>
             <Choice hint={s.copyHint}>
               <Button size="lg" variant="outline" onClick={st.signedIn ? () => preview.copy() : signIn}>
-                {s.copy}
+                {s.duplicateDeck}
               </Button>
             </Choice>
           </>

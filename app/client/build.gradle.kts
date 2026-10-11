@@ -1,26 +1,9 @@
 // Everything a device runs: SQLite, sync, sign-in, studying, Anki import and the screens' state.
-// The HTTP client is generated from the API spec.
+// Calls to the Go server are written by hand, each beside the service that makes it.
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.serialization)
     alias(libs.plugins.sqldelight)
-    alias(libs.plugins.openapi)
-}
-
-val api = layout.buildDirectory.dir("openapi")
-
-openApiGenerate {
-    generatorName = "kotlin"
-    this.library.set("multiplatform")
-    inputSpec = rootDir.resolve("../server/api/rondo.yaml").path
-    outputDir = api.get().asFile.path
-    packageName = "app.rondo.client.api"
-    modelPackage = "app.rondo.core.model"
-    apiPackage = "app.rondo.client.api"
-    globalProperties = mapOf("apis" to "", "supportingFiles" to "", "apiDocs" to "false", "apiTests" to "false")
-    // Webhooks are for the stores, not for apps.
-    openapiNormalizer = mapOf("FILTER" to "tag:api|sync")
-    configOptions = mapOf("dateLibrary" to "kotlinx-datetime", "useTags" to "true")
 }
 
 sqldelight {
@@ -47,13 +30,10 @@ kotlin {
     compilerOptions { optIn.addAll("kotlin.js.ExperimentalJsExport", "kotlin.uuid.ExperimentalUuidApi") }
     sourceSets {
         commonMain {
-            kotlin.srcDir(api.map { it.dir("src/commonMain/kotlin") })
             dependencies {
                 api(project(":core"))
                 implementation(libs.coroutines.core)
                 implementation(libs.ktor.client.core)
-                implementation(libs.ktor.client.negotiation)
-                implementation(libs.ktor.json)
                 implementation(libs.sqldelight.runtime)
                 implementation(libs.sqldelight.coroutines)
                 implementation(libs.sqldelight.async)
@@ -81,7 +61,3 @@ kotlin {
         }
     }
 }
-
-tasks.matching {
-    it.name.startsWith("compile") || it.name.endsWith("SourcesJar")
-}.configureEach { dependsOn("openApiGenerate") }

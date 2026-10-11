@@ -8,7 +8,9 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -55,7 +57,12 @@ type MailWorker struct {
 	Mailer *mail.Mailer
 }
 
+// Work sends the message, unless it's outlived its Lifespan while sending failed: a code that has
+// run out is better not sent.
 func (w *MailWorker) Work(ctx context.Context, job *river.Job[Mail]) error {
+	if life := job.Args.Lifespan; life > 0 && time.Since(job.CreatedAt) > life {
+		return river.JobCancel(fmt.Errorf("not sent within %s", life))
+	}
 	return w.Mailer.Send(ctx, job.Args.Message)
 }
 
@@ -66,21 +73,35 @@ type Export struct {
 
 func (Export) Kind() string { return "export" }
 
-// ExportWorker writes everything a person owns, as JSON per table plus their media, into one ZIP.
+// ExportWorker writes everything a person owns into one ZIP, a Rondo file as the API's Manifest
+// describes it: rondo.json, a JSON file per table, and their media.
 type ExportWorker struct {
 	river.WorkerDefaults[Export]
-	Pool   *pgxpool.Pool
-	Blobs  blob.Store
-	Mailer *mail.Mailer
+	Pool  *pgxpool.Pool
+	Blobs blob.Store
+	// Jobs queues the email with the link, which retries on its own: a failed send doesn't build
+	// the export again.
+	Jobs *river.Client[pgx.Tx]
 }
 
+// The tables an export holds, each row with the columns a Rondo file has: those the sync server's
+// records name. A column only the server keeps never leaves it.
 var exported = []struct{ file, query string }{
-	{"decks.json", "SELECT coalesce(json_agg(to_jsonb(x) - 'seq'), '[]') FROM decks x WHERE owner_id = $1"},
-	{"templates.json", "SELECT coalesce(json_agg(to_jsonb(x) - 'seq'), '[]') FROM templates x WHERE owner_id = $1"},
-	{"notes.json", "SELECT coalesce(json_agg(to_jsonb(x) - 'seq' - 'search_text'), '[]') FROM notes x WHERE owner_id = $1"},
-	{"events.json", "SELECT coalesce(json_agg(to_jsonb(x) - 'seq'), '[]') FROM events x WHERE user_id = $1"},
-	{"settings.json", "SELECT coalesce(json_agg(to_jsonb(x) - 'seq'), '[]') FROM settings x WHERE user_id = $1"},
-	{"smart_decks.json", "SELECT coalesce(json_agg(to_jsonb(x) - 'seq'), '[]') FROM smart_decks x WHERE owner_id = $1"},
+	{"decks.json", "SELECT id, owner_id, parent_id, name, position, icon, color, description, language, new_per_day, reviews_per_day, retention, gated, unlock_at, v, deleted_at FROM decks WHERE owner_id = $1 ORDER BY id"},
+	{"templates.json", "SELECT id, owner_id, name, kind, def, v, deleted_at FROM templates WHERE owner_id = $1 ORDER BY id"},
+	{"notes.json", "SELECT id, owner_id, deck_id, template_id, fields, v, deleted_at, tags FROM notes WHERE owner_id = $1 ORDER BY id"},
+	{"events.json", "SELECT id, user_id, subject_id, card, kind, value, at, duration_ms, due, stability, difficulty, reps, lapses FROM events WHERE user_id = $1 ORDER BY id"},
+	{"settings.json", "SELECT user_id, grading, theme, text_size, timezone, fsrs_weights, v, reminder_at FROM settings WHERE user_id = $1"},
+	{"smart_decks.json", "SELECT id, owner_id, name, position, icon, color, filter, new_per_day, reviews_per_day, v, deleted_at FROM smart_decks WHERE owner_id = $1 ORDER BY id"},
+}
+
+// Manifest is a Rondo file's rondo.json: its format, that it's an account's, its media's types by
+// hash, and when it was made.
+type Manifest struct {
+	Format     int               `json:"format"`
+	Kind       string            `json:"kind"`
+	Media      map[string]string `json:"media,omitempty"`
+	ExportedAt int64             `json:"exported_at"`
 }
 
 func (w *ExportWorker) Work(ctx context.Context, job *river.Job[Export]) error {
@@ -88,7 +109,7 @@ func (w *ExportWorker) Work(ctx context.Context, job *river.Job[Export]) error {
 	_, _ = rand.Read(token)
 	key := "exports/" + hex.EncodeToString(token) + ".zip"
 	pr, pw := io.Pipe()
-	go func() { pw.CloseWithError(w.write(ctx, job.Args.User, pw)) }()
+	go func() { pw.CloseWithError(w.Write(ctx, job.Args.User, pw)) }()
 	if err := w.Blobs.Put(ctx, key, "application/zip", pr); err != nil {
 		return err
 	}
@@ -96,29 +117,33 @@ func (w *ExportWorker) Work(ctx context.Context, job *river.Job[Export]) error {
 	if err != nil {
 		return err
 	}
-	return w.Mailer.Send(ctx, mail.Export(job.Args.Email, url))
+	_, err = w.Jobs.Insert(ctx, Mail{Message: mail.Export(job.Args.Email, url)}, nil)
+	return err
 }
 
-func (w *ExportWorker) write(ctx context.Context, user uuid.UUID, out io.Writer) error {
+// Write writes [user]'s export to [out].
+func (w *ExportWorker) Write(ctx context.Context, user uuid.UUID, out io.Writer) error {
 	z := zip.NewWriter(out)
 	for _, t := range exported {
-		var data []byte
-		if err := w.Pool.QueryRow(ctx, t.query, user).Scan(&data); err != nil {
-			return err
-		}
 		f, err := z.Create(t.file)
 		if err != nil {
 			return err
 		}
-		if _, err := f.Write(data); err != nil {
-			return err
+		if err := w.table(ctx, f, t.query, user); err != nil {
+			return fmt.Errorf("export %s: %w", t.file, err)
 		}
 	}
-	hashes, err := store.New(w.Pool).OwnMedia(ctx, &user)
+	q := store.New(w.Pool)
+	hashes, err := q.OwnMedia(ctx, &user)
 	if err != nil {
 		return err
 	}
+	types := map[string]string{}
 	for _, h := range hashes {
+		m, err := q.Media(ctx, h)
+		if err != nil || !m.Verified {
+			continue
+		}
 		name := hex.EncodeToString(h)
 		r, err := w.Blobs.Open(ctx, "media/"+name)
 		if err != nil {
@@ -132,8 +157,50 @@ func (w *ExportWorker) write(ctx context.Context, user uuid.UUID, out io.Writer)
 		if err != nil {
 			return err
 		}
+		types[name] = m.Mime
+	}
+	manifest := Manifest{Format: 1, Kind: "account", ExportedAt: time.Now().UnixMilli(), Media: types}
+	f, err := z.Create("rondo.json")
+	if err != nil {
+		return err
+	}
+	if err := json.NewEncoder(f).Encode(manifest); err != nil {
+		return err
 	}
 	return z.Close()
+}
+
+// table writes the rows [query] finds as a JSON array, a row at a time: each as an object of its
+// columns, without those that are null.
+func (w *ExportWorker) table(ctx context.Context, out io.Writer, query string, user uuid.UUID) error {
+	rows, err := w.Pool.Query(ctx, "SELECT jsonb_strip_nulls(to_jsonb(x)) FROM ("+query+") x", user)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	sep := "["
+	for rows.Next() {
+		var raw []byte
+		if err := rows.Scan(&raw); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(out, sep); err != nil {
+			return err
+		}
+		if _, err := out.Write(raw); err != nil {
+			return err
+		}
+		sep = ","
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if sep == "[" {
+		_, err = io.WriteString(out, "[]")
+	} else {
+		_, err = io.WriteString(out, "]")
+	}
+	return err
 }
 
 type MediaGC struct{}
