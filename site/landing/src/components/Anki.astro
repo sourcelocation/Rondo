@@ -3,7 +3,6 @@ import FileArchive from "@lucide/astro/icons/file-archive";
 import { features } from "../content/features";
 import { area, chart, curve, marks, recall, reviews } from "../content/history";
 import { links } from "../content/links";
-import Kicker from "./Kicker.astro";
 
 /**
  * Coming from Anki: what Rondo has of it, and one card's memory moving over (motion/history.ts). Its recall falls
@@ -30,19 +29,11 @@ const number = new Intl.NumberFormat("en");
 <section class="section anki" id="anki" aria-labelledby="anki-title" data-mood="anki">
   <div class="container anki__grid">
     <div class="anki__copy" data-depth="-0.04">
-      <Kicker>Coming from Anki</Kicker>
       <h2 id="anki-title" class="heading" data-reveal="words">
-        Everything you rely on in Anki. <em>Already here.</em>
+        Your Anki, <em>moved in.</em>
       </h2>
       <p class="lead" data-reveal="lines">
-        FSRS scheduling, cloze, image occlusion, LaTeX, furigana, typed answers and text-to-speech, with note types of
-        your own. Import your .apkg and .colpkg files with their media and every past review, and each card picks up
-        exactly where it left off.
-      </p>
-      <p class="anki__more" data-reveal="fade">
-        <a class="link" href={`${links.docs}importing`}>
-          Bring your decks over
-        </a>
+        Import your Anki decks and review history inside Rondo. LaTeX, images, tags, typed answers and text-to-speech all work. 
       </p>
     </div>
 
@@ -230,7 +221,7 @@ const number = new Intl.NumberFormat("en");
 
   .anki__copy {
     display: grid;
-    gap: clamp(20px, 3vh, 32px);
+    gap: var(--stack);
     justify-items: start;
   }
 
@@ -281,7 +272,7 @@ const number = new Intl.NumberFormat("en");
   }
 
   .history__card em {
-    font: italic 340 13px / 1.2 var(--serif);
+    font: 340 13px / 1.2 var(--serif);
     color: var(--ink-3);
   }
 
@@ -481,11 +472,18 @@ const number = new Intl.NumberFormat("en");
   .features {
     display: grid;
     gap: 14px;
-    margin-top: clamp(80px, 12vh, 140px);
+    margin-top: clamp(72px, 3rem + 5vw, 140px);
+  }
+
+  /* Rows that keep still fade at their ends; drifting ones fade each chip as it goes (motion/marquee.ts). */
+  :global(html:not([data-motion="on"])) .features {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
     mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
   }
 
+  /* Positioned, so its tracks are placed from it (motion/marquee.ts). */
   .features__row {
+    position: relative;
     display: flex;
     overflow: hidden;
   }

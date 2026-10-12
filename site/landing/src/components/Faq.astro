@@ -3,7 +3,6 @@ import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
 import Plus from "@lucide/astro/icons/plus";
 import { faq } from "../content/faq";
 import { links } from "../content/links";
-import Kicker from "./Kicker.astro";
 
 /**
  * Questions people ask before trying Rondo, one open at a time. Native <details>, so they open and close without
@@ -14,7 +13,6 @@ import Kicker from "./Kicker.astro";
 <section class="section faq" id="faq" aria-labelledby="faq-title" data-mood="faq">
   <div class="container faq__grid">
     <div class="faq__intro">
-      <Kicker>FAQ</Kicker>
       <h2 id="faq-title" class="heading" data-reveal="words">
         Frequently asked <em>questions.</em>
       </h2>
@@ -82,7 +80,7 @@ import Kicker from "./Kicker.astro";
     top: calc(var(--nav) + 32px);
     display: grid;
     justify-items: start;
-    gap: clamp(20px, 3vh, 30px);
+    gap: var(--stack);
   }
 
   .faq__intro .lead {
@@ -107,7 +105,7 @@ import Kicker from "./Kicker.astro";
     grid-template-columns: 40px 1fr auto;
     align-items: center;
     gap: 12px;
-    padding: clamp(20px, 3vh, 28px) 0;
+    padding: clamp(20px, 0.9rem + 0.8vw, 28px) 0;
     cursor: pointer;
     list-style: none;
   }
@@ -173,7 +171,7 @@ import Kicker from "./Kicker.astro";
     justify-items: start;
     gap: 12px;
     max-width: 38em;
-    padding: 0 52px clamp(22px, 3vh, 30px);
+    padding: 0 52px clamp(22px, 1rem + 0.7vw, 30px);
     font-size: var(--size-lead);
     line-height: 1.55;
     color: var(--ink-2);

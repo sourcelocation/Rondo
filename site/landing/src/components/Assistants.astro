@@ -5,17 +5,17 @@ import Check from "@lucide/astro/icons/check";
 import PenLine from "@lucide/astro/icons/pen-line";
 import Play from "@lucide/astro/icons/play";
 import Search from "@lucide/astro/icons/search";
-import Sparkles from "@lucide/astro/icons/sparkles";
-import { assistantNames, conversation, enriched, requests } from "../content/assistants";
+import { assistantName, conversation, enriched, requests } from "../content/assistants";
 import { links } from "../content/links";
-import Kicker from "./Kicker.astro";
+import BrandIcon from "./BrandIcon.astro";
 
 /**
  * AI assistants: any assistant, inside Rondo or out, can work on your decks, and what people want most is for it to
  * make the cards they already have better. The stage shows that happening (motion/assistant.ts): a request typed to
  * an assistant, which finds the notes and works through them, each card gaining an example sentence and audio as a
- * light passes over it, the count running to all of them; then its answer, streamed in. A different assistant each
- * time round. Beside it, everything else one can ask for. Drawn here as it ends, so it reads without the motion.
+ * light passes over it, the count running to all of them; then its answer, streamed in. The assistant is Claude; the
+ * others are named in the words. Beside it, everything else one can ask for. Drawn here as it ends, so it reads
+ * without the motion.
  */
 // A recording's bars (their heights are in the styles below).
 const bars = Array.from({ length: 14 });
@@ -24,14 +24,12 @@ const bars = Array.from({ length: 14 });
 <section class="section assistants" id="ai" aria-labelledby="ai-title" data-mood="ai">
   <div class="container assistants__grid">
     <div class="assistants__copy">
-      <Kicker>AI assistants</Kicker>
       <h2 id="ai-title" class="heading" data-reveal="words">
-        Ask any AI. <em>Richer cards.</em>
+        Make your cards with AI
       </h2>
       <p class="lead" data-reveal="lines">
-        Connect the assistant you already use, inside Rondo or out, and have it enrich the cards you have: example
-        sentences, readings, audio and transcriptions, written right into your notes. Or have it make whole decks from
-        whatever you’re reading. Free on every plan.
+        Create flashcards by using Rondo's built-in AI chat, or by connecting Rondo to ChatGPT, Claude, Gemini and
+        others.
       </p>
       <div class="asks" data-reveal="fade">
         <p class="asks__title">Or ask it to</p>
@@ -53,34 +51,31 @@ const bars = Array.from({ length: 14 });
       <div class="chat">
         <div class="chat__head">
           <span class="chat__avatar">
-            <Sparkles stroke-width={1.75} />
+            <BrandIcon name="claude" />
           </span>
-          <span class="chat__name roll" data-chat-name>
-            <span>{assistantNames[0]}</span>
-          </span>
-          <span class="chat__tag">
-            <i></i>Rondo connected
-          </span>
+          <span class="chat__name">{assistantName}</span>
         </div>
 
         <div class="chat__log">
           <p class="bubble" data-chat-ask>
             {conversation.ask}
           </p>
-          <p class="thinking" data-chat-thinking>
-            Looking through your decks
-          </p>
-          <p class="tool" data-chat-tool="search">
-            <span class="tool__icon">
-              <Search />
-            </span>
-            <code>{conversation.search.tool}</code>
-            <span class="tool__note">{conversation.search.found}</span>
-            <span class="tool__state">
-              <i class="tool__spin"></i>
-              <Check class="tool__done" />
-            </span>
-          </p>
+          <div class="chat__step">
+            <p class="thinking" data-chat-thinking>
+              Looking through your decks
+            </p>
+            <p class="tool" data-chat-tool="search">
+              <span class="tool__icon">
+                <Search />
+              </span>
+              <code>{conversation.search.tool}</code>
+              <span class="tool__note">{conversation.search.found}</span>
+              <span class="tool__state">
+                <i class="tool__spin"></i>
+                <Check class="tool__done" />
+              </span>
+            </p>
+          </div>
           <p class="tool" data-chat-tool="update">
             <span class="tool__icon">
               <PenLine />
@@ -99,13 +94,20 @@ const bars = Array.from({ length: 14 });
           </p>
         </div>
 
-        <div class="chat__input">
-          <span class="chat__typed" data-chat-typed>
-            Ask anything
-          </span>
-          <span class="chat__send">
-            <ArrowUp stroke-width={2.25} />
-          </span>
+        {/* The field, and an unseen one holding the whole request, which keeps the room it grows into as it's typed. */}
+        <div class="chat__compose">
+          <div class="chat__input chat__input--room">
+            <span class="chat__typed">{conversation.ask}</span>
+            <span class="chat__send"></span>
+          </div>
+          <div class="chat__input">
+            <span class="chat__typed" data-chat-typed>
+              Ask anything
+            </span>
+            <span class="chat__send">
+              <ArrowUp stroke-width={2.25} />
+            </span>
+          </div>
         </div>
       </div>
 
@@ -121,9 +123,6 @@ const bars = Array.from({ length: 14 });
                 </ruby>
               </span>
               <span class="note__meaning">{card.meaning}</span>
-              <span class="note__tag" data-note-tag>
-                <Sparkles stroke-width={2} /> Enriched
-              </span>
             </div>
             <div class="note__more" data-note-more>
               <div class="note__inner">
@@ -174,7 +173,7 @@ const bars = Array.from({ length: 14 });
     grid-area: copy;
     display: grid;
     justify-items: start;
-    gap: clamp(20px, 3vh, 30px);
+    gap: clamp(14px, 0.6rem + 0.7vw, 20px);
   }
 
   .assistants__copy .lead {
@@ -183,7 +182,7 @@ const bars = Array.from({ length: 14 });
 
   .asks {
     display: grid;
-    gap: 12px;
+    gap: 8px;
   }
 
   .asks__title {
@@ -199,13 +198,13 @@ const bars = Array.from({ length: 14 });
 
   /* Each request as an assistant would show a suggestion: a quiet pill, which lifts toward a mouse. */
   .ask {
-    padding: 9px 14px;
+    padding: 6px 12px;
     border-radius: 999px;
     background: rgb(255 255 255 / 64%);
     box-shadow:
       0 0 0 1px var(--line) inset,
       0 1px 0 var(--glass-edge) inset;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--ink-2);
     transition:
       transform 0.5s var(--ease-spring),
@@ -221,7 +220,7 @@ const bars = Array.from({ length: 14 });
 
   .assistants__more {
     display: grid;
-    gap: 6px;
+    gap: 2px;
     font-size: var(--size-small);
     color: var(--ink-3);
   }
@@ -246,10 +245,12 @@ const bars = Array.from({ length: 14 });
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+    grid-template-areas: "chat enrich";
     align-items: start;
   }
 
   .chat {
+    grid-area: chat;
     position: relative;
     z-index: 1;
     display: grid;
@@ -275,19 +276,21 @@ const bars = Array.from({ length: 14 });
     border-bottom: 1px solid var(--line);
   }
 
+  /* Claude's own mark: its spark in its clay, on its paper. */
   .chat__avatar {
     display: grid;
     place-items: center;
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: linear-gradient(140deg, var(--sky), var(--lilac) 55%, var(--peach));
-    color: #fff;
+    background: #f4f3ee;
+    box-shadow: 0 0 0 1px rgb(11 11 13 / 6%) inset;
+    color: #d97757;
   }
 
   .chat__avatar :global(svg) {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
   .chat__name {
@@ -333,13 +336,23 @@ const bars = Array.from({ length: 14 });
     line-height: 1.45;
   }
 
+  /* The thinking takes the place of the search it leads to, so the conversation never moves as it comes and goes. */
+  .chat__step {
+    display: grid;
+    width: 100%;
+  }
+
+  .chat__step > * {
+    grid-area: 1 / 1;
+  }
+
   .thinking {
+    align-self: center;
     font-size: 13px;
     font-weight: 450;
     color: transparent;
     background: linear-gradient(90deg, var(--ink-3) 0 30%, var(--ink) 45%, var(--ink-3) 60% 100%) 0 0 / 300% 100%;
     background-clip: text;
-    animation: thinking 1.6s linear infinite;
   }
 
   @keyframes thinking {
@@ -352,13 +365,15 @@ const bars = Array.from({ length: 14 });
     }
   }
 
-  /* Shown only while the assistant thinks, in the motion. */
+  /* Shown only while the assistant thinks, in the motion, shimmering meanwhile. */
   .thinking {
-    display: none;
+    opacity: 0;
+    transition: opacity 0.3s var(--ease-out);
   }
 
   :global(.studio.is-thinking) .thinking {
-    display: block;
+    opacity: 1;
+    animation: thinking 1.6s linear infinite;
   }
 
   /* An assistant's tool at work: its name, what it found or did, and a spinner that turns to a tick. */
@@ -446,13 +461,37 @@ const bars = Array.from({ length: 14 });
     color: var(--ink);
   }
 
+  /*
+   * The field grows a line at a time as the request wraps, its send button keeping to the last line: upward, into the
+   * room an unseen field holding the whole request keeps under the conversation.
+   */
+  .chat__compose {
+    display: grid;
+    align-items: end;
+  }
+
+  .chat__compose > * {
+    grid-area: 1 / 1;
+  }
+
+  .chat__input--room {
+    visibility: hidden;
+  }
+
+  /* Room for the caret that follows what's typed, too. */
+  .chat__input--room .chat__typed::after {
+    content: "";
+    display: inline-block;
+    width: 2.5px;
+  }
+
   .chat__input {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 10px;
     min-height: 46px;
     padding: 6px 6px 6px 16px;
-    border-radius: 999px;
+    border-radius: 23px;
     background: #fff;
     box-shadow:
       0 0 0 1px var(--line-2),
@@ -464,9 +503,9 @@ const bars = Array.from({ length: 14 });
   .chat__typed {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    padding-block: 7px;
+    line-height: 20px;
+    overflow-wrap: anywhere;
   }
 
   .chat__typed.is-typing {
@@ -510,11 +549,20 @@ const bars = Array.from({ length: 14 });
   /* The cards being enriched, in front of the conversation. */
   /* Just over the conversation's edge, and lower: in front of it without hiding any of it. */
   .enrich {
+    grid-area: enrich;
     position: relative;
     z-index: 2;
     display: grid;
     gap: 12px;
     margin: 44px 0 0 -12px;
+  }
+
+  /*
+   * An open copy of the cards, unseen, in their place (motion/assistant.ts makes it): the cards open and close as the
+   * story goes, inside the room it keeps, so nothing on the page moves as they do.
+   */
+  .enrich--room {
+    visibility: hidden;
   }
 
   .note {
@@ -529,18 +577,24 @@ const bars = Array.from({ length: 14 });
     overflow: hidden;
   }
 
-  /* The light the assistant passes over a card as it works on it. */
+  /*
+   * The light the assistant passes over a card as it works on it: a soft sheen, faintly tinted, unseen until the motion
+   * sweeps it across (which places it with xPercent alone, so there's no transform here for it to add to).
+   */
   .note__scan {
     position: absolute;
     inset: 0;
     background: linear-gradient(
-      100deg,
-      transparent 30%,
-      rgb(169 202 255 / 55%) 45%,
-      rgb(207 191 255 / 55%) 55%,
-      transparent 70%
+      110deg,
+      transparent 32%,
+      rgb(186 212 255 / 10%) 40%,
+      rgb(200 206 255 / 30%) 47%,
+      rgb(225 214 255 / 34%) 50%,
+      rgb(200 206 255 / 30%) 53%,
+      rgb(186 212 255 / 10%) 60%,
+      transparent 68%
     );
-    transform: translateX(-100%);
+    opacity: 0;
     pointer-events: none;
   }
 
@@ -562,27 +616,8 @@ const bars = Array.from({ length: 14 });
   }
 
   .note__meaning {
-    font: italic 340 15px / 1.2 var(--serif);
+    font: 340 15px / 1.2 var(--serif);
     color: var(--ink-3);
-  }
-
-  .note__tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    margin-left: auto;
-    padding: 3px 8px;
-    border-radius: 999px;
-    background: linear-gradient(120deg, rgb(169 202 255 / 40%), rgb(207 191 255 / 45%));
-    font-size: 11px;
-    font-weight: 500;
-    color: #3b46a8;
-    white-space: nowrap;
-  }
-
-  .note__tag :global(svg) {
-    width: 11px;
-    height: 11px;
   }
 
   .note__more {
@@ -610,7 +645,7 @@ const bars = Array.from({ length: 14 });
   }
 
   .note__gloss {
-    font: italic 340 14px / 1.35 var(--serif);
+    font: 340 14px / 1.35 var(--serif);
     color: var(--ink-2);
   }
 
@@ -728,6 +763,9 @@ const bars = Array.from({ length: 14 });
   @media (width < 640px) {
     .studio {
       grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        "chat"
+        "enrich";
     }
 
     .chat {

@@ -72,13 +72,22 @@ class Ease {
  * Where the camera waits, from the window: how far out, how far above, and how far ahead (toward the nose), which
  * makes the slight angle it looks back at the window from.
  */
-const OPENING = { out: 26, up: 2.5, ahead: 4.2 } as const;
+const OPENING = { out: 78, up: 7.5, ahead: 12.6 } as const;
 /** The curve's handles, in metres: leaving the opening (toward the window), and coming in to the seat (square). */
-const HANDLES = { leave: 10, arrive: 2 } as const;
+const HANDLES = { leave: 30, arrive: 2 } as const;
 /** How the camera travels the curve, from the opening to the seat. */
 const TRAVEL = new Ease(0.2, 0.85);
+/** Where the open window's glass clears, in metres from it (in front of it below 0), as the camera nears it. */
+const UNTINT = { from: -3.2, to: -0.9 } as const;
 /** How far past the window the camera looks on the way in, so its look is steady as it goes through. */
 const BEYOND = 3;
+/**
+ * The camera looks through the window's middle (along its own line through it), so the window stays in the middle
+ * of the frame as it comes: `amount` of the way (0 looks just past the window, `BEYOND` in, as the opening shot does;
+ * 1 right at it), turned to by `turned` of the way in, and, nearing it, turned from again (from `from` to `to` metres
+ * in front of it), its look steady as it goes through.
+ */
+const CENTRE = { amount: 1, turned: 0.25, from: -2.5, to: -0.5 } as const;
 /**
  * When the target slides from the window to the laptop, and how: late enough that the window stays in the middle of
  * the frame on the way to it, and done just inside, so the camera comes in looking at the laptop.
@@ -100,6 +109,7 @@ export class Shots {
   private readonly laptop: Vector3;
   private readonly sway = new Vector3();
   private readonly off = new Vector3();
+  private readonly ahead = new Vector3();
 
   constructor(screen: { readonly centre: Vector3; readonly normal: Vector3; readonly viewing: number }) {
     const { window, inward } = this;
@@ -154,7 +164,12 @@ export class Shots {
     const { position, aim } = frame;
     this.path.getPoint(TRAVEL.at(progress), position);
     const looking = LOOK.ease.at(share(progress, LOOK.from, LOOK.to));
-    aim.lerpVectors(this.through, this.laptop, looking);
+    // Past the window, along the camera's line through its middle.
+    const before = this.off.copy(position).sub(this.window).dot(this.inward);
+    const centred = CENTRE.amount * ease(progress / CENTRE.turned) * (1 - ease(share(before, CENTRE.from, CENTRE.to)));
+    this.ahead.copy(this.window).sub(position).setLength(BEYOND).add(this.window);
+    this.ahead.lerpVectors(this.through, this.ahead, centred);
+    aim.lerpVectors(this.ahead, this.laptop, looking);
 
     // The air's slow sway, which the camera rides until it sets off.
     const calm = 1 - ease(progress / 0.08);
@@ -171,9 +186,10 @@ export class Shots {
     // A wider lens inside, opening on the way to the seat; the window clearing as it nears, the laptop in focus at rest.
     const depth = this.off.copy(position).sub(this.window).dot(this.inward);
     frame.fov = 36 + 8 * ease(share(depth, -1, this.depth));
-    frame.clear = ease(share(depth, -3.2, -0.9));
+    frame.clear = ease(share(depth, UNTINT.from, UNTINT.to));
     frame.inside = depth > -8;
     frame.deck = depth < 0;
-    frame.focus = ease(share(depth, 0.1 * this.depth, this.depth));
+    // The lens starts focusing on the laptop as the window starts to clear, quickly at first.
+    frame.focus = 1 - (1 - share(depth, UNTINT.from, this.depth)) ** 2;
   }
 }

@@ -4,9 +4,8 @@ import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
 import Check from "@lucide/astro/icons/check";
 import Copy from "@lucide/astro/icons/copy";
 import X from "@lucide/astro/icons/x";
-import Aurora from "../../components/Aurora.astro";
+import Scenery from "../../components/Scenery.astro";
 import Footer from "../../components/Footer.astro";
-import Kicker from "../../components/Kicker.astro";
 import Logo from "../../components/Logo.astro";
 import Nav from "../../components/Nav.astro";
 import { links } from "../../content/links";
@@ -57,11 +56,13 @@ const misuses = [
   title="Press & brand · Rondo"
   description="Rondo's press kit and brand: the logo, screenshots, words to quote, colours, type and motion."
 >
-  <Aurora />
+  <Scenery />
   <Nav />
   <main class="press" id="main">
     <section class="opening" aria-labelledby="press-title" data-mood="hero">
-      <h1 id="press-title" class="visually-hidden">Press &amp; brand</h1>
+      <h1 id="press-title" class="visually-hidden">
+        Press &amp; brand
+      </h1>
 
       <div class="container">
         <figure class="build" aria-hidden="true" data-build data-reveal="rise">
@@ -107,7 +108,6 @@ const misuses = [
     <section class="section brief" aria-labelledby="brief-title" data-mood="source">
       <div class="container brief__grid">
         <div class="brief__words">
-          <Kicker>In brief</Kicker>
           <h2 id="brief-title" class="heading" data-reveal="words">
             Words to <em>quote.</em>
           </h2>
@@ -165,7 +165,6 @@ const misuses = [
     <section class="section marks" aria-labelledby="marks-title" data-mood="sync">
       <div class="container">
         <div class="part__head">
-          <Kicker>Logo</Kicker>
           <h2 id="marks-title" class="heading" data-reveal="words">
             The mark, <em>and the word.</em>
           </h2>
@@ -225,7 +224,6 @@ const misuses = [
     <section class="section colours" aria-labelledby="colours-title" data-mood="anki">
       <div class="container">
         <div class="part__head">
-          <Kicker>Colour</Kicker>
           <h2 id="colours-title" class="heading" data-reveal="words">
             Ink, paper, <em>and light.</em>
           </h2>
@@ -266,7 +264,6 @@ const misuses = [
     <section class="section type" aria-labelledby="type-title" data-mood="apps">
       <div class="container">
         <div class="part__head">
-          <Kicker>Type</Kicker>
           <h2 id="type-title" class="heading" data-reveal="words">
             A serif to feel, <em>a sans to read.</em>
           </h2>
@@ -301,7 +298,6 @@ const misuses = [
     <section class="section moves" aria-labelledby="moves-title" data-mood="ai">
       <div class="container">
         <div class="part__head">
-          <Kicker>Motion</Kicker>
           <h2 id="moves-title" class="heading" data-reveal="words">
             Things settle; <em>nothing snaps.</em>
           </h2>
@@ -339,7 +335,6 @@ const misuses = [
     <section class="section shots" aria-labelledby="shots-title" data-mood="faq">
       <div class="container">
         <div class="part__head">
-          <Kicker>Screenshots</Kicker>
           <h2 id="shots-title" class="heading" data-reveal="words">
             Rondo, <em>on every screen.</em>
           </h2>
@@ -406,17 +401,16 @@ const misuses = [
     position: relative;
     z-index: 1;
     overflow-x: clip;
-    counter-reset: section;
   }
 
   /* The opening: the logo as it's built, its guides drawn in. */
   .opening {
-    padding-top: calc(var(--nav) + clamp(48px, 9vh, 104px));
+    padding-top: calc(var(--nav) + clamp(48px, 1.5rem + 4vw, 104px));
   }
 
   .write__title em {
     font-family: var(--serif);
-    font-style: italic;
+    font-style: normal;
     font-weight: 300;
     letter-spacing: -0.035em;
   }
@@ -426,7 +420,7 @@ const misuses = [
     flex-wrap: wrap;
     justify-content: center;
     gap: 12px;
-    margin-top: clamp(24px, 4vh, 40px);
+    margin-top: clamp(24px, 1rem + 1.4vw, 40px);
   }
 
   .build {
@@ -502,8 +496,8 @@ const misuses = [
 
   /* The mark's crop is 293 of the logo's 302 high (brand.ts), so the word starts there. */
   .build__line--seam {
-    top: -60vh;
-    bottom: -60vh;
+    top: -60svh;
+    bottom: -60svh;
     left: calc(var(--x) / 2 + var(--x) * 293 / 302);
     right: auto;
     width: 1px;
@@ -537,9 +531,9 @@ const misuses = [
   .part__head {
     display: grid;
     justify-items: start;
-    gap: clamp(18px, 2.6vh, 26px);
+    gap: clamp(18px, 0.85rem + 0.7vw, 26px);
     max-width: 44em;
-    margin-bottom: clamp(40px, 6vh, 64px);
+    margin-bottom: clamp(40px, 1.5rem + 2.5vw, 64px);
   }
 
   .part__head .lead {
@@ -557,7 +551,7 @@ const misuses = [
   .brief__words {
     display: grid;
     justify-items: start;
-    gap: clamp(20px, 3vh, 28px);
+    gap: clamp(20px, 1rem + 0.6vw, 28px);
   }
 
   .quote {
@@ -793,7 +787,7 @@ const misuses = [
   .misuse {
     display: grid;
     gap: 20px;
-    margin-top: clamp(48px, 7vh, 80px);
+    margin-top: clamp(48px, 1.75rem + 2.5vw, 80px);
   }
 
   .misuse__title {
@@ -877,7 +871,7 @@ const misuses = [
   }
 
   .palette + .palette {
-    margin-top: clamp(40px, 6vh, 64px);
+    margin-top: clamp(40px, 1.5rem + 2.5vw, 64px);
   }
 
   .palette__head {
@@ -1019,7 +1013,7 @@ const misuses = [
   .face--serif .face__glyphs,
   .face--serif .face__sample {
     font-family: var(--serif);
-    font-style: italic;
+    font-style: normal;
     font-weight: 300;
   }
 
@@ -1319,13 +1313,13 @@ const misuses = [
 
   /* Who to write to. */
   .write {
-    padding-block: clamp(120px, 20vh, 220px);
+    padding-block: clamp(120px, 5rem + 8vw, 220px);
   }
 
   .write__inner {
     display: grid;
     justify-items: center;
-    gap: clamp(20px, 3vh, 32px);
+    gap: var(--stack);
     text-align: center;
   }
 
@@ -1339,7 +1333,7 @@ const misuses = [
   .write__email {
     font-family: var(--serif);
     font-size: clamp(2rem, 0.8rem + 4.8vw, 5.5rem);
-    font-style: italic;
+    font-style: normal;
     font-weight: 300;
     line-height: 1.1;
     letter-spacing: -0.035em;

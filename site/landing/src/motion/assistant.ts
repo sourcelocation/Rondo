@@ -1,16 +1,14 @@
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
-import { assistantNames, conversation } from "../content/assistants";
+import { conversation } from "../content/assistants";
 import { all, one } from "./dom";
 import { loopInView } from "./loop";
-import { rollTo } from "./roll";
 import type { Stage } from "./stage";
 
 /** A card the assistant works on: the card, the light it passes over it, and what it gains. */
 interface Note {
   readonly element: HTMLElement;
   readonly scan: HTMLElement;
-  readonly tag: HTMLElement;
   readonly more: HTMLElement;
   readonly inner: Element[];
   readonly bars: HTMLElement[];
@@ -22,28 +20,25 @@ interface Note {
 const working = [4.3, 5.5, 6.7];
 
 /**
- * The AI section's stage, told on a loop while it's in view, a different assistant each time round. The request is
+ * The AI section's stage, told on a loop while it's in view. The request is
  * typed and sent; the assistant thinks, then looks through the decks (its search tool spinning, then ticked) and
  * starts writing to the notes, its count running through all of them. Meanwhile each card in front lifts as a light
  * passes over it, opens to show what it gained (an example sentence with the word marked, its translation, and audio
- * whose bars grow in) and is tagged as enriched. Then the assistant's answer streams in, a word at a time. With
+ * whose bars grow in). Then the assistant's answer streams in, a word at a time. With
  * reduced motion the stage is simply shown as it ends.
  */
 export class Assistant {
-  private readonly name: HTMLElement;
   private readonly ask: HTMLElement;
   private readonly tools: HTMLElement[];
   private readonly progress: HTMLElement;
   private readonly words: Element[];
   private readonly typed: HTMLElement;
   private readonly notes: Note[];
-  private turn = 0;
 
   constructor(
     private readonly root: HTMLElement,
     stage: Stage,
   ) {
-    this.name = one(root, "[data-chat-name]");
     this.ask = one(root, "[data-chat-ask]");
     this.tools = all(root, "[data-chat-tool]");
     this.progress = one(root, "[data-chat-progress]");
@@ -54,7 +49,6 @@ export class Assistant {
       return {
         element,
         scan: one(element, "[data-note-scan]"),
-        tag: one(element, "[data-note-tag]"),
         more,
         inner: [...one(more, ".note__inner").children],
         bars,
@@ -66,7 +60,12 @@ export class Assistant {
       return;
     }
     this.words = new SplitText(one(root, "[data-chat-reply]"), { type: "words" }).words;
-    root.classList.add("is-live");
+    // The cards open and close as the story goes: an open copy of them, unseen, keeps their room.
+    const cards = one(root, ".enrich");
+    const room = cards.cloneNode(true) as HTMLElement;
+    room.classList.add("enrich--room");
+    room.removeAttribute("data-depth");
+    cards.after(room);
     this.clear();
     loopInView(root, () => this.story(), { start: "top 70%", end: "bottom 15%" });
   }
@@ -81,8 +80,7 @@ export class Assistant {
     this.root.classList.remove("is-thinking");
     for (const note of this.notes) {
       gsap.set(note.more, { height: 0 });
-      gsap.set(note.tag, { opacity: 0, scale: 0.6 });
-      gsap.set(note.scan, { xPercent: -100 });
+      gsap.set(note.scan, { xPercent: -100, opacity: 0 });
       gsap.set(note.bars, { scaleY: 0.08 });
     }
   }
@@ -91,11 +89,6 @@ export class Assistant {
     // Tweens set their starting state when they start, not when the story is put together.
     const timeline = gsap.timeline({ defaults: { immediateRender: false } });
     timeline.call(() => this.clear(), undefined, 0);
-    if (this.turn > 0) {
-      const name = assistantNames[this.turn % assistantNames.length] ?? "";
-      timeline.call(() => rollTo(this.name, name, true, false), undefined, 0.1);
-    }
-    this.turn++;
 
     // The request is typed, a little unevenly, and sent.
     const typing = { letters: 0 };
@@ -162,7 +155,6 @@ export class Assistant {
     );
     for (const note of this.notes) {
       timeline.to(note.more, { height: 0, duration: 0.6, ease: "power3.inOut" }, out + 0.1);
-      timeline.to(note.tag, { opacity: 0, scale: 0.6, duration: 0.4, ease: "power2.in" }, out + 0.1);
     }
     timeline.set([this.ask, ...this.tools, ...this.words], { y: 0 }, out + 0.8);
     return timeline;
@@ -170,11 +162,16 @@ export class Assistant {
 
   /**
    * A card worked on: it lifts as the light passes over it, opens to show its example, its translation and its
-   * audio, the recording's bars growing in, and is tagged as enriched as it settles.
+   * audio, the recording's bars growing in, and settles.
    */
   private enrich(timeline: gsap.core.Timeline, note: Note, at: number): void {
     timeline.to(note.element, { y: -6, scale: 1.025, duration: 0.35, ease: "power2.out" }, at);
-    timeline.fromTo(note.scan, { xPercent: -100 }, { xPercent: 100, duration: 0.95, ease: "power2.inOut" }, at);
+    timeline.fromTo(
+      note.scan,
+      { xPercent: -100, opacity: 1 },
+      { xPercent: 100, duration: 1.1, ease: "power1.inOut" },
+      at,
+    );
     timeline.to(note.more, { height: "auto", duration: 0.8, ease: "expo.out" }, at + 0.3);
     timeline.fromTo(
       note.inner,
@@ -188,11 +185,5 @@ export class Assistant {
       at + 0.7,
     );
     timeline.to(note.element, { y: 0, scale: 1, duration: 0.9, ease: "elastic.out(1, 0.55)" }, at + 0.75);
-    timeline.fromTo(
-      note.tag,
-      { opacity: 0, scale: 0.6 },
-      { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(2.6)" },
-      at + 0.85,
-    );
   }
 }

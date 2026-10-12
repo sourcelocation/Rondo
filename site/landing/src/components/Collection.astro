@@ -1,87 +1,114 @@
 ---
-import { collection, dealt, finale, type Flashcard } from "../content/cards";
-import Kicker from "./Kicker.astro";
+import { collection, dealt, finale } from "../content/cards";
+import { Stack } from "../motion/stack";
 
 /**
  * Big collections. A deck of cards stands upright at the foot of the screen, facing the viewer, and cards come to it
  * from beyond the screen's top corners: a few at first, then faster and faster until dozens are in the air at once,
- * each slowing as it comes and settling onto the deck's face, which grows thicker behind them. The count beside
- * climbs to tens of thousands (motion/pile.ts). Without the motion the deck is simply there, stacked.
+ * each slowing as it comes and settling onto the deck's face, which eases back to take it. The count beside climbs
+ * to tens of thousands and blurs into infinity. The scenery draws all that (motion/scenery/pile.ts), where the still
+ * deck here stands, sized and set as its cards are; without it the still deck shows, stacked, seen as the scenery
+ * sees its deck (Stack).
  */
 const number = new Intl.NumberFormat("en");
-// Enough cards to fill the air at the busiest moment, the collection's in turn; the last card ends it.
-const cards: { card: Flashcard; rest?: number; last?: true }[] = [
-  ...Array.from({ length: 104 }, (_, index) => ({ card: dealt[index % dealt.length] ?? finale })),
-  { card: finale, rest: 0, last: true },
-];
-// The cards under the last one, as the deck rests without the motion.
-for (const [index, depth] of [cards.length - 2, cards.length - 3, cards.length - 4].entries()) {
-  const resting = cards[depth];
-  if (resting != null) resting.rest = index + 1;
-}
+const stack = new Stack();
+// The still deck as the stacking leaves it, back to front: blank cards behind, as nothing of their faces shows, then a
+// card the scenery takes the type of the deck's cards from, and the last card in front.
+const resting = [
+  ...Array.from({ length: stack.depth - 1 }, (_, index) => ({ depth: stack.depth - index, card: null })),
+  { depth: 1, card: dealt[0] ?? finale },
+  { depth: 0, card: finale },
+].map(({ depth, card }) => ({
+  card,
+  depth,
+  style: `--scale: ${stack.scale(depth).toFixed(5)}; --shade: ${stack.shade(depth).toFixed(4)}; opacity: ${stack.presence(depth)}`,
+}));
 ---
 
 <section class="pile" id="collection" aria-labelledby="pile-title" data-mood="collection">
-  <div class="container pile__head">
-    <div class="pile__words">
-      <Kicker>Big collections</Kicker>
-      <h2 id="pile-title" class="heading" data-reveal="words">
-        Every card you have. <em>Not a stutter.</em>
-      </h2>
-      <p class="lead" data-reveal="lines">
-        Rondo keeps your whole collection in a database on your device and answers from it, never from a server, so tens
-        of thousands of cards open, search and study without a wait.
+  <div class="pile__screen">
+    <div class="container pile__head">
+      <div class="pile__words">
+        <h2 id="pile-title" class="heading" data-reveal="words">
+          Every flashcard feature. <em>Free.</em>
+        </h2>
+        <p class="lead" data-reveal="lines">
+          The ultimate flashcards app — native on every device, and on the web. Everything Anki does, offline, synced in the background, with AI built in.
+        </p>
+      </div>
+      <p class="pile__count" aria-hidden="true" data-reveal="fade">
+        <b class="pile__number">
+          <span class="pile__room">{number.format(collection)}</span>
+          <span data-pile-count>{number.format(collection)}</span>
+          <span class="pile__infinity" data-pile-infinity>
+            ∞
+          </span>
+        </b>
+        <span>cards</span>
       </p>
     </div>
-    <p class="pile__count" aria-hidden="true" data-reveal="fade">
-      <b class="pile__number">
-        <span class="pile__room">{number.format(collection)}</span>
-        <span data-pile-count>{number.format(collection)}</span>
-      </b>
-      <span>cards</span>
-    </p>
-  </div>
 
-  <div class="pile__stage" aria-hidden="true" data-pile>
-    <i class="pile__floor" data-pile-floor></i>
-    <div class="pile__deck">
-      <div class="pile__block" data-pile-block>
-        <i class="pile__top"></i>
-        <i class="pile__side"></i>
-      </div>
+    <div class="pile__stage" aria-hidden="true" style={`--horizon: ${stack.horizon}`} data-pile>
+      <i class="pile__floor"></i>
+      <div class="pile__deck" data-pile-deck></div>
+      {resting.map(({ card, depth, style }) =>
+        card == null ? (
+          <i class="pile-card" style={style}></i>
+        ) : (
+          <div
+            class:list={["pile-card", { "pile-card--last": depth === 0 }]}
+            style={style}
+            data-pile-sizer={depth === 1 ? "" : undefined}
+            data-pile-sizer-last={depth === 0 ? "" : undefined}
+          >
+            <span class="pile-card__deck" data-part="deck">
+              {card.deck}
+            </span>
+            <span class="pile-card__front" lang={card.lang} data-part="front">
+              {card.front}
+            </span>
+            <span class="pile-card__back" lang={card.lang} data-part="back">
+              {card.back}
+            </span>
+          </div>
+        ),
+      )}
     </div>
-    {cards.map(({ card, rest, last }) => (
-      <div class:list={["pile-card", { "pile-card--last": last }]} data-pile-card data-rest={rest}>
-        <span class="pile-card__deck">{card.deck}</span>
-        <span class="pile-card__front" lang={card.lang}>
-          {card.front}
-        </span>
-        <span class="pile-card__back" lang={card.lang}>
-          {card.back}
-        </span>
-      </div>
-    ))}
   </div>
 </section>
 
 <script>
-  import { Pile } from "../motion/pile";
+  import { pile } from "../motion/pile";
   import { scene } from "../motion/scenes";
 
-  scene("[data-pile]", (root, stage) => new Pile(root, stage));
+  scene("[data-pile]", pile);
 </script>
 
 <style>
-  /* One screen: the words at the top, the deck standing at the foot. */
   .pile {
-    --card-w: clamp(200px, min(25vw, 38vh), 360px);
+    --card-w: clamp(240px, min(38vw, 54svh), 540px);
     --card-h: calc(var(--card-w) * 0.66);
-    --foot: clamp(40px, 8vh, 96px);
+    --foot: clamp(40px, 8svh, 96px);
     position: relative;
-    height: 100svh;
-    min-height: 640px;
-    padding-top: calc(var(--nav) + clamp(16px, 5vh, 56px));
     overflow-x: clip;
+  }
+
+  /*
+   * At least a screen: the words at the top, the deck standing at the foot, its room kept under the words so the two
+   * never meet; taller where the words need more.
+   */
+  .pile__screen {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 100svh;
+    padding-top: calc(var(--nav) + clamp(16px, 0.5rem + 2.5vw, 56px));
+  }
+
+  /* The deck's room: a card's height, the floor under it, and a little air above. */
+  .pile__screen::after {
+    content: "";
+    min-height: calc(var(--card-h) + var(--foot) + 24px);
   }
 
   /* The words and the count side by side, the count's figures as big as headlines. */
@@ -97,7 +124,7 @@ for (const [index, depth] of [cards.length - 2, cards.length - 3, cards.length -
   .pile__words {
     display: grid;
     justify-items: start;
-    gap: clamp(18px, 2.6vh, 28px);
+    gap: clamp(18px, 0.85rem + 0.8vw, 28px);
   }
 
   .pile__words .lead {
@@ -128,16 +155,18 @@ for (const [index, depth] of [cards.length - 2, cards.length - 3, cards.length -
     visibility: hidden;
   }
 
+  /* What the count becomes once the whole collection is in: the motion blurs one into the other. */
+  .pile__infinity {
+    opacity: 0;
+  }
+
   .pile__count > span {
     margin-top: 8px;
     font-size: var(--size-lead);
     color: var(--ink-3);
   }
 
-  /*
-   * Where the deck stands: the foot of the section, its middle. Cards are placed by the motion from the deck's own
-   * place, so they start there.
-   */
+  /* Where the deck stands: the foot of the section, its middle. */
   .pile__stage {
     position: absolute;
     inset: 0;
@@ -155,55 +184,6 @@ for (const [index, depth] of [cards.length - 2, cards.length - 3, cards.length -
     margin-left: calc(var(--card-w) / -2);
   }
 
-  /*
-   * The deck's body behind the cards in front, seen from above and to the right, so its top and its side show every
-   * card's edge; the cards in front are flat on its face, so the depth doesn't change them.
-   */
-  .pile__deck {
-    perspective: 560px;
-    perspective-origin: 125% -110%;
-  }
-
-  .pile__block {
-    --thick: 0px;
-    position: absolute;
-    inset: 0;
-    border-radius: calc(var(--card-w) * 0.06);
-    background: linear-gradient(170deg, #fff, #f1f2f6);
-    box-shadow: 0 0 0 1px rgb(11 11 13 / 7%);
-    transform-style: preserve-3d;
-    opacity: 0;
-  }
-
-  .pile__top,
-  .pile__side {
-    position: absolute;
-  }
-
-  .pile__top {
-    left: calc(var(--card-w) * 0.03);
-    right: calc(var(--card-w) * 0.03);
-    top: 0;
-    height: var(--thick);
-    transform-origin: 50% 0;
-    transform: rotateX(-90deg);
-    background:
-      linear-gradient(0deg, rgb(30 40 80 / 2%), rgb(30 40 80 / 10%)),
-      repeating-linear-gradient(0deg, #fdfdfe 0 2px, #dadde5 2px 3px);
-  }
-
-  .pile__side {
-    top: calc(var(--card-w) * 0.03);
-    bottom: calc(var(--card-w) * 0.03);
-    right: 0;
-    width: var(--thick);
-    transform-origin: 100% 50%;
-    transform: rotateY(-90deg);
-    background:
-      linear-gradient(90deg, rgb(30 40 80 / 14%), rgb(30 40 80 / 6%)),
-      repeating-linear-gradient(90deg, #fbfbfd 0 2px, #d3d7df 2px 3px);
-  }
-
   /* The floor the deck stands on: a soft shadow under it, which deepens as the deck fills. */
   .pile__floor {
     position: absolute;
@@ -218,6 +198,11 @@ for (const [index, depth] of [cards.length - 2, cards.length - 3, cards.length -
     opacity: 0.4;
   }
 
+  /*
+   * A card of the deck, seen as far back as it stands: smaller by --scale toward where the deck's edges run to,
+   * --horizon card heights above its middle, so the edges of those behind show over the front card as the deck's top,
+   * and darkened by --shade toward the shadows' blue.
+   */
   .pile-card {
     display: grid;
     grid-template-rows: auto 1fr auto;
@@ -225,12 +210,19 @@ for (const [index, depth] of [cards.length - 2, cards.length - 3, cards.length -
     border-radius: calc(var(--card-w) * 0.06);
     background: linear-gradient(170deg, #fff 35%, #f6f7fa);
     box-shadow:
-      0 0 0 1px rgb(11 11 13 / 6%),
+      0 0 0 100vmax rgb(30 40 80 / var(--shade)) inset,
       0 1px 0 #fff inset,
-      0 14px 30px -18px rgb(30 40 80 / 36%);
+      0 0 0 1px rgb(11 11 13 / 6%);
     text-align: center;
-    opacity: 0;
-    will-change: transform, opacity;
+    transform: scale(var(--scale));
+    transform-origin: 50% calc(50% - var(--horizon) * 100%);
+  }
+
+  .pile-card--last {
+    box-shadow:
+      0 1px 0 #fff inset,
+      0 0 0 1px rgb(11 11 13 / 6%),
+      0 14px 30px -18px rgb(30 40 80 / 36%);
   }
 
   .pile-card__deck {
@@ -251,7 +243,7 @@ for (const [index, depth] of [cards.length - 2, cards.length - 3, cards.length -
   }
 
   .pile-card__back {
-    font: italic 340 calc(var(--card-w) * 0.05) / 1.2 var(--serif);
+    font: 340 calc(var(--card-w) * 0.05) / 1.2 var(--serif);
     color: var(--ink-3);
     white-space: nowrap;
   }
@@ -259,7 +251,7 @@ for (const [index, depth] of [cards.length - 2, cards.length - 3, cards.length -
   .pile-card--last .pile-card__front {
     font-family: var(--serif);
     font-size: calc(var(--card-w) * 0.13);
-    font-style: italic;
+    font-style: normal;
     font-weight: 300;
   }
 
@@ -268,44 +260,20 @@ for (const [index, depth] of [cards.length - 2, cards.length - 3, cards.length -
     letter-spacing: 0.32em;
   }
 
-  /* The deck at rest, as it's left once stacked: what shows without the motion, or before it starts. */
-  .pile-card[data-rest="0"] {
-    transform: rotate(-0.8deg);
+  /*
+   * With the motion coming (base.css), the still deck makes way for the scenery's, laid out still for it to measure;
+   * it shows only where the scenery doesn't (.is-still), the count then gone to infinity.
+   */
+  :global(html[data-motion]:not([data-motion="off"])) .pile:not(.is-still) .pile__stage {
+    visibility: hidden;
   }
 
-  .pile-card[data-rest="1"] {
-    transform: translate(5px, -2px) rotate(2.2deg);
+  .pile.is-still [data-pile-count] {
+    opacity: 0;
   }
 
-  .pile-card[data-rest="2"] {
-    transform: translate(-6px, 2px) rotate(-2.6deg);
-  }
-
-  .pile-card[data-rest="3"] {
-    transform: translate(3px, 3px) rotate(1.4deg);
-  }
-
-  .pile__stage:not(.is-live) .pile-card[data-rest],
-  .pile__stage:not(.is-live) .pile__block {
-    animation: pile-stacked 0.8s var(--ease-out) 3.4s forwards;
-  }
-
-  .pile__stage:not(.is-live) .pile__block {
-    --thick: calc(var(--card-w) * 0.3);
-  }
-
-  @keyframes pile-stacked {
-    to {
-      opacity: 1;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .pile__stage:not(.is-live) .pile-card[data-rest],
-    .pile__stage:not(.is-live) .pile__block {
-      opacity: 1;
-      animation: none;
-    }
+  .pile.is-still .pile__infinity {
+    opacity: 1;
   }
 
   @media (width < 760px) {

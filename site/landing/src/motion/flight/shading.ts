@@ -1,10 +1,11 @@
 import { Vector3 } from "three";
 
 /**
- * The light every part of the flight is drawn in, and the GLSL they share. The world has no colour, like the page:
- * everything is white paint, porcelain or cloud, lit by one sun, the sky above and the clouds below, with ink for
- * glass and screens. Light is worked out in plain numbers (radiance), and a gentle curve turns it into shades of
- * grey, the haze far off coming out exactly as the page's white, so the film fades into the page at its edges.
+ * The light every part of the flight is drawn in, and the GLSL they share. The world is white, like the page:
+ * everything is white paint, porcelain or cloud, with ink for glass and screens, and takes its colour from the light,
+ * in the page's own pastels (base.css): a peach sun, a sky-blue sky, lilac thrown back up off the cloud tops, and a
+ * lilac haze along the horizon, warming to peach toward the sun. Light is worked out in plain numbers (radiance), and
+ * a gentle curve turns it into colour.
  */
 
 /**
@@ -30,12 +31,21 @@ export const common = /* glsl */ `
   uniform float uTime;
 
   // Radiance: what a white surface facing the sun gives back, the sky's light from above and the clouds' from
-  // below (a deck of sunlit cloud throws up a lot), and the white the haze and the brightest sky come out as (the
-  // page's own).
+  // below (a deck of sunlit cloud throws up a lot), and the brightest the haze and the sky come out as.
   const float SUN = 2.7;
   const float SKY = 0.68;
   const float BOUNCE = 1.08;
   const float WHITE = 3.0;
+
+  // The lights' colours, the page's pastels made about as bright as white: the sun's peach, the sky's blue (deeper
+  // overhead), the lilac the cloud tops throw back; and the haze's: peach toward the sun, lilac across, blue away.
+  const vec3 SUNLIGHT = vec3(1.2, 0.95, 0.84);
+  const vec3 SKYLIGHT = vec3(0.8, 0.97, 1.45);
+  const vec3 ZENITH = vec3(0.6, 0.85, 1.6);
+  const vec3 LILAC = vec3(0.98, 0.95, 1.2);
+  const vec3 GLOW = vec3(1.0, 0.86, 0.78);
+  const vec3 HAZE = vec3(0.8, 0.82, 1.0);
+  const vec3 AWAY = vec3(0.7, 0.84, 1.0);
 
   // Reinhard's curve, extended so WHITE comes out as white: highlights roll off instead of clipping.
   vec3 toneMap(vec3 x) {
@@ -52,8 +62,8 @@ export const common = /* glsl */ `
   }
 
   // The light from the sky and the clouds that reaches a surface facing n.
-  float ambient(vec3 n) {
-    return mix(BOUNCE, SKY, n.y * 0.5 + 0.5);
+  vec3 ambient(vec3 n) {
+    return mix(BOUNCE * LILAC, SKY * SKYLIGHT, n.y * 0.5 + 0.5);
   }
 
   // Lambert's light, wrapped a little past the terminator, as paint and cloud scatter it.
@@ -61,17 +71,23 @@ export const common = /* glsl */ `
     return clamp((nl + wrap) / (1.0 + wrap), 0.0, 1.0);
   }
 
-  // The sky in a direction: white haze along the horizon, a little deeper overhead, brighter toward the sun.
-  float skyAt(vec3 dir) {
+  // The haze looking this way, round the horizon: peach toward the sun, lilac across, sky blue away from it.
+  vec3 hazeAt(vec3 dir) {
+    float toward = dot(normalize(dir.xz + 1e-5), normalize(uSun.xz));
+    return WHITE * mix(mix(HAZE, AWAY, smoothstep(0.0, -0.8, toward)), GLOW, smoothstep(0.0, 0.8, toward));
+  }
+
+  // The sky in a direction: the haze along the horizon, blue overhead, brighter toward the sun.
+  vec3 skyAt(vec3 dir) {
     float up = clamp(dir.y, 0.0, 1.0);
-    float sky = mix(WHITE * 1.02, 1.75, pow(smoothstep(0.0, 0.6, up), 0.75));
+    vec3 sky = mix(hazeAt(dir) * 1.02, 1.75 * ZENITH, pow(smoothstep(0.0, 0.45, up), 0.5));
     float sun = max(dot(dir, uSun), 0.0);
-    return sky + 0.55 * pow(sun, 8.0) + 1.6 * pow(sun, 120.0);
+    return sky + SUNLIGHT * (0.55 * pow(sun, 8.0) + 1.6 * pow(sun, 120.0));
   }
 
   // What a glossy surface reflects: the sky above the horizon, the sunlit cloud tops below it.
-  float environment(vec3 r) {
-    float deck = 2.15 + 0.35 * r.y;
+  vec3 environment(vec3 r) {
+    vec3 deck = (2.15 + 0.35 * r.y) * mix(LILAC, SUNLIGHT, 0.4);
     return mix(deck, skyAt(r), smoothstep(-0.06, 0.04, r.y));
   }
 

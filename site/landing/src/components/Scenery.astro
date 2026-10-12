@@ -1,15 +1,16 @@
 ---
 /**
- * The light behind the page: soft colour drifting under everything, strongest at the top and the end. A WebGL
- * shader draws it (motion/aurora.ts); without WebGL, these gradients stand in, still.
+ * The scenery behind the page (motion/scenery.ts): one canvas, fixed behind everything, that draws the light and,
+ * where the page has them, the hero's ring of cards, the collection's deck and the flight. Until it draws, and without
+ * it, these gradients stand in for the light, still.
  */
 ---
 
-<div class="aurora" aria-hidden="true" data-aurora></div>
+<div class="scenery" aria-hidden="true" data-scenery></div>
 
 <style>
-  /* As tall as the screen with the browser's toolbars away, so they come and go over it rather than resizing it. */
-  .aurora {
+  /* As tall as the screen with the browser's toolbars away, so they come and go over it. */
+  .scenery {
     position: fixed;
     inset: 0 0 auto;
     height: 100lvh;
@@ -22,11 +23,12 @@
       radial-gradient(36% 38% at 26% 84%, rgb(180 234 217 / 40%), transparent 70%), var(--paper);
   }
 
-  .aurora.is-webgl {
+  .scenery.is-drawn {
     background: var(--paper);
   }
 
-  .aurora :global(canvas) {
+  .scenery :global(canvas) {
+    display: block;
     width: 100%;
     height: 100%;
   }

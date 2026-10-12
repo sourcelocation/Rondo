@@ -1,6 +1,4 @@
-import { gsap } from "gsap";
 import {
-  Color,
   DepthTexture,
   LessEqualCompare,
   LinearFilter,
@@ -10,43 +8,40 @@ import {
   OrthographicCamera,
   PerspectiveCamera,
   Scene,
+  type Texture,
   UnsignedIntType,
   Vector3,
-  WebGLRenderer,
+  type WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
-import { onResize } from "../dom";
 import { Airliner, layout } from "./airliner";
 import { Cabin } from "./cabin";
 import { bakeClouds, CloudVolume } from "./clouds";
 import { Focus } from "./focus";
+import { Model } from "./model";
 import { SUN, shared } from "./shading";
 import { type Frame, Shots } from "./shots";
 
 /**
- * The flight, as a film: three.js drawing the airliner over the cloud sea and the cabin inside it. The page's scroll
- * plays it (motion/flight.ts sets how far in it should be): the camera flies in through a window to the laptop
- * inside (motion/flight/shots.ts) as far as the scroll has come, and back out again scrolling up. It follows the
- * scroll on a spring, so however the page is scrolled (a wheel's notches, a flick), the camera's speed never jumps.
- * The world runs on its own clock meanwhile: the clouds drift past and the strobes flash, scrolled or not.
+ * The flight, as a film: three.js drawing the airliner over the cloud sea and the cabin inside it, on the scenery's
+ * GPU, into a frame of its own that the scenery shows where the page has the flight (motion/scenery/projection.ts).
+ * The page's scroll plays it (motion/flight.ts sets how far in it should be): the camera flies in through a window to
+ * the laptop inside (motion/flight/shots.ts) as far as the scroll has come, and back out again scrolling up. It
+ * follows the scroll on a spring, so however the page is scrolled (a wheel's notches, a flick), the camera's speed
+ * never jumps. The world runs on its own clock meanwhile: the clouds drift past and the strobes flash, scrolled or not.
  *
- * Everything is made on the device when the film is first needed, a step at a time so the page keeps scrolling
- * smoothly meanwhile, and put on the GPU before it's shown, so nothing stalls mid-flight. Shadows are worked out once,
+ * Everything is made ready when the film is first needed (the models loaded, made in Blender: model.ts), a step at a
+ * time so the page keeps scrolling smoothly meanwhile, and put on the GPU before it's shown, so nothing stalls
+ * mid-flight. Shadows are worked out once,
  * as nothing that casts them moves. It draws only what can be seen: the cloud deck isn't marched while the fuselage
  * fills the frame, nor from inside, where only the sky shows through the windows; and inside, once the camera has
- * caught up with the scroll, the frame is still, so it's drawn once and left. On its opening shot, it watches its own
- * pace: when frames come too slowly it draws fewer pixels, and more again once there's room (mid-flight, a change
- * would show).
+ * caught up with the scroll, a frame is drawn again only when the laptop's screen changes, as its cards come and go.
  */
 
 /** How fast the air goes past the plane, in metres a second: slow motion, for calm. */
 const SPEED = 23;
 /** How briskly the camera follows the scroll: a critically damped spring's natural frequency, in radians a second. */
 const FOLLOW = 7;
-/** The most pixels the film draws, and the sharpest it draws them. */
-const BUDGET = { pixels: 2.4e6, ratio: 2 } as const;
-const LIGHT_BUDGET = { pixels: 1.3e6, ratio: 2 } as const;
-
 /** The frame's corners, in normalised device coordinates. */
 const CORNERS = [
   [-1, -1],
@@ -54,9 +49,6 @@ const CORNERS = [
   [-1, 1],
   [1, 1],
 ] as const;
-
-/** Waits a frame, so building doesn't hold the page up. */
-const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
 /** A sun's-eye view for shadows: an orthographic camera looking along the sunlight at `centre`, `reach` around. */
 function sunView(centre: Vector3, reach: number, depth: number): OrthographicCamera {
@@ -90,13 +82,13 @@ function shadowMap(size: number, view: OrthographicCamera, softness: number) {
 }
 
 export interface FilmOptions {
-  /** Fewer steps through the clouds and fewer pixels, for small screens. */
+  /** Fewer steps through the clouds and a lighter lens, for small screens and slower devices. */
   readonly light: boolean;
 }
 
 export class Film {
-  readonly canvas: HTMLCanvasElement;
-  private readonly renderer: WebGLRenderer;
+  /** The frame as last drawn. */
+  texture: Texture | null = null;
   private readonly scene = new Scene();
   private readonly camera = new PerspectiveCamera(36, 16 / 9, 0.03, 9000);
   private readonly shots: Shots;
@@ -118,52 +110,43 @@ export class Film {
   private readonly ray = new Vector3();
   private width = 1;
   private height = 1;
-  /** Pixels drawn per CSS pixel: 0 until the first resize sets it. */
-  private ratio = 0;
-  private ceiling = 1;
   /** Seconds the world has run (the clouds drifting, the strobes). */
   private clock = 0;
+  /** Seconds the laptop has been studying: only while the camera's near enough to see it. */
+  private studied = 0;
+  /** Whether the frame needs drawing whatever else happens. */
+  private stale = true;
   /** How far in the camera is (0 the opening shot, 1 at rest), how fast it's going there, and how far in the scroll says. */
   private progress = 0;
   private velocity = 0;
   private target = 0;
-  private ticking = false;
-  private showing = false;
-  private slow = 0;
-  private quick = 0;
-  private shown = false;
-  /** Called once the film has drawn its first frame. */
-  onShown: (() => void) | null = null;
 
   /**
-   * Makes the film for `host`, a step at a time, a frame apart, so the page keeps scrolling smoothly while it's made;
-   * null where WebGL 2 isn't there or fails, which leaves whatever stands in for it (the poster) where it is.
+   * Makes the film on `renderer` a step at a time, `pause` between the steps (until a frame the page is still), so
+   * the page keeps moving smoothly meanwhile.
    */
-  static async create(host: HTMLElement, options: FilmOptions): Promise<Film | null> {
-    let renderer: WebGLRenderer;
-    try {
-      renderer = new WebGLRenderer({ antialias: true, powerPreference: "high-performance", stencil: false });
-    } catch {
-      return null;
-    }
-    const maps = await bakeClouds(renderer, nextFrame);
-    await nextFrame();
+  static async create(renderer: WebGLRenderer, options: FilmOptions, pause: () => Promise<void>): Promise<Film> {
+    const loading = Model.load();
+    const maps = await bakeClouds(renderer, pause);
+    const model = await loading;
+    await pause();
     const exterior = shadowMap(2048, sunView(new Vector3(0, 0.5, 0), 34, 70), 2.6);
-    const airliner = new Airliner(exterior.uniforms, maps);
-    await nextFrame();
+    const airliner = new Airliner(exterior.uniforms, maps, model.airliner);
+    await pause();
     const interior = shadowMap(2048, sunView(Cabin.light.centre, Cabin.light.reach, Cabin.light.depth), 3.5);
-    const cabin = new Cabin(interior.uniforms, renderer.capabilities.getMaxAnisotropy());
-    await nextFrame();
-    const film = new Film(host, renderer, options, { airliner, cabin, maps, exterior, interior });
-    await nextFrame();
-    await film.prepare();
+    // The laptop's screen is drawn in the page's type.
+    await Promise.all([document.fonts.load("500 64px Geist"), document.fonts.load("300 64px Juana")]);
+    const cabin = new Cabin(interior.uniforms, renderer.capabilities.getMaxAnisotropy(), model);
+    await pause();
+    const film = new Film(renderer, options, { airliner, cabin, maps, exterior, interior });
+    await pause();
+    await film.prepare(pause);
     return film;
   }
 
   private constructor(
-    private readonly host: HTMLElement,
-    renderer: WebGLRenderer,
-    private readonly options: FilmOptions,
+    private readonly renderer: WebGLRenderer,
+    options: FilmOptions,
     made: {
       readonly airliner: Airliner;
       readonly cabin: Cabin;
@@ -172,10 +155,6 @@ export class Film {
       readonly interior: ReturnType<typeof shadowMap>;
     },
   ) {
-    this.renderer = renderer;
-    this.canvas = renderer.domElement;
-    renderer.setClearColor(new Color(1, 1, 1), 1);
-
     const { exterior, interior } = made;
     // The plane's outline as the sun sees it, which the clouds take their shade from.
     const occupancy = new WebGLRenderTarget(1024, 1024, {
@@ -222,59 +201,31 @@ export class Film {
         r.clear();
         r.render(outside, exterior.view);
         outside.overrideMaterial = null;
-        r.setRenderTarget(null);
       },
     };
-
-    this.canvas.addEventListener("webglcontextlost", (event) => {
-      event.preventDefault();
-    });
-    this.canvas.addEventListener("webglcontextrestored", () => {
-      this.casters.draw();
-      this.wake();
-    });
-    host.append(this.canvas);
-    this.resize();
-    onResize(host, () => {
-      this.resize();
-    });
   }
 
   /**
    * Draws the shadows, compiles every shader and sends everything to the GPU before the first frame, the cabin and
    * the lens included, so nothing stalls the first time it's seen, mid-flight.
    */
-  private async prepare(): Promise<void> {
+  private async prepare(pause: () => Promise<void>): Promise<void> {
     this.casters.draw();
-    await nextFrame();
+    await pause();
     this.shots.at(1, 0, this.frame);
     this.pose();
     this.cabin.group.visible = true;
     await this.renderer.compileAsync(this.scene, this.camera);
-    await nextFrame();
+    await pause();
     // A frame of the rest, drawn before the film is shown, to put the cabin, the laptop's screen and the lens in place.
     this.clouds.render(this.renderer, this.camera, true);
     this.focus.render(this.renderer, this.scene, 1, this.cabin.screen.centre);
-    await nextFrame();
-  }
-
-  /** The film is on screen: it draws as it goes (or, at rest, its still frame once). */
-  show(): void {
-    this.showing = true;
-    this.wake();
-  }
-
-  /** The film is off screen: it stops drawing. */
-  hide(): void {
-    this.showing = false;
-    this.sleep();
+    await pause();
   }
 
   /** How far in the camera should be, 0 (the opening shot) to 1 (at rest): it gets there on its spring. */
   play(progress: number): void {
-    if (progress === this.target) return;
     this.target = progress;
-    this.wake();
   }
 
   /** Puts the camera where the scroll says at once, as when the film is first shown, mid-scroll. */
@@ -282,32 +233,30 @@ export class Film {
     this.target = progress;
     this.progress = progress;
     this.velocity = 0;
-    this.wake();
+    this.stale = true;
   }
 
-  private wake(): void {
-    if (!this.showing || this.ticking) return;
-    this.ticking = true;
-    gsap.ticker.add(this.tick);
+  /** Draws its frames `width` × `height` pixels. */
+  setSize(width: number, height: number): void {
+    if (width === this.width && height === this.height) return;
+    this.width = width;
+    this.height = height;
+    this.clouds.setSize(width, height);
+    this.focus.setSize(width, height);
+    this.stale = true;
   }
 
-  private sleep(): void {
-    if (!this.ticking) return;
-    this.ticking = false;
-    gsap.ticker.remove(this.tick);
-  }
-
-  private readonly tick = (_time: number, deltaMs: number): void => {
-    const seconds = Math.min(deltaMs, 50) / 1000;
+  /**
+   * Runs the film on by `seconds`, the world and the camera: whether its frame has changed. Inside, with the camera
+   * caught up with the scroll, only the laptop's screen moves, and the frame changes only when it does.
+   */
+  update(seconds: number): boolean {
     this.clock += seconds;
     this.follow(seconds);
-    this.draw();
-    const settled = this.progress === this.target;
-    // Inside, with the camera caught up, nothing moves: drawn once, then nothing until the scroll moves.
-    if (settled && !this.frame.deck) this.sleep();
-    // A change of resolution mid-flight would show, so it's left for the opening.
-    if (settled && this.progress === 0) this.pace(deltaMs);
-  };
+    if (this.frame.inside) this.studied += seconds;
+    const studying = this.frame.inside && this.cabin.study.at(this.studied);
+    return this.stale || this.progress !== this.target || this.frame.deck || studying;
+  }
 
   /**
    * Moves the camera toward where the scroll says on a critically damped spring, in small steps for steadiness:
@@ -327,8 +276,9 @@ export class Film {
     }
   }
 
-  /** Draws the film as it is now. */
+  /** Draws the film as it is now, into its frame. */
   draw(): void {
+    this.stale = false;
     shared.uTime.value = this.clock;
     shared.uScroll.value = (this.clock * SPEED) % 100000;
     this.shots.at(this.progress, this.clock, this.frame);
@@ -336,16 +286,10 @@ export class Film {
     this.airliner.clear = this.frame.clear;
     this.cabin.group.visible = this.frame.inside;
     this.clouds.render(this.renderer, this.camera, this.frame.deck && !this.covered());
-    if (this.frame.focus > 0.001) {
-      this.focus.render(this.renderer, this.scene, this.frame.focus, this.cabin.screen.centre);
-    } else {
-      this.renderer.setRenderTarget(null);
-      this.renderer.render(this.scene, this.camera);
-    }
-    if (!this.shown) {
-      this.shown = true;
-      this.onShown?.();
-    }
+    this.texture =
+      this.frame.focus > 0.001
+        ? this.focus.render(this.renderer, this.scene, this.frame.focus, this.cabin.screen.centre)
+        : this.focus.plain(this.renderer, this.scene);
   }
 
   /**
@@ -388,52 +332,5 @@ export class Film {
     camera.aspect = aspect;
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
-  }
-
-  private resize(): void {
-    this.width = Math.max(this.host.clientWidth, 1);
-    this.height = Math.max(this.host.clientHeight, 1);
-    const budget = this.options.light ? LIGHT_BUDGET : BUDGET;
-    this.ceiling = Math.min(
-      window.devicePixelRatio,
-      budget.ratio,
-      Math.sqrt(budget.pixels / (this.width * this.height)),
-    );
-    this.ratio = this.ratio === 0 ? this.ceiling : Math.min(this.ratio, this.ceiling);
-    this.apply();
-  }
-
-  private apply(): void {
-    this.renderer.setPixelRatio(this.ratio);
-    this.renderer.setSize(this.width, this.height, false);
-    const width = Math.round(this.width * this.ratio);
-    const height = Math.round(this.height * this.ratio);
-    this.clouds.setSize(width, height);
-    this.focus.setSize(width, height);
-    // A still frame is drawn again at its new size.
-    if (this.shown) this.wake();
-  }
-
-  /**
-   * Keeps to the screen's pace while moving: two seconds of slow frames (below about 45 a second) and it draws
-   * fewer pixels; five seconds of quick ones, and it draws more again, up to its ceiling.
-   */
-  private pace(deltaMs: number): void {
-    if (deltaMs > 22) {
-      this.slow += deltaMs;
-      this.quick = 0;
-    } else {
-      this.quick += deltaMs;
-      this.slow = Math.max(0, this.slow - deltaMs * 0.5);
-    }
-    if (this.slow > 2000 && this.ratio > 0.6) {
-      this.ratio = Math.max(0.6, this.ratio * 0.85);
-      this.slow = 0;
-      this.apply();
-    } else if (this.quick > 5000 && this.ratio < this.ceiling) {
-      this.ratio = Math.min(this.ceiling, this.ratio * 1.1);
-      this.quick = 0;
-      this.apply();
-    }
   }
 }

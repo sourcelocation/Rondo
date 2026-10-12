@@ -1,7 +1,7 @@
 ---
 import Anki from "../components/Anki.astro";
 import Assistants from "../components/Assistants.astro";
-import Aurora from "../components/Aurora.astro";
+import Scenery from "../components/Scenery.astro";
 import Closing from "../components/Closing.astro";
 import Collection from "../components/Collection.astro";
 import Faq from "../components/Faq.astro";
@@ -16,16 +16,16 @@ import Page from "../layouts/Page.astro";
 ---
 
 <Page title="Rondo — Free, open-source flashcards">
-  <Aurora />
+  <Scenery />
   <Nav animated />
   <main class="main" id="main">
     <Hero />
     <Collection />
-    <Source />
     <Platforms />
     <Flight />
     <Anki />
     <Assistants />
+    <Source />
     <Maker />
     <Faq />
     <Closing />
@@ -34,11 +34,9 @@ import Page from "../layouts/Page.astro";
 </Page>
 
 <style>
-  /* The sections number themselves, in the order they're on the page (Kicker.astro). */
   .main {
     position: relative;
     z-index: 1;
     overflow-x: clip;
-    counter-reset: section;
   }
 </style>

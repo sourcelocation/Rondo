@@ -14,15 +14,13 @@ interface Props {
   mode?: "inline" | "popover";
   /** Shows only the button's icon on narrow screens. */
   squeeze?: boolean;
-  /** A halo of light around the field (NotifyForm's `invite`). */
-  invite?: boolean;
 }
 
-const { name, mode = "inline", squeeze = false, invite = false } = Astro.props;
+const { name, mode = "inline", squeeze = false } = Astro.props;
 const panel = `notify-${name}-panel`;
 ---
 
-{mode === "inline" && <NotifyForm name={name} invite={invite} />}
+{mode === "inline" && <NotifyForm name={name} />}
 {mode === "popover" && (
   <>
     <button

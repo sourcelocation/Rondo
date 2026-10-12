@@ -6,6 +6,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 *.iml
+*.blend1
 
 # Secrets and local environment
 .env

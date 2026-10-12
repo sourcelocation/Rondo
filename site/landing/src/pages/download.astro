@@ -1,7 +1,7 @@
 ---
 import ArrowDown from "@lucide/astro/icons/arrow-down";
 import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
-import Aurora from "../components/Aurora.astro";
+import Scenery from "../components/Scenery.astro";
 import BrandIcon from "../components/BrandIcon.astro";
 import Button from "../components/Button.astro";
 import Countdown from "../components/Countdown.astro";
@@ -33,7 +33,7 @@ const facts = [
   title="Download Rondo"
   description="Rondo for iPhone, iPad, Android, Mac, Windows, Linux and the web: free, open-source flashcards with everything you rely on in Anki."
 >
-  <Aurora />
+  <Scenery />
   <Nav />
   <main class="download" id="main">
     <section class="get" aria-labelledby="get-title" data-mood="hero">
@@ -200,7 +200,7 @@ const facts = [
   }
 
   .get {
-    padding-top: calc(var(--nav) + clamp(48px, 9vh, 104px));
+    padding-top: calc(var(--nav) + clamp(48px, 1.5rem + 4vw, 104px));
   }
 
   .get__inner {
@@ -218,29 +218,29 @@ const facts = [
 
   .get__title em {
     font-family: var(--serif);
-    font-style: italic;
+    font-style: normal;
     font-weight: 300;
     letter-spacing: -0.035em;
   }
 
   .get__lead {
     max-width: 32em;
-    margin-top: clamp(18px, 3vh, 28px);
+    margin-top: clamp(18px, 0.9rem + 0.7vw, 28px);
   }
 
   .get__orbit {
     display: grid;
     justify-items: center;
     width: 100%;
-    margin-top: clamp(20px, 5vh, 56px);
+    margin-top: clamp(20px, 0.75rem + 2.5vw, 56px);
   }
 
   .get__pre,
   .get__live {
     display: grid;
     justify-items: center;
-    gap: clamp(18px, 3vh, 28px);
-    margin-top: clamp(8px, 2vh, 24px);
+    gap: clamp(18px, 0.9rem + 0.7vw, 28px);
+    margin-top: clamp(8px, 0.25rem + 1vw, 24px);
   }
 
   .get__when {
@@ -314,7 +314,7 @@ const facts = [
 
   .every__title {
     max-width: 10em;
-    margin: 0 auto clamp(40px, 7vh, 72px);
+    margin: 0 auto clamp(40px, 1.5rem + 3vw, 72px);
     text-align: center;
   }
 
@@ -340,13 +340,13 @@ const facts = [
       0 0 0 1px var(--line),
       0 1px 0 var(--glass-edge) inset,
       var(--shadow-1);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    backdrop-filter: blur(20px) saturate(1.4);
     overflow: hidden;
     isolation: isolate;
     transition:
       transform 0.8s var(--ease-out),
       box-shadow 0.8s var(--ease-out);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    backdrop-filter: blur(20px) saturate(1.4);
   }
 
   .card:hover {

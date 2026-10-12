@@ -18,7 +18,6 @@ import Wifi from "@lucide/astro/icons/wifi";
 import X from "@lucide/astro/icons/x";
 import { devicePlatforms, phoneCards, shown, tabletCards } from "../content/devices";
 import BrandIcon from "./BrandIcon.astro";
-import Kicker from "./Kicker.astro";
 import Logo from "./Logo.astro";
 
 /**
@@ -41,7 +40,6 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
 
 <section class="platforms" id="apps" aria-labelledby="apps-title" data-mood="apps">
   <div class="container platforms__copy" data-depth="-0.06">
-    <Kicker>Native everywhere</Kicker>
     <h2 id="apps-title" class="heading" data-reveal="words">
       Six native apps. <em>Zero lag.</em>
     </h2>
@@ -428,7 +426,7 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
   .platforms__copy {
     display: grid;
     justify-items: center;
-    gap: clamp(20px, 3vh, 32px);
+    gap: var(--stack);
     padding-top: var(--section);
     text-align: center;
   }
@@ -441,12 +439,12 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
   .platforms__stage {
     display: grid;
     justify-items: center;
-    padding-block: clamp(40px, 7vh, 88px) var(--section);
+    padding-block: clamp(40px, 1rem + 3.5vw, 88px) var(--section);
   }
 
   /*
-   * The stage: everything inside is measured in its width (cqw), so the picture scales as one; it's as wide as the
-   * screen's height leaves room for.
+   * The stage: everything inside is measured in its width (cqw), so the picture scales as one; it's as wide as one
+   * screen's height leaves room for, under the words.
    */
   .trio {
     position: relative;
@@ -1220,7 +1218,7 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
 
   .study__back {
     font-family: var(--serif);
-    font-style: italic;
+    font-style: normal;
     font-weight: 340;
   }
 

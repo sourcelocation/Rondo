@@ -166,7 +166,7 @@ const march = /* glsl */ `
     vec4 view = uProjectionInverse * vec4(vScreen, 1.0, 1.0);
     vec3 direction = normalize(mat3(uCameraWorld) * (view.xyz / view.w));
     vec3 origin = cameraPosition;
-    float sky = skyAt(direction);
+    vec3 sky = skyAt(direction);
 
     // The deck lies between its lowest and highest tops (with room for billows); rays that never cross it see sky.
     float roof = HIGH + 4.0;
@@ -184,7 +184,7 @@ const march = /* glsl */ `
 
     float cosine = dot(direction, uSun);
     float transmittance = 1.0;
-    float light = 0.0;
+    vec3 light = vec3(0.0);
     float t = enter + jitter(gl_FragCoord.xy) * 0.6;
     for (int i = 0; i < 112; i++) {
       if (float(i) >= uSteps || t > leave || transmittance < 0.012) break;
@@ -210,14 +210,14 @@ const march = /* glsl */ `
         float sun = SUN * 0.7 * scattered(shadeAt(p, near), cosine) * planeShade * powder;
         // Deep in the deck, less of the sky gets in.
         float ambient = 0.6 * mix(0.15, 1.0, exp(-max(top.x - p.y, 0.0) * 0.4));
-        float radiance = mix(sun + ambient, WHITE, haze(t));
+        vec3 radiance = mix(sun * SUNLIGHT + ambient * SKYLIGHT, hazeAt(direction), haze(t));
         float kept = exp(-extinction * stride);
         light += transmittance * radiance * (1.0 - kept);
         transmittance *= kept;
       }
       t += stride;
     }
-    gl_FragColor = finish(vec3(light + transmittance * sky));
+    gl_FragColor = finish(light + transmittance * sky);
   }
 `;
 

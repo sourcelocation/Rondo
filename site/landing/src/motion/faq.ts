@@ -3,8 +3,9 @@ import { all, one } from "./dom";
 
 /**
  * The questions, opening and closing smoothly: opening one, its answer grows open as its paragraphs come in out of
- * a blur, and the one that was open closes. The motion keeps one open at a time itself (rather than <details>'s
- * name), so the one closing can close smoothly too. With reduced motion they open and close at once, as <details> do.
+ * a blur, and the one that was open closes. The motion keeps one open at a time itself (rather than <details>'s name), so
+ * the one closing can close smoothly too. With reduced motion they open and close at once, as <details> do. Either
+ * way the page below moves, and the scrolling measures it again once it has settled (motion/scroll.ts).
  */
 export class Questions {
   private readonly items: HTMLDetailsElement[];

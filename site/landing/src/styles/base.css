@@ -56,7 +56,7 @@
   --line: rgb(11 11 13 / 7%);
   --line-2: rgb(11 11 13 / 12%);
 
-  /* The light behind the page (motion/aurora.ts draws it; .aurora paints it without WebGL). */
+  /* The light behind the page (motion/scenery/light.ts draws it; .scenery paints it without JavaScript). */
   --sky: #a9caff;
   --lilac: #cfbfff;
   --peach: #ffcbb4;
@@ -115,9 +115,15 @@
     1
   );
 
-  --gutter: clamp(16px, 4.4vw, 64px);
+  /* The sides' margin, kept clear of a notch or rounded corners when a phone is turned (viewport-fit=cover). */
+  --gutter: max(clamp(16px, 4.4vw, 64px), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
   --wide: 1400px;
-  --section: clamp(96px, 15vh, 176px);
+  /*
+   * Space grows with the screen's width, never its height, which a phone's toolbars change as it scrolls: --section
+   * above and below a section, --stack between a heading and what follows it.
+   */
+  --section: clamp(96px, 3.75rem + 6vw, 176px);
+  --stack: clamp(20px, 1rem + 0.8vw, 32px);
   --nav: 72px;
   /* The logo's height in the bar. */
   --logo-bar: 28px;
@@ -144,10 +150,16 @@
   box-sizing: border-box;
 }
 
+/*
+ * Nothing makes the page wider than the screen, not even what the motion scales up for a moment (the curtain's
+ * opening): a phone would zoom the whole page out to fit it, and back. On <html>, so <body> clips too, rather than
+ * handing its overflow to the window.
+ */
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   background: var(--paper);
+  overflow-x: clip;
 }
 
 body {
@@ -272,38 +284,6 @@ html[data-device="desktop"] [data-on="mobile"] {
 
 /* Type */
 
-/* A section's number and name, a hairline between them; sections number themselves (Kicker.astro). */
-.kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  font-size: var(--size-small);
-  font-weight: 450;
-  line-height: 1;
-  letter-spacing: -0.005em;
-  color: var(--ink-2);
-  counter-increment: section;
-}
-
-.kicker__index {
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.kicker__index::before {
-  content: counter(section, decimal-leading-zero);
-}
-
-.kicker__index::after {
-  content: "";
-  width: 36px;
-  height: 1px;
-  background: var(--ink-4);
-}
-
 .heading {
   font-size: var(--size-h2);
   font-weight: 380;
@@ -314,7 +294,7 @@ html[data-device="desktop"] [data-on="mobile"] {
 
 .heading em {
   font-family: var(--serif);
-  font-style: italic;
+  font-style: normal;
   font-weight: 340;
   letter-spacing: -0.025em;
   font-optical-sizing: auto;
@@ -462,62 +442,6 @@ html[data-os="web"] .os-icon--any {
   display: block;
 }
 
-/*
- * A halo: a band of light circling a pill's edge, slowly, with a soft glow outside it — for the one thing a screen
- * invites you into. Both are the same conic gradient, turning: the band masked to the edge, the glow blurred and
- * masked to outside the pill, so neither ever tints what's inside.
- */
-@property --halo-turn {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
-
-.halo::before,
-.halo::after {
-  content: "";
-  position: absolute;
-  border-radius: 999px;
-  background: conic-gradient(
-    from var(--halo-turn),
-    transparent 0turn 0.42turn,
-    rgb(143 180 255) 0.66turn,
-    rgb(196 176 255) 0.8turn,
-    rgb(255 196 170) 0.9turn,
-    transparent 1turn
-  );
-  mask:
-    linear-gradient(#000 0 0) content-box exclude,
-    linear-gradient(#000 0 0);
-  animation: halo-turn 6s linear infinite;
-  pointer-events: none;
-}
-
-.halo::after {
-  inset: -1px;
-  padding: 1.5px;
-}
-
-.halo::before {
-  inset: -12px;
-  padding: 12px;
-  filter: blur(8px);
-  opacity: 0.42;
-}
-
-@keyframes halo-turn {
-  to {
-    --halo-turn: 1turn;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .halo::before,
-  .halo::after {
-    animation: none;
-  }
-}
-
 /* A link whose underline draws in from the left. */
 
 .link {
@@ -556,25 +480,18 @@ html[data-os="web"] .os-icon--any {
 }
 
 /*
- * Reveals. What the motion brings in starts hidden; it then animates each element into place (motion/reveal.ts).
- * If the motion never starts, everything appears after a moment, and without JavaScript at once
- * (public/noscript.css).
+ * The motion's states, which /head.js puts on <html> as data-motion: "pending" while the page's motion is coming,
+ * "on" once it has taken the page over, and "off" if it didn't come in time, the page then showing as it is. Without
+ * JavaScript, or with reduced motion, there's no data-motion and nothing waits for the motion.
+ *
+ * Reveals: what the motion brings in stays hidden while it's pending or on, until the motion animates each element
+ * into place (motion/reveal.ts); if it doesn't come in time, everything fades in where it is.
  */
 
-[data-reveal] {
+html[data-motion]:not([data-motion="off"]) [data-reveal] {
   opacity: 0;
-  animation: reveal-fallback 0.8s var(--ease-out) 3.2s forwards;
 }
 
-@keyframes reveal-fallback {
-  to {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-reveal] {
-    opacity: 1;
-    animation: none;
-  }
+html[data-motion="off"] [data-reveal] {
+  transition: opacity 0.6s var(--ease-out);
 }

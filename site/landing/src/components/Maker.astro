@@ -4,7 +4,6 @@ import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
 import { links } from "../content/links";
 import { projects } from "../content/work";
 import portrait from "../assets/maker/sourcelocation.webp";
-import Kicker from "./Kicker.astro";
 
 /**
  * Who makes Rondo, and what they made before: their portrait, which opens up as it scrolls in and tilts toward the
@@ -15,10 +14,6 @@ import Kicker from "./Kicker.astro";
 
 <section class="section maker" id="maker" aria-labelledby="maker-title" data-mood="maker">
   <div class="container maker__grid">
-    <div class="maker__kicker">
-      <Kicker>The maker</Kicker>
-    </div>
-
     <figure class="portrait" data-portrait>
       <div class="portrait__card" data-portrait-card>
         <div class="portrait__frame" data-portrait-frame>
@@ -58,9 +53,8 @@ import Kicker from "./Kicker.astro";
             <span class="work__name">{project.name}</span>
             <span class="work__summary">{project.summary}</span>
             <span class="work__facts">
-              {project.facts.map((fact) => (
-                <span>{fact}</span>
-              ))}
+              <span>{`${project.users.toLocaleString("en-US")}+ users`}</span>
+              <span>{project.year}</span>
             </span>
             <span class="work__arrow" aria-hidden="true">
               <ArrowUpRight stroke-width={1.5} />
@@ -122,24 +116,18 @@ import Kicker from "./Kicker.astro";
   .maker__grid {
     display: grid;
     grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto 1fr;
     grid-template-areas:
-      "kicker kicker"
       "portrait intro"
       "portrait work";
     column-gap: clamp(48px, 6vw, 112px);
     align-items: start;
   }
 
-  .maker__kicker {
-    grid-area: kicker;
-    margin-bottom: clamp(32px, 5vh, 56px);
-  }
-
   .maker__intro {
     grid-area: intro;
     display: grid;
-    gap: clamp(20px, 3vh, 32px);
+    gap: var(--stack);
     justify-items: start;
   }
 
@@ -227,7 +215,7 @@ import Kicker from "./Kicker.astro";
 
   .work {
     grid-area: work;
-    margin-top: clamp(40px, 7vh, 72px);
+    margin-top: clamp(40px, 1.5rem + 3vw, 72px);
     border-top: 1px solid var(--line-2);
   }
 
@@ -245,7 +233,7 @@ import Kicker from "./Kicker.astro";
       "index facts arrow";
     column-gap: 16px;
     row-gap: 6px;
-    padding: clamp(28px, 4vh, 40px) 0;
+    padding: clamp(28px, 1.25rem + 1vw, 40px) 0;
     text-decoration: none;
     transition: opacity 0.5s var(--ease-out);
   }
@@ -361,7 +349,6 @@ import Kicker from "./Kicker.astro";
       grid-template-columns: 1fr;
       grid-template-rows: none;
       grid-template-areas:
-        "kicker"
         "intro"
         "portrait"
         "work";
@@ -369,7 +356,7 @@ import Kicker from "./Kicker.astro";
 
     .portrait {
       width: min(100%, 360px);
-      margin-top: clamp(40px, 7vh, 64px);
+      margin-top: clamp(40px, 1.5rem + 3vw, 64px);
     }
   }
 

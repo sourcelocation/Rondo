@@ -3,11 +3,12 @@ import { LAUNCH } from "../launch/launch";
 
 /**
  * /head.js, which every page runs in its head, before it paints. It puts on <html> what the styles need from the
- * first frame: whether Rondo is out yet (data-release, by launch/launch.ts's rules), the visitor's platform (data-os,
- * data-device), so the right actions show without a flash, and whether the page opens under the curtain (data-curtain,
- * motion/transition.ts): the one the last page ended on, the one still coming over the last page's picture
- * ("passing", told to the motion by window.rondoCurtain), or, for a visit's first page, one of its own. It's a file
- * of its own because the site's CSP allows no inline scripts.
+ * first frame: whether Rondo is out yet (data-release, by launch/launch.ts's rules), and the visitor's platform
+ * (data-os, data-device), so the right actions show without a flash. It decides whether the page waits for its motion
+ * (data-motion), and gives the motion three seconds to take the page over before the page shows without it. And it
+ * decides how the page opens: under the curtain the last page ended on when a link of the site's opened it
+ * (data-curtain, motion/transition.ts), and with the intro otherwise, quicker once the visit has had it (data-intro,
+ * motion/intro.ts). It's a file of its own because the site's CSP allows no inline scripts.
  */
 const script = `(() => {
   const root = document.documentElement;
@@ -26,23 +27,28 @@ const script = `(() => {
     : "web";
   root.dataset.os = os;
   root.dataset.device = os === "ios" || os === "ipados" || os === "android" ? "mobile" : "desktop";
+
+  // The motion takes the page over from "pending" (motion/stage.ts); if it hasn't in time, the page shows as it is.
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!still) {
+    root.dataset.motion = "pending";
+    setTimeout(() => {
+      if (root.dataset.motion !== "pending") return;
+      root.dataset.motion = "off";
+      delete root.dataset.curtain;
+      delete root.dataset.intro;
+    }, 3000);
+  }
+
   try {
     const curtain = JSON.parse(sessionStorage.getItem("rondo:curtain") || "null");
     sessionStorage.removeItem("rondo:curtain");
     const here = location.pathname.replace(/\\/+$/, "") || "/";
     if (curtain && curtain.to === here && Date.now() - curtain.at < 10000) {
       root.dataset.curtain = "cover";
-      if (curtain.passing) {
-        const passed = typeof curtain.passed === "number" ? curtain.passed : Date.now() - curtain.at;
-        addEventListener("pagereveal", (event) => {
-          if (!event.viewTransition) return;
-          root.dataset.curtain = "passing";
-          window.rondoCurtain = { transition: event.viewTransition, passed, shown: performance.now() };
-        }, { once: true });
-      }
-    } else if (!sessionStorage.getItem("rondo:opened") && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    } else if (!still) {
+      root.dataset.intro = sessionStorage.getItem("rondo:opened") ? "again" : "cover";
       sessionStorage.setItem("rondo:opened", "1");
-      root.dataset.curtain = "open";
     }
   } catch {}
 })();

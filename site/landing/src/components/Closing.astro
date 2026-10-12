@@ -13,7 +13,7 @@ import Actions from "./Actions.astro";
       Free and open source. Bring your Anki decks along.
     </p>
     <div class="closing__actions" data-reveal="fade">
-      <Actions name="closing" invite />
+      <Actions name="closing" />
     </div>
   </div>
 </section>
@@ -21,13 +21,13 @@ import Actions from "./Actions.astro";
 <style>
   .closing {
     position: relative;
-    padding-block: clamp(120px, 22vh, 260px) clamp(100px, 18vh, 200px);
+    padding-block: clamp(120px, 5rem + 9vw, 260px) clamp(100px, 4rem + 7vw, 200px);
   }
 
   .closing__inner {
     display: grid;
     justify-items: center;
-    gap: clamp(24px, 4vh, 40px);
+    gap: clamp(24px, 1rem + 1.4vw, 40px);
     text-align: center;
   }
 
@@ -40,7 +40,7 @@ import Actions from "./Actions.astro";
 
   .closing__title em {
     font-family: var(--serif);
-    font-style: italic;
+    font-style: normal;
     font-weight: 300;
     letter-spacing: -0.035em;
   }

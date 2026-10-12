@@ -1,0 +1,141 @@
+---
+import Logo from "./Logo.astro";
+
+/**
+ * The opening of a page no link of the site's opened (/head.js puts data-intro on <html> for it): the page's white, and
+ * Rondo's mark sweeping into view in the middle, turning back on itself like its arrow. On a visit's first page it
+ * holds there, a small spinner turning under it, while the page readies everything it will draw; then it shrinks away
+ * into the distance as the white gives way to the page, the camera pulling back past the hero's cards
+ * (motion/intro.ts). Pages a link opens open through the curtain instead. Without JavaScript, or with reduced motion, it never shows; if the page's motion
+ * doesn't come in time, /head.js takes it away.
+ */
+---
+
+<div class="intro" aria-hidden="true" data-intro>
+  <span class="intro__mark" data-intro-mark>
+    <Logo mark />
+  </span>
+  <svg class="intro__spinner" viewBox="0 0 16 16" focusable="false">
+    <circle cx="8" cy="8" r="6" />
+  </svg>
+</div>
+
+<style>
+  .intro {
+    --mark: clamp(72px, 9vw, 112px);
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    display: grid;
+    place-items: center;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  :global(html[data-intro]) .intro {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  /* The white, under the mark: it fades on its own (--white) as the page opens, so the mark stays as it was. */
+  .intro::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--paper);
+    opacity: var(--white, 1);
+  }
+
+  /* The mark, which the motion sweeps into view through a turning cut (--sweep). */
+  .intro__mark {
+    grid-area: 1 / 1;
+    font-size: var(--mark);
+    line-height: 0;
+    visibility: hidden;
+    --sweep: 0deg;
+  }
+
+  /* The cut is on the logo inside, so it doesn't clip the mark's blur to the logo's edges. */
+  .intro__mark :global(.logo) {
+    -webkit-mask-image: conic-gradient(
+      from 90deg,
+      transparent calc(360deg - var(--sweep)),
+      #000 calc(360deg - var(--sweep) + 24deg)
+    );
+    mask-image: conic-gradient(
+      from 90deg,
+      transparent calc(360deg - var(--sweep)),
+      #000 calc(360deg - var(--sweep) + 24deg)
+    );
+  }
+
+  /*
+   * The spinner under the mark, which shows nothing of how far along the page is: one end of its arc stays at twelve
+   * o'clock while the other runs clockwise round, drawing the ring and then rubbing it out. It comes in once the mark
+   * has, and goes first as the page opens.
+   */
+  .intro__spinner {
+    grid-area: 1 / 1;
+    width: 14px;
+    height: 14px;
+    translate: 0 calc(var(--mark) / 2 + 40px);
+    rotate: -90deg;
+    overflow: visible;
+    opacity: 0;
+    animation: intro-spinner-in 0.4s var(--ease-out) 1.2s forwards;
+  }
+
+  .intro__spinner circle {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 1.5;
+    stroke-linecap: butt;
+    /* 2πr, so a dash or a gap is the whole ring. */
+    stroke-dasharray: 37.7 37.7;
+    animation: intro-spinner 1.6s infinite;
+  }
+
+  :global(html[data-intro="leaving"]) .intro__spinner {
+    animation: none;
+    opacity: 0;
+    transition: opacity 0.25s ease-out;
+  }
+
+  @keyframes intro-spinner-in {
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Drawn from twelve o'clock round to it, then rubbed out the same way: each half eases in and out. */
+  @keyframes intro-spinner {
+    0% {
+      stroke-dashoffset: 37.7;
+      animation-timing-function: var(--ease-in-out);
+    }
+
+    50% {
+      stroke-dashoffset: 0;
+      animation-timing-function: var(--ease-in-out);
+    }
+
+    100% {
+      stroke-dashoffset: -37.7;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .intro {
+      display: none;
+    }
+  }
+</style>
+
+<style is:global>
+  /* The page keeps still under the intro, until it begins to open. */
+  html[data-intro="cover"],
+  html[data-intro="again"] {
+    overflow: hidden;
+  }
+</style>

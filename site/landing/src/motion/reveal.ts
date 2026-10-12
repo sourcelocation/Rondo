@@ -4,9 +4,9 @@ import { SplitText } from "gsap/SplitText";
 import { all } from "./dom";
 
 /** How an element marked data-reveal comes into view. */
-type Kind = "fade" | "rise" | "words" | "lines" | "hero" | "logo";
+type Kind = "fade" | "rise" | "words" | "lines" | "hero";
 
-const kinds: readonly string[] = ["fade", "rise", "words", "lines", "hero", "logo"];
+const kinds: readonly string[] = ["fade", "rise", "words", "lines", "hero"];
 
 function kindOf(element: HTMLElement): Kind {
   const kind = element.dataset.reveal ?? "fade";
@@ -16,7 +16,8 @@ function kindOf(element: HTMLElement): Kind {
 /**
  * Brings what is marked data-reveal into view out of a soft blur, rising a little: text word by word or line by
  * line, anything else whole. Elements marked data-reveal-manual wait for `play` (the page's opening); the rest play
- * as they scroll into view, once the page has arrived (`watch`). With reduced motion everything is simply shown.
+ * as they scroll into view, once the page has arrived (`watch`). Until then base.css keeps them hidden; with reduced
+ * motion they're simply shown, as they are.
  */
 export class Reveals {
   private readonly waiting = new Map<HTMLElement, () => gsap.core.Timeline>();
@@ -29,13 +30,8 @@ export class Reveals {
 
   /** Puts every element in its starting state (splitting text), out of view until it's revealed. */
   prepare(): void {
+    if (this.reduced) return;
     for (const element of all(this.root, "[data-reveal]")) {
-      // The motion takes over from the CSS fallback that would show the element on its own.
-      element.style.animation = "none";
-      if (this.reduced) {
-        gsap.set(element, { opacity: 1 });
-        continue;
-      }
       const reveal = this.prepareOne(element, kindOf(element));
       if (element.hasAttribute("data-reveal-manual")) this.waiting.set(element, reveal);
       else this.scrolled.push([element, reveal]);
@@ -76,8 +72,6 @@ export class Reveals {
         return this.whole(element, { y: 80, scale: 0.97, blur: 18, duration: 1.8 });
       case "fade":
         return this.whole(element, { y: 22, scale: 1, blur: 10, duration: 1.3 });
-      case "logo":
-        return this.logo(element);
     }
   }
 
@@ -97,15 +91,6 @@ export class Reveals {
         // A filter or transform left behind would give the element a stacking context of its own.
         clearProps: "filter,transform",
       });
-  }
-
-  /** The logo: out of a blur in place, its transform left alone. */
-  private logo(element: HTMLElement): () => gsap.core.Timeline {
-    gsap.set(element, { opacity: 0, filter: "blur(10px)" });
-    return () =>
-      gsap
-        .timeline()
-        .to(element, { opacity: 1, filter: "blur(0px)", duration: 1.3, ease: "expo.out", clearProps: "filter" });
   }
 
   private split(

@@ -57,3 +57,22 @@ export const finale: Flashcard = { deck: "Music", front: "Rondo", back: "A B A C
 
 /** How many cards the collection holds once it's stacked: a big collection, as people bring them. */
 export const collection = 48_213;
+
+/** The study screen on the laptop in the flight (motion/flight/study.ts): its words, and the cards studied, in turn. */
+export const studying = {
+  session: "Today",
+  due: "due",
+  show: "Show answer",
+  ratings: ["Again", "Hard", "Good", "Easy"],
+  offline: "Offline",
+  cards: [
+    { deck: "Spanish", front: "recordar", back: "to remember", lang: "es" },
+    { deck: "Biology", front: "Mitochondria", back: "Where cells make ATP" },
+    { deck: "Law", front: "Habeas corpus", back: "That you have the body" },
+    { deck: "Art", front: "Chiaroscuro", back: "Light set hard against dark" },
+    { deck: "French", front: "se souvenir", back: "to remember", lang: "fr" },
+    { deck: "Geography", front: "Mongolia", back: "Ulaanbaatar" },
+    { deck: "Anatomy", front: "Femur", back: "The longest bone in the body" },
+    { deck: "History", front: "1789", back: "The French Revolution begins" },
+  ] satisfies readonly Flashcard[],
+} as const;

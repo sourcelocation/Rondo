@@ -24,7 +24,6 @@ const units = [
   aria-label={`Rondo opens ${launchMoment(true)}`}
   data-countdown
 >
-  {inline && <span class="countdown__lead">Opens to everyone in</span>}
   {units.map((unit, index) => (
     <>
       {!inline && index > 0 && <span class="countdown__colon" aria-hidden="true" />}

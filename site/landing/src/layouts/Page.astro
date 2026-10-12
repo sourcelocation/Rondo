@@ -1,16 +1,17 @@
 ---
-import "lenis/dist/lenis.css";
 import "../styles/base.css";
 import geist from "../../../../brand/fonts/geist/Geist-Variable.woff2?url";
-import juana from "../../../../brand/fonts/juana/Juana-LightIt.otf?url";
+import juana from "../../../../brand/fonts/juana/Juana-Light.otf?url";
 import Curtain from "../components/Curtain.astro";
+import Intro from "../components/Intro.astro";
 import Sprite from "../components/Sprite.astro";
 import { releaseAt } from "../launch/launch";
 
 /**
- * A page of the site: its head, the type and the base styles, the artwork for the page to use, the curtain between
- * pages, and the motion every page runs (motion/page.ts), which brings to life whatever scenes the page's components
- * declare. It's built as Rondo is at build time, on a computer; /head.js corrects both before it paints.
+ * A page of the site: its head, the type and the base styles, the artwork for the page to use, the intro a page
+ * opens with and the curtain between pages, and the motion every page runs (motion/page.ts), which brings to life
+ * whatever scenes the page's components declare. It's built as Rondo is at build time, on a computer; /head.js
+ * corrects both before it paints.
  */
 interface Props {
   title: string;
@@ -47,9 +48,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preload" href={geist} as="font" type="font/woff2" crossorigin />
     <link rel="preload" href={juana} as="font" type="font/otf" crossorigin />
-    <noscript>
-      <link rel="stylesheet" href="/noscript.css" />
-    </noscript>
   </head>
   <body>
     <a class="skip" href="#main">
@@ -58,6 +56,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <Sprite />
     <slot />
     <Curtain />
+    <Intro />
     <script>
       import "../motion/page";
     </script>

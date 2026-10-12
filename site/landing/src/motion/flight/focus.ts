@@ -6,6 +6,7 @@ import {
   type PerspectiveCamera,
   Scene,
   ShaderMaterial,
+  type Texture,
   UnsignedIntType,
   Vector2,
   Vector3,
@@ -20,7 +21,8 @@ import { cover } from "./clouds";
  * pass shrinks it to half size, keeping beside each pixel's colour how blurred it is (and whether in front of the
  * focus or behind it); a second gathers each pixel's blur from a spiral of samples around it in that half-size
  * image (each counting as far as its own blur reaches, so a sharp edge doesn't smear over what's behind it); and the
- * sharp frame and the blurred one are blended pixel by pixel, by how far out of focus each is.
+ * sharp frame and the blurred one are blended pixel by pixel, by how far out of focus each is. Either way, the frame
+ * is drawn into a texture of its own, for the scenery to show (motion/scenery/projection.ts).
  */
 
 const fullscreen = /* glsl */ `
@@ -112,6 +114,7 @@ export class Focus {
   private readonly sharp = new WebGLRenderTarget(1, 1, { samples: 4, generateMipmaps: false });
   private readonly half = new WebGLRenderTarget(1, 1, { depthBuffer: false, generateMipmaps: false });
   private readonly soft = new WebGLRenderTarget(1, 1, { depthBuffer: false, generateMipmaps: false });
+  private readonly output = new WebGLRenderTarget(1, 1, { depthBuffer: false, generateMipmaps: false });
   private readonly pass = new Scene();
   private readonly quad: Mesh;
   private readonly flat = new OrthographicCamera();
@@ -137,7 +140,7 @@ export class Focus {
     const depth = new DepthTexture(1, 1, UnsignedIntType);
     this.sharp.depthTexture = depth;
     this.lens.uDepth.value = depth;
-    for (const target of [this.half, this.soft]) {
+    for (const target of [this.sharp, this.half, this.soft, this.output]) {
       target.texture.minFilter = LinearFilter;
       target.texture.magFilter = LinearFilter;
     }
@@ -163,6 +166,7 @@ export class Focus {
   setSize(width: number, height: number): void {
     this.height = height;
     this.sharp.setSize(width, height);
+    this.output.setSize(width, height);
     const halfWidth = Math.max(1, Math.round(width / 2));
     const halfHeight = Math.max(1, Math.round(height / 2));
     this.half.setSize(halfWidth, halfHeight);
@@ -171,8 +175,15 @@ export class Focus {
     this.texel.set(1 / halfWidth, 1 / halfHeight);
   }
 
-  /** Draws `scene` to the screen focused on `point`, blurred as much as `strength` (0 to 1) allows. */
-  render(renderer: WebGLRenderer, scene: Scene, strength: number, point: Vector3): void {
+  /** Draws `scene` as it is, all of it sharp; its frame. */
+  plain(renderer: WebGLRenderer, scene: Scene): Texture {
+    renderer.setRenderTarget(this.sharp);
+    renderer.render(scene, this.camera);
+    return this.sharp.texture;
+  }
+
+  /** Draws `scene` focused on `point`, blurred as much as `strength` (0 to 1) allows; its frame. */
+  render(renderer: WebGLRenderer, scene: Scene, strength: number, point: Vector3): Texture {
     const { camera } = this;
     this.lens.uNear.value = camera.near;
     this.lens.uFar.value = camera.far;
@@ -190,7 +201,8 @@ export class Focus {
     renderer.setRenderTarget(this.soft);
     renderer.render(this.pass, this.flat);
     this.quad.material = this.blend;
-    renderer.setRenderTarget(null);
+    renderer.setRenderTarget(this.output);
     renderer.render(this.pass, this.flat);
+    return this.output.texture;
   }
 }

@@ -1,55 +1,30 @@
 import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { pagePath, pages } from "../content/pages";
 import { all, one } from "./dom";
 import type { Stage } from "./stage";
 
 /**
  * Where a leaving page tells the next about the way there, which /head.js reads before the next page paints: that
- * page opens under the curtain the last one ended on, or finishes the curtain that was still coming over it.
+ * page opens under the curtain the last one ended on.
  */
 const KEY = "rondo:curtain";
 
-/** What moves as the curtain passes: the page's content, and its foot. */
-const CONTENT = "main, body > footer";
+/** What moves as the curtain passes: the page's content, its foot, and the scenery drawn behind them. */
+const CONTENT = "main, body > footer, [data-scenery]";
 
 /** How long the curtain's front takes to cover the screen, in seconds. */
 const COVER = 1.0;
-
-/** The least the curtain's front leads its back by, in seconds, however soon the next page is ready: the wave's breadth. */
-const BREADTH = 0.2;
 
 interface Point {
   x: number;
   y: number;
 }
 
-/**
- * The way to another page, for /head.js there: the page, when it was left (Date.now()), whether it went while the
- * curtain was still coming over it (`passing`, the browser keeping a picture of it on screen), and if so, how far in
- * the curtain had come by then, in ms.
- */
+/** The way to another page, for /head.js there: the page, and when it was left (Date.now()). */
 interface Trip {
   to: string;
   at: number;
-  passing: boolean;
-  passed?: number;
-}
-
-/**
- * What /head.js leaves for a page that opens while the curtain was still coming over the last (data-curtain="passing"):
- * the view transition keeping the picture of that page on screen, how far in the curtain had come, in ms, and when
- * this page was shown (performance.now()).
- */
-interface Passing {
-  transition: ViewTransition;
-  passed: number;
-  shown: number;
-}
-
-declare global {
-  interface Window {
-    rondoCurtain?: Passing;
-  }
 }
 
 /** Where the curtain's edges always spread from, either way: the middle of the top of the screen. */
@@ -62,11 +37,9 @@ function top(): Point {
  * (dark, with the page's light glowing in it) spreads down over the page from the middle of its top, inside a ring of
  * glass, the page sinking back beneath it, the next page's name rising in its middle. Its back is the next page,
  * spreading down through the curtain from the same place, inside a ring of its own, settling as it comes, as soon as
- * that page is ready: the two sides of the wave don't wait for each other. So that they needn't, the next page opens
- * at once, while the browser keeps a picture of this one on screen (a view transition), and finishes the front over
- * that picture. Where it can't keep one, the front covers this page while the next loads, and the next opens under it,
- * showing no blank between. The first page of a visit opens under the curtain too (/head.js puts it there). Links
- * elsewhere (the docs, the app, other sites, new tabs) open as usual, and with reduced motion so does every link.
+ * that page is ready. The front covers this page while the next loads, and the next opens under it, showing no blank
+ * between. Any other page opens with the intro instead (motion/intro.ts). Links elsewhere (the docs, the app,
+ * other sites, new tabs) open as usual, and with reduced motion so does every link.
  */
 export class Curtain {
   private readonly sheet: HTMLElement;
@@ -80,12 +53,10 @@ export class Curtain {
   private trip: Trip | null = null;
   /** The curtain's front coming over this page, as it's left. */
   private covering: gsap.core.Timeline | null = null;
-  /** The curtain's front still coming over the last page, when this page opened while it was. */
-  private passing: gsap.core.Timeline | null = null;
 
-  /** The page's curtain, or null on a page without one. */
+  /** The page's curtain, or null on a page without one. (Under the curtain, <html> has a data-curtain of its own.) */
   static find(stage: Stage): Curtain | null {
-    const root = document.querySelector<HTMLElement>("[data-curtain]");
+    const root = document.body.querySelector<HTMLElement>("[data-curtain]");
     return root == null ? null : new Curtain(root, stage);
   }
 
@@ -97,9 +68,6 @@ export class Curtain {
     this.front = one(root, "[data-curtain-front]");
     this.back = one(root, "[data-curtain-back]");
     this.label = one(root, "[data-curtain-label]");
-    // The motion has started, so it lifts the curtain, rather than the CSS that would on its own.
-    if (document.documentElement.dataset.curtain != null) root.style.animation = "none";
-    this.pass();
   }
 
   /** Takes over clicks on links to the site's pages, and fetches a page as soon as a link to it is reached for. */
@@ -120,12 +88,6 @@ export class Curtain {
     document.addEventListener("pointerover", reaching, { passive: true });
     document.addEventListener("touchstart", reaching, { passive: true });
     document.addEventListener("focusin", reaching);
-    // Going while the curtain is still coming over: the next page finishes it from just where it's got to.
-    window.addEventListener("pageswap", () => {
-      if (this.trip?.passing === true && this.covering != null) {
-        this.remember({ ...this.trip, passed: this.covering.time() * 1000 });
-      }
-    });
     // Back to a page that was left under the curtain (the browser kept it as it was): it opens again.
     window.addEventListener("pageshow", (event) => {
       if (event.persisted && this.trip != null) {
@@ -138,30 +100,27 @@ export class Curtain {
 
   /**
    * Opens the page under the curtain: the curtain's back, the page, spreads down through it from the middle of the
-   * top, inside a ring of glass, settling from a little larger as it comes, while the front may still be coming over
-   * the last page, though never closer behind it than the wave's breadth. Resolves as it starts, so what opens the page
-   * plays as it comes through. At once without a curtain.
+   * top, inside a ring of glass, settling from a little larger as it comes. Resolves as it starts, so what opens the
+   * page plays as it comes through. At once without a curtain.
    */
   async lift(): Promise<void> {
     const html = document.documentElement;
     const state = html.dataset.curtain;
-    if (state !== "cover" && state !== "open" && state !== "passing") return;
+    if (state !== "cover") return;
     if (this.stage.reduced) {
       delete html.dataset.curtain;
       return;
     }
-    const lead = this.passing == null ? 0 : BREADTH - this.passing.time();
-    if (lead > 0) {
-      await new Promise<void>((resolve) => {
-        gsap.delayedCall(lead, resolve);
-      });
-    }
-    this.stage.scroll.hold(false);
     const from = top();
     const content = all(document, CONTENT);
     const parts = [this.root, this.sheet, this.front, this.back, this.label];
     // The name may still be rising, with the front.
     gsap.killTweensOf(this.label);
+    let measured = false;
+    const remeasured = (): void => {
+      measured = true;
+    };
+    ScrollTrigger.addEventListener("refresh", remeasured);
     await new Promise<void>((resolve) => {
       gsap
         .timeline({
@@ -170,6 +129,10 @@ export class Curtain {
             gsap.set(parts, { clearProps: "all" });
             this.sheet.style.removeProperty("mask-image");
             this.sheet.style.removeProperty("-webkit-mask-image");
+            // Anything scrolling reveals that was measured as the page came through, settling from larger, is measured
+            // again now the page is in place, or everything far down it would play late, and the last of it never.
+            ScrollTrigger.removeEventListener("refresh", remeasured);
+            if (measured) ScrollTrigger.refresh();
           },
         })
         .to(this.label, { scale: 0.86, opacity: 0, filter: "blur(10px)", duration: 0.4, ease: "power2.in" })
@@ -187,28 +150,6 @@ export class Curtain {
         )
         .call(resolve, undefined, 0);
     });
-  }
-
-  /**
-   * Opened while the curtain was still coming over the last page (data-curtain="passing"): its front goes on from
-   * just where it had got to, over the picture of that page the browser keeps on screen, cutting this page to a circle
-   * until it covers the screen; then the picture goes. Nothing on any other page.
-   */
-  private pass(): void {
-    const html = document.documentElement;
-    const passing = window.rondoCurtain;
-    if (html.dataset.curtain !== "passing" || passing == null) return;
-    const from = top();
-    void passing.transition.finished.finally(() => {
-      html.style.removeProperty("--curtain-reach");
-    });
-    this.passing = this.coming(from, (radius) => {
-      html.style.setProperty("--curtain-reach", `${radius}px`);
-    })
-      .eventCallback("onComplete", () => {
-        passing.transition.skipTransition();
-      })
-      .time((passing.passed + performance.now() - passing.shown) / 1000, false);
   }
 
   /**
@@ -293,21 +234,16 @@ export class Curtain {
   }
 
   /**
-   * The way out: the curtain's front comes over the page. Where the browser can keep a picture of the page on screen
-   * while the next opens, that page opens at once, to finish the front itself; elsewhere, once the front covers the
-   * screen and the next page has loaded.
+   * The way out: the curtain's front comes over the page, and once it covers the screen and the next page has loaded,
+   * the next page opens under it.
    */
   private async leave(url: URL): Promise<void> {
     if (this.trip != null) return;
     const path = pagePath(url.pathname);
-    // The browser keeps no picture of a hidden page.
-    const passing = "CSSViewTransitionRule" in window && document.visibilityState === "visible";
-    this.trip = { to: path, at: Date.now(), passing };
-    this.remember(this.trip);
+    this.trip = { to: path, at: Date.now() };
     this.label.textContent = pages[path] ?? "";
-    this.stage.scroll.hold(true);
-    const covered = this.cover();
-    if (!this.trip.passing) await Promise.all([covered, this.load(url)]);
+    await Promise.all([this.cover(), this.load(url)]);
+    this.remember({ to: path, at: Date.now() });
     window.location.assign(url.href);
   }
 
@@ -344,7 +280,6 @@ export class Curtain {
     const html = document.documentElement;
     const from = top();
     const content = all(document, CONTENT);
-    this.root.style.animation = "none";
     html.dataset.curtain = "leaving";
     return new Promise((resolve) => {
       this.covering = this.coming(from, (radius) => {

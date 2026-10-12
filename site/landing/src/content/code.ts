@@ -22,6 +22,9 @@ class Fsrs(
     private val fuzz: Boolean = true,
 ) {
     private val w: DoubleArray = (weights?.takeIf(::valid) ?: DEFAULT).toDoubleArray()
+
+    /** The weights in use: those given when they're within FSRS's bounds, otherwise the defaults. */
+    val weights: List<Double> get() = w.toList()
     private val decay = -w[20]
     private val factor = 0.9.pow(1 / decay) - 1
 
@@ -42,26 +45,24 @@ class Fsrs(
         var next = m.copy(reps = m.reps + 1)`,
   },
   {
-    file: "app/core/Learning.kt",
-    code: `object Learning {
-    const val REVIEW = 1
-    const val RESET = 2
-    const val SUSPEND = 3
-    const val UNSUSPEND = 4
-    const val BURY = 5
-    const val FLAG = 6
-    const val SNAPSHOT = 7
-    const val VOID = 8
-    const val UNLOCK = 9
-
-    /** Folds one card's events (any order) into its state. Stored due dates win over replayed ones. */
-    fun fold(key: String, events: List<Event>, fsrs: Fsrs): CardState {
-        val voided = events.filter { it.kind == VOID }.map { it.subjectId }.toSet()
+    file: "app/core/Card.kt",
+    code: `/**
+ * One card of a note, for one learner: card [number] of note [noteId], and its events. Where it
+ * stands is never stored on the server; it's folded from them ([state]).
+ */
+class Card(val noteId: String, val number: Int, val events: List<Event>) {
+    /**
+     * Where the card stands: its events (any order) replayed. A voided event counts for nothing,
+     * and a due date that was stored wins over a replayed one.
+     */
+    fun state(fsrs: Fsrs): CardState {
+        val key = "$noteId:$number"
+        val voided = events.filterIsInstance<Event.Void>().map { it.subjectId }.toSet()
         var s = CardState()
-        for (e in events.filter { it.id !in voided && it.kind != VOID }.sortedWith(compareBy({ it.at }, { it.id }))) {
-            s = when (e.kind) {
-                REVIEW -> {
-                    val replayed = fsrs.review(key, s.memory, e.value ?: 3, e.at)
+        for (e in events.filter { it.id !in voided && it !is Event.Void }.sortedWith(compareBy({ it.at }, { it.id }))) {
+            s = when (e) {
+                is Event.Review -> {
+                    val replayed = fsrs.review(key, s.memory, e.rating, e.at)
                     val next = e.due?.let { replayed.copy(due = it) } ?: replayed
                     s.copy(
                         memory = next,
@@ -70,50 +71,47 @@ class Fsrs(
                     )
                 }
 
-                RESET -> s.copy(memory = Memory(), learnedAt = null, introducedAt = null)
+                is Event.Reset -> s.copy(memory = Memory(), learnedAt = null, introducedAt = null)
 
-                SUSPEND -> s.copy(suspended = true)
+                is Event.Suspend -> s.copy(suspended = true)
 
-                UNSUSPEND -> s.copy(suspended = false)
+                is Event.Unsuspend -> s.copy(suspended = false)
 
-                BURY -> s.copy(buriedAt = e.at)`,
+                is Event.Bury -> s.copy(buriedAt = e.at)
+
+                is Event.Flag -> s.copy(flag = e.color)`,
   },
   {
-    file: "app/core/Rules.kt",
-    code: `/** The rules every write must pass, on devices before writing and on the server before storing. */
-object Rules {
-    private const val CLOCK_SKEW = 10 * 60_000L
-
-    fun clockAhead(v: Long, now: Long): Boolean = Hlc.millis(v) > now + CLOCK_SKEW
-
-    fun deck(a: Access, stored: Deck?, d: Deck): ErrorCode? {
-        if (!Ids.isValid(d.id)) return ErrorCode.INVALID
-        if (d.name.isBlank() || d.name.length > 100 || !Positions.isValid(d.position) || d.color !in 0..7 ||
-            (d.icon?.length ?: 0) > 16 || (d.language?.length ?: 0) > 35 || (d.description?.length ?: 0) > 2000 ||
-            d.newPerDay !in 0..9999 || d.reviewsPerDay !in 0..99999 || d.retention !in 70..99 ||
-            d.unlockAt !in 50..100 || d.unlockAt % 10 != 0
+    file: "app/core/Deck.kt",
+    code: `    /** Why [by] may not make this the deck that was [stored] (null: a new one), or null. */
+    fun check(by: Access, stored: Deck?): ErrorCode? {
+        if (Uuid.parseOrNull(id) == null) return ErrorCode.INVALID
+        if (name.isBlank() || name.length > 100 || !Position(position).valid || color !in 0..7 ||
+            (icon?.length ?: 0) > 16 || (language?.length ?: 0) > 35 || (description?.length ?: 0) > 2000 ||
+            newPerDay !in NEW_PER_DAY || reviewsPerDay !in REVIEWS_PER_DAY || retention !in RETENTION ||
+            unlockAt !in 50..100 || unlockAt % 10 != 0
         ) {
             return ErrorCode.INVALID
         }
         if (stored != null) {
             if (stored.ownerId == null) return ErrorCode.READ_ONLY
-            if (stored.ownerId != d.ownerId) return ErrorCode.OWNER_MISMATCH
-            a.canWrite(stored.id)?.let { return it }
+            if (stored.ownerId != ownerId) return ErrorCode.OWNER_MISMATCH
+            by.canWrite(stored.id)?.let { return it }
             // A borrower can't move or delete the deck lent to them, nor take a deck out of it.
-            val borrowed = stored.ownerId != a.actor
-            val movedOrDeleted = d.parentId != stored.parentId || d.deletedAt != null
-            if (borrowed && stored.id in a.lends && movedOrDeleted) return ErrorCode.FORBIDDEN
-            if (borrowed && d.parentId == null && stored.parentId != null) return ErrorCode.FORBIDDEN
-        } else if (d.parentId == null) {
-            if (d.ownerId != a.actor) return ErrorCode.OWNER_MISMATCH
+            val borrowed = stored.ownerId != by.actor
+            val movedOrDeleted = parentId != stored.parentId || deletedAt != null
+            if (borrowed && stored.id in by.lends && movedOrDeleted) return ErrorCode.FORBIDDEN
+            if (borrowed && parentId == null && stored.parentId != null) return ErrorCode.FORBIDDEN
+        } else if (parentId == null) {
+            if (ownerId != by.actor) return ErrorCode.OWNER_MISMATCH
         }
-        if (d.parentId != null && (stored == null || d.parentId != stored.parentId)) {
-            val parent = a.tree[d.parentId] ?: return ErrorCode.NOT_FOUND
-            if (parent.ownerId != d.ownerId) return ErrorCode.OWNER_MISMATCH
-            if (a.tree.dead(parent.id)) return ErrorCode.NOT_FOUND
-            a.canWrite(parent.id)?.let { return it }
-            val above = listOf(parent) + a.tree.ancestors(parent.id)
-            if (above.any { it.id == d.id }) return ErrorCode.CYCLE
+        if (parentId != null && (stored == null || parentId != stored.parentId)) {
+            val parent = by.tree[parentId] ?: return ErrorCode.NOT_FOUND
+            if (parent.ownerId != ownerId) return ErrorCode.OWNER_MISMATCH
+            if (by.tree.dead(parent.id)) return ErrorCode.NOT_FOUND
+            by.canWrite(parent.id)?.let { return it }
+            val above = listOf(parent) + by.tree.ancestors(parent.id)
+            if (above.any { it.id == id }) return ErrorCode.CYCLE
             if (above.size >= 32) return ErrorCode.INVALID
         }
         return null

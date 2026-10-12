@@ -5,26 +5,24 @@ import openingTall from "../assets/flight/opening-tall.webp";
 import rest from "../assets/flight/rest.webp";
 import restTall from "../assets/flight/rest-tall.webp";
 import { links } from "../content/links";
-import Kicker from "./Kicker.astro";
 
 /**
- * Offline, and in sync: a film of an airliner skimming the cloud tops, white on white, drawn by three.js and played by
- * the scroll (motion/flight.ts). The section is several screens tall and the film holds the screen through it: it
- * opens on the plane's business cabin, seen from a little ahead, with the words above the clouds over the sky; as the
- * page scrolls the camera swings in through a window, turns to the laptop on the empty seat's table, and settles
- * there, Rondo in airplane mode, as the words of landing come up over the cabin. The film fades into the page above
- * and below. Its posters, drawn by the film itself at twice the pixels, stand in until it plays: its opening shot,
- * full screen (16:10, and 1:2 for phones), so it takes over from them seamlessly; and, without motion, where it would
- * have come to rest (2:1, and 4:5), the words then laid out above and below it.
+ * Offline, and in sync: a film of an airliner skimming the cloud tops, white in the page's pastel light, drawn by the scenery behind the
+ * page and played by the scroll (motion/flight.ts). The section is several screens tall and the film holds the screen
+ * through it: it opens on the plane's business cabin, seen from a little ahead, with the words above the clouds over
+ * the sky; as the page scrolls the camera swings in through a window, turns to the laptop on the empty seat's table,
+ * and settles there, Rondo in airplane mode, as the words of landing come up over the cabin. The film fades into the
+ * page above and below. Its posters, drawn by the film itself at twice the pixels, stand in until it plays: its
+ * opening shot, full screen (16:10, and 1:2 for phones), so it takes over from them seamlessly; and, without motion,
+ * where it would have come to rest (2:1, and 4:5), the words then laid out above and below it.
  */
 ---
 
 <section class="flight" id="offline" aria-labelledby="offline-title" data-mood="sync" data-flight>
-  <div class="flight__stage">
+  <div class="flight__stage" data-flight-stage>
     <div class="container flight__copy flight__copy--above" data-flight-above>
-      <Kicker>Offline &amp; sync</Kicker>
       <h2 id="offline-title" class="heading" data-reveal="words">
-        Offline above the clouds.
+        Oh and the best part?
       </h2>
     </div>
 
@@ -62,16 +60,15 @@ import Kicker from "./Kicker.astro";
         sizes="100vw"
         loading="lazy"
       />
-      <div class="flight__screen" data-flight-screen></div>
     </div>
 
     <div class="container flight__copy flight__copy--landed" data-flight-landed>
       <p class="heading">
-        <em>In sync when you land.</em>
+        <em>It works offline too</em>
       </p>
       <p class="lead">
-        Your whole collection lives on your device, so Rondo never needs a connection to study, edit or import. Back
-        online, it syncs in the background, and every answer from every device counts.
+        Everything lives on your device, so Rondo never needs a connection to study, edit or import. Back online, it
+        syncs in the background, and every answer from every device counts.
       </p>
       <p class="flight__more">
         <a class="link" href={`${links.docs}sync`}>
@@ -96,6 +93,7 @@ import Kicker from "./Kicker.astro";
     height: 360svh;
   }
 
+  /* The screen the film holds: the scenery draws it here, behind the words, where the posters stand in until then. */
   .flight__stage {
     position: sticky;
     top: 0;
@@ -104,8 +102,8 @@ import Kicker from "./Kicker.astro";
   }
 
   /*
-   * The words, over the film's top: its sky at the opening, the cabin beyond the laptop at rest, both faded to the
-   * page's white there.
+   * The words, over the film's top: its sky at the opening, the cabin beyond the laptop at rest, both faded into the
+   * page there.
    */
   .flight__copy {
     position: absolute;
@@ -114,7 +112,7 @@ import Kicker from "./Kicker.astro";
     z-index: 1;
     display: grid;
     justify-items: center;
-    gap: clamp(16px, 2.4vh, 28px);
+    gap: clamp(16px, 0.75rem + 0.8vw, 28px);
     text-align: center;
   }
 
@@ -139,12 +137,16 @@ import Kicker from "./Kicker.astro";
     mask-image: linear-gradient(to bottom, transparent 6%, #000 42%, #000 86%, transparent);
   }
 
+  /* Once the film has a frame, drawn behind them, the posters fade away over it. */
   .flight__poster {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition:
+      opacity 1.4s var(--ease-out),
+      visibility 0s;
   }
 
   .flight__poster--tall,
@@ -153,30 +155,17 @@ import Kicker from "./Kicker.astro";
     display: none;
   }
 
-  /* The film fades in over its poster once it has drawn its first frame, and the poster then goes. */
-  .flight__screen {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    transition: opacity 1.4s var(--ease-out);
-  }
-
-  .flight.is-playing .flight__screen {
-    opacity: 1;
-  }
-
   .flight.is-playing .flight__poster {
+    opacity: 0;
     visibility: hidden;
-    transition: visibility 0s 1.4s;
-  }
-
-  .flight__screen :global(canvas) {
-    width: 100%;
-    height: 100%;
+    transition-delay: 0s, 1.4s;
   }
 
   @media (width < 760px) {
-    /* A phone's frame has the laptop higher: the words of landing keep to their heading, clear of it. */
+    /*
+     * A phone's frame has the laptop higher, as high as the screen is short: the words of landing keep to their heading
+     * and its link, clear of it on any phone.
+     */
     .flight__copy--landed .lead {
       display: none;
     }
@@ -204,7 +193,7 @@ import Kicker from "./Kicker.astro";
       position: static;
       height: auto;
       display: grid;
-      gap: clamp(24px, 4vh, 48px);
+      gap: clamp(24px, 1rem + 2vw, 48px);
     }
 
     .flight__copy {

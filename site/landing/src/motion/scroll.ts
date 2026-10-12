@@ -1,38 +1,57 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import Lenis from "lenis";
 
 /**
- * The page's scrolling. Lenis eases the wheel into a glide on GSAP's clock and tells ScrollTrigger where the page
- * is; touch scrolling stays the device's own. With reduced motion the page scrolls natively.
+ * The page's scrolling, which the browser does itself, natively, on every device: on its own thread, at the screen's
+ * full rate, however busy the page's script is. Nothing here moves the page; the motion only follows it. ScrollTrigger
+ * measures the page again whenever its height changes (fonts arriving, an answer opening, the screen turning), once
+ * the change has settled; on its own it measures only as the page opens and as a desktop's window resizes.
  */
-export class SmoothScroll {
-  private readonly lenis: Lenis | null;
+export class Scrolling {
+  /** The whole page's scroll, followed for how fast it goes. */
+  private readonly page = ScrollTrigger.create({ start: 0, end: "max" });
+  /** When the page last scrolled (performance.now()). */
+  private moved = 0;
 
-  constructor(smooth: boolean) {
-    if (!smooth) {
-      this.lenis = null;
-      return;
-    }
-    const lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.95, autoRaf: false, anchors: true });
-    lenis.on("scroll", () => {
-      ScrollTrigger.update();
-    });
-    gsap.ticker.add((time) => {
-      lenis.raf(time * 1000);
-    });
-    gsap.ticker.lagSmoothing(0);
-    this.lenis = lenis;
+  constructor() {
+    this.follow();
+    window.addEventListener(
+      "scroll",
+      () => {
+        this.moved = performance.now();
+      },
+      { passive: true },
+    );
   }
 
-  /** How fast the page is scrolling, in pixels per frame; 0 when it scrolls natively. */
+  /** How fast the page is scrolling, in pixels per frame (of 60 a second). */
   get velocity(): number {
-    return this.lenis?.velocity ?? 0;
+    return this.page.getVelocity() / 60;
   }
 
-  /** Holds the page still (while the curtain is over it), or lets it scroll again. */
-  hold(held: boolean): void {
-    if (held) this.lenis?.stop();
-    else this.lenis?.start();
+  /**
+   * Waits for a frame on which the page has been still a moment, for work that holds the main thread up a while: the
+   * scroll itself never waits on it, but whatever follows the scroll would.
+   */
+  async still(): Promise<void> {
+    do {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    } while (performance.now() - this.moved < 150);
+  }
+
+  /** Has ScrollTrigger measure the page again a moment after its height last changed, so a long change costs one. */
+  private follow(): void {
+    const remeasure = gsap
+      .delayedCall(0.25, () => {
+        ScrollTrigger.refresh();
+      })
+      .pause();
+    let height = document.body.offsetHeight;
+    new ResizeObserver(() => {
+      const now = document.body.offsetHeight;
+      if (now === height) return;
+      height = now;
+      remeasure.restart(true);
+    }).observe(document.body);
   }
 }

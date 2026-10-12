@@ -5,9 +5,8 @@ import { pagePath, pages } from "../content/pages";
  * The curtain the site's pages open through (motion/transition.ts): a sheet of ink with the page's light glowing in
  * it, passing like a wave, each of its edges a ring of glass. Following a link, its front spreads down over the page
  * from the middle of its top, the next page's name rising in its middle; its back, the next page, spreads down
- * through it the same way. The first page of a visit opens the same way. It shows this page's name, for when this
- * page opens under it. Without JavaScript, or with reduced motion, it never shows; if a page opens under it and its
- * motion never starts, it fades away on its own.
+ * through it the same way. It shows this page's name, for when this page opens under it. Without JavaScript, or with reduced motion, it never shows; if a page opens under it and its
+ * motion doesn't come in time, /head.js takes it away, and it fades.
  */
 const label = pages[pagePath(Astro.url.pathname)] ?? "";
 ---
@@ -31,29 +30,22 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
     inset: 0;
     z-index: 90;
     visibility: hidden;
+    opacity: 0;
     pointer-events: none;
   }
 
-  /*
-   * Over a page: "leaving" one, "cover"ing one that opened under it ("open" on a visit's first), or "passing" over
-   * one that opened while it was still coming over the last.
-   */
+  /* Over a page: "leaving" one, or "cover"ing one that opened under it. */
   :global(html[data-curtain]) .curtain {
     visibility: visible;
+    opacity: 1;
     pointer-events: auto;
   }
 
-  :global(html[data-curtain="cover"]) .curtain,
-  :global(html[data-curtain="open"]) .curtain,
-  :global(html[data-curtain="passing"]) .curtain {
-    animation: curtain-away 0.9s var(--ease-in-out) 2.6s forwards;
-  }
-
-  @keyframes curtain-away {
-    to {
-      opacity: 0;
-      visibility: hidden;
-    }
+  /* Taken away because the page's motion didn't come in time (/head.js): it fades. */
+  :global(html[data-motion="off"]) .curtain {
+    transition:
+      opacity 0.6s var(--ease-out),
+      visibility 0s 0.6s;
   }
 
   /* The sheet; as its front spreads or its back opens, the motion masks it to a circle, or to all but one. */
@@ -100,9 +92,9 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
+    mask: radial-gradient(farthest-side, transparent calc(100% - 34px), #000 calc(100% - 10px));
     -webkit-backdrop-filter: blur(6px) saturate(1.8) brightness(1.06);
     backdrop-filter: blur(6px) saturate(1.8) brightness(1.06);
-    mask: radial-gradient(farthest-side, transparent calc(100% - 34px), #000 calc(100% - 10px));
   }
 
   .curtain__centre {
@@ -115,7 +107,7 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
   .curtain__label {
     font-family: var(--serif);
     font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2.5rem);
-    font-style: italic;
+    font-style: normal;
     font-weight: 300;
     line-height: 1;
     letter-spacing: -0.03em;
@@ -130,39 +122,6 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
   @media (prefers-reduced-motion: reduce) {
     .curtain {
       display: none;
-    }
-  }
-</style>
-
-<style is:global>
-  /*
-   * Leaving for another of the site's pages, the browser keeps a picture of this one on screen while the next opens
-   * (a view transition), so the curtain's front can go on spreading over it from the next page: the picture shows as
-   * it was left, round the next page, which the front cuts to a circle (--curtain-reach) until it covers the screen.
-   * Any other way between the pages, the next one simply takes this one's place.
-   */
-  @media (prefers-reduced-motion: no-preference) {
-    @view-transition {
-      navigation: auto;
-    }
-  }
-
-  ::view-transition-group(root),
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none;
-    mix-blend-mode: normal;
-  }
-
-  html[data-curtain="passing"]::view-transition-new(root) {
-    clip-path: circle(var(--curtain-reach, 0px) at 50% 0);
-    /* Keeps the picture for at most this long; the motion lets it go as soon as the front covers the screen. */
-    animation: curtain-hold 2s linear;
-  }
-
-  @keyframes curtain-hold {
-    to {
-      opacity: 1;
     }
   }
 </style>

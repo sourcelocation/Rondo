@@ -11,18 +11,16 @@ import { LAUNCH, launchDay } from "../launch/launch";
 interface Props {
   /** Unique on the page. */
   name: string;
-  /** A halo of light around the field, where the page invites the visitor in. */
-  invite?: boolean;
 }
 
-const { name, invite = false } = Astro.props;
+const { name } = Astro.props;
 const id = `notify-${name}`;
 const day = launchDay(true);
 ---
 
 <form class="notify" method="post" novalidate data-notify data-state="idle">
   <div class="notify__stage">
-    <div class:list={["notify__field", { halo: invite }]}>
+    <div class="notify__field">
       <Mail class="notify__mail" aria-hidden="true" stroke-width={1.75} />
       <label class="visually-hidden" for={id}>
         Email address

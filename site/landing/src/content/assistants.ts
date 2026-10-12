@@ -3,8 +3,8 @@
  * someone already has, and the other things anyone can ask one for.
  */
 
-/** The assistants the conversation is with, one a time round: any AI, inside Rondo or out. */
-export const assistantNames: readonly string[] = ["Claude", "ChatGPT", "Gemini", "Codex"];
+/** The assistant the conversation is with (the others are only named). */
+export const assistantName = "Claude";
 
 /** What's asked, how the assistant goes about it, and what it says when it's done. */
 export const conversation = {
@@ -59,9 +59,6 @@ export const enriched: readonly Enrichment[] = [
 /** Everything else to ask for, as someone might put it. */
 export const requests: readonly string[] = [
   "Make a deck from this article",
-  "Transcribe this lecture into cards",
-  "Record audio for every card",
-  "Fill in the readings",
   "Turn my notes into cloze cards",
   "What’s due today?",
 ];
