@@ -73,7 +73,8 @@ class AnkiConvertTest {
             "Key", "Simplified", "Pinyin", "Meaning", "Part of speech", "Audio", "Homograph", "Sentence",
             "Sentence pinyin", "Sentence meaning", "Sentence audio", "Sentence image", "Traditional",
         )
-        val word = "<div class=hanzi>{{Simplified}}</div><span style=\"color: #B80000; font-size: 22px\">{{Homograph}}</span>"
+        val word = "<div class=hanzi>{{Simplified}}</div>" +
+            "<span style=\"color: #B80000; font-size: 22px\">{{Homograph}}</span>"
         val front = "$word<div class=pinyin><br></div><hr><div class=sentence>{{Sentence}}</div>"
         val back = "$word<div class=pinyin>{{Pinyin}}</div><div class=english>{{Meaning}}</div>" +
             "<div class=description>{{Part of speech}}</div><hr><div class=sentence>{{Sentence}}</div>" +

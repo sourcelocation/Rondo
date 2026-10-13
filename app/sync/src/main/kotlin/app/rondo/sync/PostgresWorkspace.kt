@@ -43,7 +43,8 @@ class PostgresWorkspace(override val actor: String, private val postgres: Postgr
     override suspend fun decks(): List<DeckView> {
         val (tree, lends) = visible()
         val access = Access(actor, tree, lends) { true }
-        val sql = "SELECT deck_id, count(*) FROM notes WHERE deck_id = ANY(?::uuid[]) AND deleted_at IS NULL GROUP BY deck_id"
+        val sql = "SELECT deck_id, count(*) FROM notes " +
+            "WHERE deck_id = ANY(?::uuid[]) AND deleted_at IS NULL GROUP BY deck_id"
         val counts = postgres.transaction { it.query(sql, tree.byId.keys) { r -> r.getString(1) to r.getInt(2) }.toMap() }
         val views = tree.byId.values.map { DeckView(it, tree.path(it.id), access.role(it.id), counts[it.id] ?: 0) }
         return views.filter { it.role != Role.NONE }
@@ -68,7 +69,8 @@ class PostgresWorkspace(override val actor: String, private val postgres: Postgr
         if (filter.decks.isNotEmpty() && asked.isEmpty()) return emptyList()
         val where = NoteQuery(filter.copy(decks = asked.ifEmpty { decks.toList() })).notes(cardStates = false)
         val args = where.args.map { if (it is SqlFilter.Id) UUID.fromString(it.value) else it } + limit
-        val sql = "SELECT (to_jsonb(n) - 'seq' - 'search_text')::text FROM notes n WHERE ${where.where} ORDER BY n.id LIMIT ?"
+        val sql = "SELECT (to_jsonb(n) - 'seq' - 'search_text')::text FROM notes n " +
+            "WHERE ${where.where} ORDER BY n.id LIMIT ?"
         return postgres.transaction { it.query(sql, *args.toTypedArray(), row = ::note) }
     }
 
