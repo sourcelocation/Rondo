@@ -138,7 +138,8 @@ class Store private constructor(internal val driver: SqlDriver) {
 
     /** Removes the account's data from the device; it's a placeholder's again. */
     internal suspend fun wipe() {
-        q.wipe()
+        // A query of several statements runs when awaited.
+        q.wipe().await()
         me = Uuid.generateV7().toString().also { putMeta("account", it) }
     }
 

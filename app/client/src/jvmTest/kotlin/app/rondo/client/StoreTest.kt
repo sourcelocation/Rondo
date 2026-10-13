@@ -63,4 +63,15 @@ class StoreTest {
         Store.open(driver).wipe()
         assertEquals("5", Store.open(driver).meta("schema"))
     }
+
+    @Test
+    fun signingOutLeavesNothingBehind() = runBlocking {
+        val store = Store.open(JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY))
+        val library = Library(store)
+        val deck = library.createDeck("Spanish")
+        library.newNote(deck.id, Template.BASIC.id, mapOf("1" to "hola", "2" to "hello"))
+        store.wipe()
+        assertEquals(0, store.decks.all().size)
+        assertEquals(0, store.notes.ids().size)
+    }
 }
