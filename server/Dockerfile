@@ -1,5 +1,5 @@
 # The Go server (`rondo serve`, `rondo migrate`), built from the repository root: mail reads brand/dist.
-FROM golang:1.26 AS build
+FROM golang:1.26.9 AS build
 WORKDIR /src/server
 COPY server/go.mod server/go.sum ./
 RUN go mod download

@@ -1,6 +1,6 @@
 # Architecture
 
-**Map.** Local-first: each device keeps its account's data in SQLite and syncs in the background. `app/` is one Gradle build: `:core` (domain, rules, records, sync protocol, files, FSRS; no I/O), `:client` (storage → services → screens), `:sync` (sync server, hosted MCP), `:mcp`, `:cli`, `platforms/web` (React PWA). `server/` is Go: people, money, sharing, Discover, mail, jobs; Kratos signs in, Hydra is agents' OAuth. One Postgres (`server/db/migrations`), one API contract (`server/api/rondo.yaml`), one origin routed by path (a new path needs the ingress, `vite.config.ts` and the self-host Caddyfile).
+**Map.** Local-first: each device keeps its account's data in SQLite and syncs in the background. `app/` is one Gradle build: `:core` (domain, rules, records, sync protocol, files, FSRS; no I/O), `:client` (storage → services → screens), `:sync` (sync server, hosted MCP), `:mcp`, `:cli`, `platforms/web` (React PWA). `server/` is Go: people, money, sharing, Discover, mail, jobs; Kratos signs in, Hydra is agents' OAuth. One Postgres (`server/db/migrations`), one API contract (`server/api/rondo.yaml`), one origin routed by path (a new path needs the ingress, `vite.config.ts` and the web app's Caddyfile).
 
 ## Do
 - Decide every write rule once, in `:core` (`thing.check(access, stored)`): devices check before writing, the sync server before storing.

@@ -21,19 +21,25 @@ Get the files:
 
 ```bash
 git clone https://github.com/sourcelocation/Rondo.git
-cd Rondo/server/self-host
+cd Rondo/server
 ```
 
 </Step>
 <Step>
 
-Copy the settings and fill them in: your hostname, a [release](https://github.com/sourcelocation/Rondo/releases) to run, five secrets, your SMTP login, and your own email address.
+Copy the settings:
 
 ```bash
 cp .env.example .env
 ```
 
-Make each secret with `openssl rand -hex 32`, except `KRATOS_CIPHER_SECRET`, which must be 32 characters: `openssl rand -hex 16`.
+They run Rondo on your own computer as they are. Change every one marked "Self-hosting":
+
+- `RONDO_PUBLIC_URL` to `https://<your hostname>`, `RONDO_HOST` to the hostname, and `COMPOSE_PROFILES` to `tls`, so Caddy gets the certificate.
+- `RONDO_VERSION` to a [release](https://github.com/sourcelocation/Rondo/releases) to run, and `ORY_DEV` to nothing.
+- The five secrets: make each with `openssl rand -hex 32`, except `KRATOS_CIPHER_SECRET`, which must be 32 characters: `openssl rand -hex 16`.
+- Your SMTP login, and your own email address in `RONDO_OWNER_EMAIL`.
+- Remove `RONDO_STAFF_PASSKEY` and the development Web Push keys.
 
 </Step>
 <Step>
@@ -56,13 +62,13 @@ Open your hostname and sign in with the address in `RONDO_OWNER_EMAIL`. That acc
 
 | Service    | What it does                                                     | Path                                       |
 | ---------- | ---------------------------------------------------------------- | ------------------------------------------ |
-| `web`      | The web app                                                      | `/app`                                     |
+| `web`      | The web app, and routing each other path to its service          | `/app`                                     |
 | `api`      | The Go server: accounts, sharing, Discover, media, mail          | `/api`, `/media`, `/blobs`                 |
 | `sync`     | The sync server, and the MCP server for AI assistants            | `/sync`, `/mcp`                            |
 | `kratos`   | [Ory Kratos](https://www.ory.sh/kratos/): sign-in                | `/auth`                                    |
 | `hydra`    | [Ory Hydra](https://www.ory.sh/hydra/): AI assistants' OAuth     | `/oauth2`, `/userinfo` and OAuth discovery |
 | `postgres` | One PostgreSQL, with a database each for Rondo, Kratos and Hydra |                                            |
-| `caddy`    | HTTPS, and routing each path to its service                      | Everything else                            |
+| `edge`     | HTTPS, in front of `web`                                         |                                            |
 
 Pictures and sounds are kept in the `media` volume. Share links lead into the web app, and `/docs` leads to these docs.
 
@@ -87,13 +93,20 @@ The Go server reads `.env` as well, so its other settings go there too:
 - **Reminders in browsers** (Web Push): `RONDO_VAPID_PUBLIC_KEY` and `RONDO_VAPID_PRIVATE_KEY`, which `npx web-push generate-vapid-keys` makes, and `RONDO_VAPID_SUBJECT`, a `mailto:` address of yours.
 
 <Callout title="After changing .env" type="warn">
-  Run `docker compose up -d --force-recreate`. Kratos's, Hydra's and Caddy's settings are written from `.env`, and
+  Run `docker compose up -d --force-recreate`. Kratos's and Hydra's settings are written from `.env`, and
   Compose doesn't notice when they change.
 </Callout>
 
 ## Upgrade
 
 Back up first, set `RONDO_VERSION` to the new release, and run `docker compose up -d`. The database is migrated before the servers start.
+
+<Callout title="From server/self-host">
+  Rondo used to run from `server/self-host`, on PostgreSQL 16. Back up there (below) and stop it, move your `.env` to
+  `server/` and change it as above. Start only the database, `docker compose up -d postgres`, restore into it with
+  `docker compose exec -T postgres psql -U rondo -d postgres < rondo.sql` (the errors about what already exists are
+  expected), copy the media volume across, and start the rest.
+</Callout>
 
 ## Back up
 
@@ -103,7 +116,7 @@ The database, with Kratos's and Hydra's:
 docker compose exec -T postgres pg_dumpall -U rondo > rondo.sql
 ```
 
-and the `media` volume, `rondo-self-hosted_media`, unless you use S3.
+and the `media` volume, `rondo_media`, unless you use S3.
 
 <Callout title="Changing Rondo">
   Rondo is under the [AGPL-3.0](https://github.com/sourcelocation/Rondo/blob/HEAD/LICENSE): if you change it and let
