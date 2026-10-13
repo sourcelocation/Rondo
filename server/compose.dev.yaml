@@ -1,0 +1,27 @@
+# Development: `docker compose -f compose.yaml -f compose.dev.yaml up --build` runs the Go server from
+# source under Air (.air.toml), which migrates, rebuilds and restarts it on every save. Everything else
+# is compose.yaml's, but the sync server and the web app run on this machine, beside their Gradle
+# build (the README): the sync server under Air (app/sync/.air.toml), and Vite on the front door's
+# port in place of `web`, so RONDO_PUBLIC_URL and everything written from it stay the same.
+services:
+  api:
+    image: rondo:dev # keeps the dev build off the release images' tags
+    build: { context: .., dockerfile: server/dev.Dockerfile }
+    command: !reset null # air, with .air.toml
+    volumes:
+      - ..:/src
+      - go-mod:/go/pkg/mod
+      - go-build:/root/.cache/go-build
+    # Air migrates before each start.
+    depends_on: !override { postgres: { condition: service_healthy } }
+
+  migrate:
+    profiles: [release] # never started in development
+  sync:
+    profiles: [release]
+  web:
+    profiles: [release]
+
+volumes:
+  go-mod: {}
+  go-build: {}

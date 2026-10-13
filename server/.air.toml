@@ -1,0 +1,14 @@
+# The Go server with live reload, inside compose.dev.yaml's container: on every change Air rebuilds it,
+# migrates, and restarts `rondo serve` with compose's settings (.env).
+tmp_dir = "bin"
+
+[build]
+cmd = "go build -o /usr/local/bin/rondo ./cmd/rondo && rondo migrate"
+entrypoint = ["/usr/local/bin/rondo", "serve"]
+include_ext = ["go", "sql"]
+exclude_dir = ["bin", "api", "kratos"]
+exclude_regex = ["_test\\.go$"]
+# A signal lets requests in flight finish before the next build replaces the server.
+send_interrupt = true
+kill_delay = "3s"
+stop_on_error = true
