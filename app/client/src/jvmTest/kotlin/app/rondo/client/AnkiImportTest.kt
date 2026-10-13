@@ -267,11 +267,13 @@ class AnkiImportTest {
                     .mapIndexed { i, f -> """{"name": "$f", "ord": $i}""" }.joinToString()
                 val models = """{"9": {"name": "HSK", "type": 0, "css": ".card {font-size: 10px} .hanzi {font-size: 78px}",
                     "flds": [$fields], "tmpls": [{"name": "Recognition ", "ord": 0, "qfmt": "$front", "afmt": "$back"}]}}"""
-                val decks = """{"1": {"name": "Default"}, "7": {"name": "$deck", "desc": "From <b>the</b> shared deck."}}"""
+                val decks = """{"1": {"name": "Default"},
+                    "7": {"name": "$deck", "desc": "From <b>the</b> shared deck."}}"""
                 exec("INSERT INTO col VALUES (?, ?, ?)", crt, models, decks)
                 words.forEachIndexed { i, w ->
                     val id = first + i
-                    exec("INSERT INTO notes VALUES (?, ?, 9, ' HSK ', ?)", id, "hsk-$w", listOf("${i + 1}", w, "pinyin", "meaning", "", "我有$w。").joinToString("\u001f"))
+                    val flds = listOf("${i + 1}", w, "pinyin", "meaning", "", "我有$w。").joinToString("\u001f")
+                    exec("INSERT INTO notes VALUES (?, ?, 9, ' HSK ', ?)", id, "hsk-$w", flds)
                     card(id * 10, id, 7, 0, due = i.toLong())
                 }
             },

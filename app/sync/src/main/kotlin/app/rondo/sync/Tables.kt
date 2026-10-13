@@ -91,7 +91,8 @@ class Batch(val sql: Sql, val actor: String, val now: Long) {
 class DeckTable : Table {
     override val name = "decks"
     override val entity = "deck"
-    override val lent = "SELECT seq, 'decks', (to_jsonb(d) - 'seq')::text FROM decks d WHERE d.id = ANY(?::uuid[]) AND d.seq > ?"
+    override val lent =
+        "SELECT seq, 'decks', (to_jsonb(d) - 'seq')::text FROM decks d WHERE d.id = ANY(?::uuid[]) AND d.seq > ?"
 
     override fun record(json: String) = Record.json.decodeFromString(DeckRecord.serializer(), json)
 
