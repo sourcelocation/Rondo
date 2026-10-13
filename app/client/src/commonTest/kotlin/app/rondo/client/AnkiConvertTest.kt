@@ -73,7 +73,8 @@ class AnkiConvertTest {
             "Key", "Simplified", "Pinyin", "Meaning", "Part of speech", "Audio", "Homograph", "Sentence",
             "Sentence pinyin", "Sentence meaning", "Sentence audio", "Sentence image", "Traditional",
         )
-        val word = "<div class=hanzi>{{Simplified}}</div><span style=\"color: #B80000; font-size: 22px\">{{Homograph}}</span>"
+        val word = "<div class=hanzi>{{Simplified}}</div>" +
+            "<span style=\"color: #B80000; font-size: 22px\">{{Homograph}}</span>"
         val front = "$word<div class=pinyin><br></div><hr><div class=sentence>{{Sentence}}</div>"
         val back = "$word<div class=pinyin>{{Pinyin}}</div><div class=english>{{Meaning}}</div>" +
             "<div class=description>{{Part of speech}}</div><hr><div class=sentence>{{Sentence}}</div>" +
@@ -81,13 +82,20 @@ class AnkiConvertTest {
             "{{Audio}} {{Sentence audio}}<br>{{Sentence image}}"
         val t = anki(names, listOf(front to back), ".card {font-size: 10px} .hanzi {font-size: 78px;}")
         fun word(key: String, hanzi: String, pinyin: String, meaning: String, homograph: String = "") = note(
-            t, "Key" to key, "Simplified" to hanzi, "Pinyin" to pinyin, "Meaning" to meaning, "Part of speech" to "pronoun",
+            t, "Key" to key, "Simplified" to hanzi, "Pinyin" to pinyin, "Meaning" to meaning,
+            "Part of speech" to "pronoun",
             "Audio" to "[sound:rondo-media:${hash('a')}]", "Homograph" to homograph,
             "Sentence" to "<div><b>$hanzi</b>是学生。</div>", "Sentence pinyin" to "<div>$pinyin shì xuéshēng.</div>",
             "Sentence meaning" to "I'm a student.", "Sentence audio" to "<div>[sound:rondo-media:${hash('b')}]</div>",
             "Sentence image" to "<img src=\"rondo-media:${hash('c')}\" /><br>", "Traditional" to hanzi,
         )
-        val result = convert(t, word("1", "的", "de", "of", homograph = "得"), word("2", "我", "wǒ", "I; me"), word("3", "你", "nǐ", "you"))
+        val result =
+            convert(
+                t,
+                word("1", "的", "de", "of", homograph = "得"),
+                word("2", "我", "wǒ", "I; me"),
+                word("3", "你", "nǐ", "you"),
+            )
         assertTrue(result.kept.isEmpty())
         val made = result.entries().first().template as RondoTemplate
 
@@ -104,7 +112,8 @@ class AnkiConvertTest {
         assertEquals(listOf(listOf(2), listOf(7), listOf(8)), card.requires)
 
         // Each side shows what its template does, in its order; rules divide. Nothing is sized.
-        fun shown(blocks: List<Block>) = blocks.map { b -> if (b is Block.Field) made.fields.first { it.id == b.id }.name else "—" }
+        fun shown(blocks: List<Block>) =
+            blocks.map { b -> if (b is Block.Field) made.fields.first { it.id == b.id }.name else "—" }
         assertEquals(listOf("Simplified", "Homograph", "—", "Sentence"), shown(card.front))
         assertEquals(
             listOf(
@@ -118,13 +127,23 @@ class AnkiConvertTest {
         // What's suggested on top, all likely: the word as the title, large, and the deck in Chinese.
         val suggestions = Suggestions(result.contents).all
         assertTrue(suggestions.all { it.likely })
-        assertEquals(setOf("title", "large", "language"), suggestions.map { it::class.simpleName!!.lowercase() }.toSet())
+        assertEquals(
+            setOf("title", "large", "language"),
+            suggestions.map {
+                it::class.simpleName!!.lowercase()
+            }.toSet(),
+        )
         val applied = suggestions.fold(result.contents) { c, s -> s.apply(c) }
         val better = applied.single().notes.first().template as RondoTemplate
         assertEquals("Simplified", better.fields.first().name)
         assertEquals(Block.Size.LARGE, (better.cards.single().front.first() as Block.Field).size)
         assertEquals("zh", applied.single().deck.language)
-        assertEquals(listOf("Simplified", "Homograph", "Sentence", "Traditional"), better.fields.filter { it.tts }.map { it.name })
+        assertEquals(
+            listOf("Simplified", "Homograph", "Sentence", "Traditional"),
+            better.fields.filter {
+                it.tts
+            }.map { it.name },
+        )
         // The title names the notes now.
         assertEquals("的", better.label(applied.single().notes.first().note))
     }
