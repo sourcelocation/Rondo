@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.6](https://github.com/sourcelocation/Rondo/compare/v0.1.5...v0.1.6) (2026-10-13)
+
+
+### Features
+
+* update landing page to rc ([373d05d](https://github.com/sourcelocation/Rondo/commit/373d05db8fbe98cbc3d7b686c0b8eb29afb311b5))
+
+
+### Bug Fixes
+
+* signout ([52887dd](https://github.com/sourcelocation/Rondo/commit/52887ddb2475b539d9a5a0e2d077a76e1721a6c2))
+
 ## [0.1.5](https://github.com/sourcelocation/Rondo/compare/v0.1.4...v0.1.5) (2026-10-13)
 
 
