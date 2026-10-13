@@ -18,14 +18,12 @@ import type { Picture, View } from "../scenery";
 
 /** How many of the window's CSS pixels each of the light's covers, each way: it's all soft. */
 const SCALE = 4;
-/** How many ripples spread through the light at once, at most. */
-const RIPPLES = 4;
-
 /**
- * How the light ripples, as a drop's rings spread on water: each ring spreads `speed` pixels a second for `life`
- * seconds, as strong as `swell` at first and fading away; a new one starts no sooner than `gap` seconds after the last.
+ * How the light gathers where cards come to rest, as a breath: each card asks it in `gather` more, to all of it at
+ * most, and it lets the asking go slowly (`exhale`, per second); the light follows that more slowly still (`inhale`,
+ * per second), so however the cards come it swells and settles smoothly, and with dozens at once it fills and holds.
  */
-const ripple = { speed: 520, life: 2.6, swell: 1, gap: 0.4 } as const;
+const gathering = { gather: 0.1, inhale: 0.9, exhale: 0.32 } as const;
 
 const vertex = /* glsl */ `
   varying vec2 vUv;
@@ -102,40 +100,27 @@ const lights = /* glsl */ `
 `;
 
 /**
- * The light, stretched over the window, and rippling: each ripple (its middle, CSS pixels from the window's top left,
- * how far its ring has spread, and how strong it is) is a ring of a few soft waves, which bend the light outward and
- * back and catch it, a little brighter on their crests and a little darker in their troughs. A trace of noise keeps
- * such soft gradients from banding.
+ * The light, stretched over the window, and gathered (uGather: where, CSS pixels from the window's top left, how far
+ * round it, and how much): there, softly, it's drawn in from further out, up to PULL of the way, and its colours
+ * deepen, up to DEEPEN more, so an aura comes up round what it gathers to; where the light is white it stays white.
+ * A trace of noise keeps such soft gradients from banding.
  */
 const blit = /* glsl */ `
-  #define RIPPLES ${RIPPLES}
   uniform sampler2D uLight;
   uniform vec2 uResolution;
-  uniform vec4 uRipples[RIPPLES];
+  uniform vec4 uGather;
   varying vec2 vUv;
 
-  // A ring's waves are 2π / WAVE pixels apart, BAND pixels wide; they bend the light BEND pixels, and catch it SHINE.
-  const float WAVE = 0.075;
-  const float BAND = 64.0;
-  const float BEND = 10.0;
-  const float SHINE = 0.022;
+  const float PULL = 0.22;
+  const float DEEPEN = 0.6;
 
   void main() {
     vec2 at = vec2(vUv.x, 1.0 - vUv.y) * uResolution;
-    vec2 bend = vec2(0.0);
-    float swell = 0.0;
-    for (int i = 0; i < RIPPLES; i++) {
-      vec4 ripple = uRipples[i];
-      if (ripple.w <= 0.0) continue;
-      vec2 away = at - ripple.xy;
-      float far = length(away);
-      float off = far - ripple.z;
-      float wave = sin(off * WAVE) * exp(-off * off / (BAND * BAND)) * ripple.w;
-      swell += wave;
-      bend += away / max(far, 1.0) * wave;
-    }
-    vec3 colour = texture(uLight, vUv + vec2(bend.x, -bend.y) * BEND / uResolution).rgb;
-    colour *= 1.0 + swell * SHINE;
+    vec2 away = at - uGather.xy;
+    float held = uGather.w * exp(-dot(away, away) / (uGather.z * uGather.z));
+    vec2 from = at + away * held * PULL;
+    vec3 colour = texture(uLight, vec2(from.x, uResolution.y - from.y) / uResolution).rgb;
+    colour = 1.0 - (1.0 - colour) * (1.0 + held * DEEPEN);
     float grain = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
     float tint = 1.0 - min(colour.r, min(colour.g, colour.b));
     colour += (grain - 0.5) / 200.0 * smoothstep(0.0, 0.04, tint);
@@ -151,7 +136,8 @@ function rgb(hex: string): [number, number, number] {
 /**
  * The light behind the page: four pastel lights that change with each section's mood, drawn at a quarter of the
  * window's resolution, and only when they change: as the mood turns, and where there's a mouse, as they drift and
- * lean toward it. Every frame of the scenery stretches that picture over the window.
+ * lean toward it. Every frame of the scenery stretches that picture over the window, gathering it a little where
+ * cards come to rest, as they do on the collection's deck.
  */
 export class Light implements Picture {
   readonly object: Mesh;
@@ -167,9 +153,12 @@ export class Light implements Picture {
   };
   private readonly state = { strength: 0, w0: 1, w1: 1, w2: 1, w3: 1 };
   private readonly lean = { x: 0, y: 0 };
-  /** The ripples spreading: their middles on the page (CSS pixels), and how long ago they started. */
-  private readonly ripples: { x: number; y: number; age: number }[] = [];
-  private readonly rings = Array.from({ length: RIPPLES }, () => new Vector4());
+  /**
+   * Where the light gathers, on the page (CSS pixels), how far round it, how much it's asked to, and how much it has,
+   * from 0 to 1.
+   */
+  private readonly gathered = { x: 0, y: 0, reach: 1, asked: 0, held: 0 };
+  private readonly gather = new Vector4();
   /** How far the page is scrolled, as the light last saw it. */
   private scroll = 0;
   private dirty = true;
@@ -209,7 +198,7 @@ export class Light implements Picture {
         uniforms: {
           uLight: { value: this.target.texture },
           uResolution: this.uniforms.uResolution,
-          uRipples: { value: this.rings },
+          uGather: { value: this.gather },
         },
         depthTest: false,
         depthWrite: false,
@@ -236,12 +225,14 @@ export class Light implements Picture {
     });
   }
 
-  /** Starts a ripple from (`x`, `y`) on the window, unless one has only just started. */
-  ripple(x: number, y: number): void {
-    const latest = this.ripples[this.ripples.length - 1];
-    if (latest != null && latest.age < ripple.gap) return;
-    if (this.ripples.length >= RIPPLES) this.ripples.shift();
-    this.ripples.push({ x, y: y + this.scroll, age: 0 });
+  /** A card has come to rest at (`x`, `y`) on the window: the light gathers round it, `reach` round, a little more. */
+  settle(x: number, y: number, reach: number): void {
+    Object.assign(this.gathered, {
+      x,
+      y: y + this.scroll,
+      reach,
+      asked: Math.min(1, this.gathered.asked + gathering.gather),
+    });
   }
 
   resize(view: Readonly<View>): void {
@@ -258,29 +249,18 @@ export class Light implements Picture {
       this.dirty = true;
     }
     this.scroll = view.scroll;
-    return this.spread(seconds) || this.dirty;
+    return this.breathe(seconds) || this.dirty;
   }
 
-  /**
-   * Moves the ripples on by `seconds`, each ring spreading and fading, weaker the further it's spread; whether any was
-   * still spreading, to be drawn again.
-   */
-  private spread(seconds: number): boolean {
-    const { ripples } = this;
-    for (const each of ripples) each.age += seconds;
-    while (ripples[0] != null && ripples[0].age >= ripple.life) ripples.shift();
-    const was = this.rings.some((ring) => ring.w > 0);
-    this.rings.forEach((ring, index) => {
-      const each = ripples[index];
-      if (each == null) {
-        ring.set(0, 0, 0, 0);
-        return;
-      }
-      const spread = each.age * ripple.speed;
-      const left = 1 - each.age / ripple.life;
-      ring.set(each.x, each.y - this.scroll, spread, (ripple.swell * left * left) / (1 + spread / 400));
-    });
-    return was || ripples.length > 0;
+  /** Moves the light's gathering on by `seconds`; whether it's still gathered at all, to be drawn again. */
+  private breathe(seconds: number): boolean {
+    const { gathered } = this;
+    const was = this.gather.w > 0;
+    gathered.asked = damp(gathered.asked, 0, gathering.exhale, seconds);
+    gathered.held = damp(gathered.held, gathered.asked, gathering.inhale, seconds);
+    const held = gathered.held > 0.002 ? gathered.held : 0;
+    this.gather.set(gathered.x, gathered.y - this.scroll, gathered.reach, held);
+    return was || held > 0;
   }
 
   render(renderer: WebGLRenderer): void {

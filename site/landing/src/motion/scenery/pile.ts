@@ -272,7 +272,7 @@ export class Pile implements Picture {
   /** Where the deck's front card is seen this frame, from where it rests. */
   private readonly front: Pose = { x: 0, y: 0, scale: 1, roll: 0 };
   private readonly blank: number;
-  /** The light behind the page, which ripples as each card lands. */
+  /** The light behind the page, which gathers round the deck as cards land. */
   private readonly light: Light;
   private readonly section: HTMLElement;
   private readonly anchor: HTMLElement;
@@ -477,13 +477,13 @@ export class Pile implements Picture {
 
   /**
    * A card has settled onto the deck's face: the deck is knocked back, and eases back a card to take it, its last lost
-   * in the distance, and the light behind it ripples.
+   * in the distance, and the light behind it gathers round it a little more.
    */
   private land(card: Card, flight: Flight): void {
     card.flight = null;
     const { left, top, width, height } = this.place;
     this.wake.thud(Math.sign(flight.from.x), width);
-    this.light.ripple(left + width / 2, this.top + top + height / 2);
+    this.light.settle(left + width / 2, this.top + top + height / 2, width * 1.6);
     this.flying.splice(this.flying.indexOf(card), 1);
     card.depth = 0;
     this.deck.unshift(card);
