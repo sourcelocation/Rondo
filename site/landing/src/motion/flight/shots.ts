@@ -21,8 +21,6 @@ export interface Frame {
   readonly aim: Vector3;
   /** The camera's roll about where it looks, in radians. */
   roll: number;
-  /** The vertical field of view, in degrees, for a 16:9 frame (narrower frames widen it to keep the width). */
-  fov: number;
   /** How clear the open window's glass is: 0 as dark as the others, 1 gone. */
   clear: number;
   /** Whether the camera is near enough the window for the cabin to be seen. */
@@ -31,11 +29,6 @@ export interface Frame {
   focus: number;
   /** Whether the cloud deck can be seen: not once the camera is through the window. */
   deck: boolean;
-  /**
-   * How far the camera has settled at the seat, from the window (0) to at rest (1): the shot comes to be framed under
-   * the words of landing as it does (motion/flight/film.ts).
-   */
-  seated: number;
 }
 
 const clamp01 = (x: number) => Math.min(Math.max(x, 0), 1);
@@ -47,14 +40,16 @@ const ease = (x: number) => {
 const share = (x: number, from: number, to: number) => clamp01((x - from) / (to - from));
 
 /**
- * An ease between two keyframes, as an F-curve (or CSS's cubic-bezier): from 0 to 1, flat at both ends, so it leaves
- * and arrives at rest. Its handles reach `leave` and `arrive` of the way across (from the start, and back from the
- * end): a long handle lingers at its end, a short one gets going (or stops) briskly.
+ * An ease between two keyframes, as an F-curve, from 0 to 1, given as CSS's cubic-bezier is: where its leaving handle
+ * ends (`x1`, `y1`) and its arriving one (`x2`, `y2`). A level handle leaves (or arrives) at rest, a long one lingering
+ * there, a short one getting going (or stopping) briskly; one along the diagonal goes at a steady pace.
  */
 class Ease {
   constructor(
-    private readonly leave: number,
-    private readonly arrive: number,
+    private readonly x1: number,
+    private readonly y1: number,
+    private readonly x2: number,
+    private readonly y2: number,
   ) {}
 
   at(x: number): number {
@@ -65,29 +60,32 @@ class Ease {
     for (let step = 0; step < 32; step++) {
       const s = (low + high) / 2;
       const r = 1 - s;
-      if (3 * r * r * s * this.leave + 3 * r * s * s * (1 - this.arrive) + s * s * s < across) low = s;
+      if (3 * r * r * s * this.x1 + 3 * r * s * s * this.x2 + s * s * s < across) low = s;
       else high = s;
     }
     const s = (low + high) / 2;
-    return s * s * (3 - 2 * s);
+    const r = 1 - s;
+    return 3 * r * r * s * this.y1 + 3 * r * s * s * this.y2 + s * s * s;
   }
 }
 
 /** Where the open window's glass clears, in metres from it (in front of it below 0), as the camera nears it. */
 const UNTINT = { from: -3.2, to: -0.9 } as const;
+/** How much higher than square on the screen the camera looks at rest, so the cabin beyond shows above it. */
+const LIFT = (7 * Math.PI) / 180;
 
 /**
- * How the camera travels the curve, from the opening to the seat: setting off slowly from far out, and coming to the
- * window three quarters of the way through (motion/flight.ts brings the words of landing up then), leaving the rest
- * for the cabin.
+ * How the camera travels the curve, from the opening to the seat: nearly steadily, setting straight off from far out,
+ * and settling lightly at the end, coming to the window five sixths of the way through (motion/flight.ts brings the
+ * words of landing up then), leaving the rest for the cabin.
  */
-const TRAVEL = new Ease(0.55, 0.6);
+const TRAVEL = new Ease(1 / 3, 1 / 3, 0.7, 1);
 /**
  * When the target sets off from the window, as a share of the flight (it arrives at the laptop as the camera comes to
  * rest), and how it goes: off briskly enough to keep well ahead of the camera, which is fast as it reaches the window,
  * and settling on the laptop as slowly as it can, as the camera settles.
  */
-const TARGET = { from: 0.63, ease: new Ease(0.2, 1) } as const;
+const TARGET = { from: 0.66, ease: new Ease(0.2, 0, 0, 1) } as const;
 
 /**
  * Where the camera waits, from the window: how far out, how far above, and how far ahead (toward the nose), which
@@ -139,9 +137,17 @@ export class Shots {
       .divideScalar(-3 * r * r * at);
     leave.sub(off(leave)).add(across);
 
-    // Leaving the window toward the seat, as the camera comes in, and coming to the laptop's screen from the seat, to
-    // look at it square on.
-    this.target = new CubicBezierCurve3(window.clone(), end.clone(), end.clone(), screen.centre.clone());
+    const pitch = Math.asin(-screen.normal.y) + LIFT;
+    const look = screen.normal
+      .clone()
+      .setY(0)
+      .normalize()
+      .negate()
+      .multiplyScalar(Math.cos(pitch))
+      .setY(Math.sin(pitch));
+    const laptop = end.clone().addScaledVector(look, screen.viewing);
+    // Leaving the window toward the seat, as the camera comes in, and coming to the laptop from the seat.
+    this.target = new CubicBezierCurve3(window.clone(), end.clone(), end.clone(), laptop);
   }
 
   /** Where along the curve (by its own parameter) it passes the fuselage's side, the window. */
@@ -179,13 +185,11 @@ export class Shots {
     aim.addScaledVector(this.sway, 0.05 * calm);
     frame.roll = 0.004 * Math.sin(clock * 0.5) * calm;
 
-    // A wider lens inside, opening on the way to the seat; the window clearing as it nears, the laptop in focus at rest.
+    // The window clearing as the camera nears it, the laptop in focus at rest.
     const depth = this.off.copy(position).sub(this.window).dot(this.inward);
-    frame.fov = 36 + 8 * ease(share(depth, -1, this.depth));
     frame.clear = ease(share(depth, UNTINT.from, UNTINT.to));
     frame.inside = depth > -8;
     frame.deck = depth < 0;
-    frame.seated = ease(share(depth, 0, this.depth));
     // The lens starts focusing on the laptop as the window starts to clear, quickly at first.
     frame.focus = 1 - (1 - share(depth, UNTINT.from, this.depth)) ** 2;
 

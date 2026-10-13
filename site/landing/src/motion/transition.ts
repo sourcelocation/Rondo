@@ -119,6 +119,7 @@ export class Curtain {
       delete html.dataset.curtain;
       return;
     }
+    html.dataset.curtain = "lifting";
     const from = this.source;
     const content = all(document, CONTENT);
     const parts = [this.root, this.sheet, this.canvas, this.label];

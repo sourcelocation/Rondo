@@ -1,6 +1,6 @@
 ---
 /**
- * The scenery behind the page (motion/scenery.ts): one canvas, fixed behind everything, that draws the light and,
+ * The scenery behind the page (motion/scenery.ts): one canvas, held behind everything, that draws the light and,
  * where the page has them, the hero's ring of cards, the collection's deck and the flight. Until it draws, and without
  * it, these gradients stand in for the light, still.
  */
@@ -9,18 +9,28 @@
 <div class="scenery" aria-hidden="true" data-scenery></div>
 
 <style>
-  /* As tall as the screen with the browser's toolbars away, so they come and go over it. */
+  /*
+   * Held on the screen, behind everything, taking up no room: the canvas inside is as tall as the screen with the
+   * browser's toolbars away, so they come and go over it. Its box reaches past the screen's top and foot (--overhang,
+   * never seen): a phone's browser takes a screen-wide layer held flush with its edges for a bar of the page's own,
+   * and then keeps the whole page clear of its status bar and its toolbar, behind bands of flat colour, where it
+   * otherwise draws the page's words on under them.
+   */
   .scenery {
-    position: fixed;
-    inset: 0 0 auto;
-    height: var(--screen);
+    --overhang: 120px;
+    position: sticky;
+    top: calc(-1 * var(--overhang));
     z-index: 0;
+    height: calc(var(--screen) + 2 * var(--overhang));
+    margin-block: calc(-1 * var(--overhang)) calc(-1 * (var(--screen) + var(--overhang)));
+    padding-block: var(--overhang);
     pointer-events: none;
     background:
-      radial-gradient(42% 46% at 18% 30%, rgb(169 202 255 / 55%), transparent 70%),
-      radial-gradient(38% 42% at 82% 26%, rgb(207 191 255 / 50%), transparent 70%),
-      radial-gradient(40% 40% at 70% 82%, rgb(255 203 180 / 45%), transparent 70%),
-      radial-gradient(36% 38% at 26% 84%, rgb(180 234 217 / 40%), transparent 70%), var(--paper);
+      radial-gradient(42% 46% at 18% 30%, rgb(169 202 255 / 55%), transparent 70%) content-box,
+      radial-gradient(38% 42% at 82% 26%, rgb(207 191 255 / 50%), transparent 70%) content-box,
+      radial-gradient(40% 40% at 70% 82%, rgb(255 203 180 / 45%), transparent 70%) content-box,
+      radial-gradient(36% 38% at 26% 84%, rgb(180 234 217 / 40%), transparent 70%) content-box,
+      var(--paper);
   }
 
   .scenery.is-drawn {

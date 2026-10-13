@@ -1,9 +1,9 @@
 import { gsap } from "gsap";
 import { Color, type Object3D, OrthographicCamera, Scene, WebGLRenderer } from "three";
 import { damp } from "./math";
-import type { Pointer } from "./pointer";
 import { Light } from "./scenery/light";
 import type { Screen } from "./screen";
+import type { Stage } from "./stage";
 
 /**
  * The screen as the scenery draws it: its size in CSS pixels, with the toolbars away (`height`, which the canvas
@@ -53,7 +53,7 @@ const FLOOR = 0.75;
 const FOLLOW = 18;
 
 /**
- * The scenery behind the page: one WebGL canvas, fixed behind everything, that draws the page's pictures (the light,
+ * The scenery behind the page: one WebGL canvas, held behind everything, that draws the page's pictures (the light,
  * the ring around the headline, the collection's deck and the flight) as stages held on the screen. The browser
  * scrolls the page natively (motion/scroll.ts); the scenery follows the scroll smoothly, so however unevenly the
  * scroll reaches the page's script, what's drawn here moves evenly. It draws a frame only when something in it
@@ -74,9 +74,12 @@ export class Scenery {
   private lost = false;
   private slow = 0;
   private quick = 0;
+  /** Whether the pointer is a mouse, which can spare more pixels. */
+  private readonly fine: boolean;
+  private readonly screen: Screen;
 
-  /** The scenery in `host`, as big as `screen`, or null where WebGL isn't there. */
-  static mount(host: HTMLElement, fine: boolean, pointer: Pointer, screen: Screen): Scenery | null {
+  /** The scenery in `host`, for `stage`'s screen, or null where WebGL isn't there. */
+  static mount(host: HTMLElement, stage: Stage): Scenery | null {
     const canvas = document.createElement("canvas");
     let renderer: WebGLRenderer;
     try {
@@ -91,18 +94,19 @@ export class Scenery {
     } catch {
       return null;
     }
-    return new Scenery(host, renderer, fine, pointer, screen);
+    return new Scenery(host, renderer, stage);
   }
 
   private constructor(
     host: HTMLElement,
     readonly renderer: WebGLRenderer,
-    private readonly fine: boolean,
-    pointer: Pointer,
-    private readonly screen: Screen,
+    stage: Stage,
   ) {
+    this.fine = stage.fine;
+    this.screen = stage.screen;
     renderer.setClearColor(new Color(1, 1, 1), 1);
-    this.light = new Light(fine, pointer);
+    // The light carries on past the screen's edges, and where there's a mouse it drifts and leans toward it.
+    this.light = new Light(stage.fine, stage.pointer, stage.edges);
     this.add(this.light);
     const canvas = renderer.domElement;
     canvas.addEventListener("webglcontextlost", (event) => {
@@ -119,7 +123,7 @@ export class Scenery {
     host.append(canvas);
     host.classList.add("is-drawn");
     this.resize();
-    screen.onChange(() => {
+    this.screen.onChange(() => {
       this.resize();
     });
     gsap.ticker.add(this.tick);

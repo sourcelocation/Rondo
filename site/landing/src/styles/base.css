@@ -53,6 +53,8 @@
   /* Secondary text stays above 4.5:1 even over the light; --ink-4 is for lines and ornament, never for words. */
   --ink-3: #66676e;
   --ink-4: #c4c5ca;
+  /* The curtain between pages (components/Curtain.astro). */
+  --night: #0d0d12;
   --line: rgb(11 11 13 / 7%);
   --line-2: rgb(11 11 13 / 12%);
 
@@ -170,17 +172,31 @@
  * opening): a phone would zoom the whole page out to fit it, and back. On <html>, so <body> clips too, rather than
  * handing its overflow to the window.
  */
+/*
+ * The page's colour past the screen's foot, under a phone's toolbar, which the light keeps (motion/edges.ts). Not
+ * inherited, so as it changes only <html> is styled again.
+ */
+@property --edge {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #fff;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  background: var(--paper);
+  background: var(--edge);
   overflow-x: clip;
 }
 
+/*
+ * <body> keeps its children's margins inside it (the scenery's overhang is one), and has no background of its own:
+ * past the screen's edges, under a phone's bars, the page shows <html>'s, which the light keeps in its colour.
+ */
 body {
+  display: flow-root;
   margin: 0;
   min-height: var(--screen-safe);
-  background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);
   font-size: 1rem;

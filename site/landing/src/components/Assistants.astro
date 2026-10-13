@@ -16,7 +16,8 @@ import { links } from "../content/links";
 // Every ending the headline takes, unseen in its place, so it keeps the room of the longest as they're typed.
 const endings = [resting, ...requests.map((request) => request.words)];
 // The row's places, each holding every request's card for it: seven, the requests'
-// five cards going round, so the row reaches past both edges of the widest screen all the while it's carried along.
+// five cards going round, so the row reaches past both edges of the widest screen all the while it's carried along;
+// narrower, it shows five of them (the style below).
 const size = requests[0]?.cards.length ?? 0;
 const places = Array.from({ length: 7 }, (_, index) => ({
   cards: requests.flatMap((request) => request.cards[index % size] ?? []),
@@ -69,9 +70,6 @@ const places = Array.from({ length: 7 }, (_, index) => ({
           </li>
         ))}
       </ol>
-      <p class="row__by" data-by>
-        Made by <span data-by-name>{requests[0]?.by}</span>
-      </p>
     </div>
   </div>
 </section>
@@ -355,6 +353,21 @@ const places = Array.from({ length: 7 }, (_, index) => ({
 
     .ai__words {
       max-width: 30rem;
+    }
+  }
+
+  /*
+   * Short of the widest screens, five places reach past both edges all the while the row slides in and is carried
+   * along: its first and last, as it's ordered now, aren't drawn.
+   */
+  @media (width < 1800px) {
+    .row {
+      --n: 5;
+    }
+
+    .card:first-child,
+    .card:last-child {
+      display: none;
     }
   }
 

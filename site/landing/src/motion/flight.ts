@@ -19,10 +19,10 @@ import type { Stage } from "./stage";
 
 /**
  * When the words change over, as shares of the flight: those above the clouds leave once the camera is under way from
- * the opening, and those of landing come up once it's through the window, which it is three quarters of the way in
+ * the opening, and those of landing come up once it's through the window, which it is five sixths of the way in
  * (as motion/flight/shots.ts's travel has it).
  */
-const WORDS = { leave: 0.556, land: 0.755 } as const;
+const WORDS = { leave: 0.556, land: 0.809 } as const;
 
 export class FlightFilm {
   private projection: Projection | null = null;

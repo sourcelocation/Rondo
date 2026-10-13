@@ -26,10 +26,12 @@ const { title, heading, description } = Astro.props;
 </Page>
 
 <style>
+  /* Held at the screen's top, sticky and taking up no room, as the scenery is (components/Scenery.astro). */
   .glow {
-    position: fixed;
-    inset: 0 0 auto;
+    position: sticky;
+    top: 0;
     height: calc(var(--screen) * 0.7);
+    margin-bottom: calc(var(--screen) * -0.7);
     pointer-events: none;
     background:
       radial-gradient(50% 70% at 15% 0%, rgb(169 202 255 / 45%), transparent 70%),

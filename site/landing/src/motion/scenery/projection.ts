@@ -52,12 +52,10 @@ const fragment = /* glsl */ `
 /**
  * The flight's film (motion/flight/film.ts), shown by the scenery as a screen of its own, held still: the flight
  * section's stage holds the screen while the section scrolls past (it's sticky), and as it comes and goes the film
- * stays where it is, revealed and covered by the soft edges the poster's mask has, which follow the stage. The stage is
- * as tall as the screen with the toolbars away; the film tells its shots what of it is always seen and where the words
- * of landing end, to frame the laptop in. The film is drawn again only when it changes; between, the scenery shows its
- * last frame. It draws its first frame as soon as it's made, and the section is marked playing (.is-playing), so its
- * poster has given way before the section comes. Should the GPU be lost, the poster comes back while the film is made
- * again.
+ * stays where it is, revealed and covered by the soft edges the poster's mask has, which follow the stage. The film is
+ * drawn again only when it changes; between, the scenery shows its last frame. It draws its first frame as soon as
+ * it's made, and the section is marked playing (.is-playing), so its poster has given way before the section comes.
+ * Should the GPU be lost, the poster comes back while the film is made again.
  */
 export class Projection implements Picture {
   readonly object: Mesh;
@@ -65,8 +63,6 @@ export class Projection implements Picture {
   private readonly stage: HTMLElement;
   /** The film's box in the stage, whose mask's stops the film fades by. */
   private readonly box: HTMLElement;
-  /** The words of landing, which the laptop is framed under at rest. */
-  private readonly landed: HTMLElement;
   private readonly rect = new Vector4();
   private readonly stageAt = new Vector2(0, 1);
   private readonly fade = new Vector3(0.06, 0.42, 0.86);
@@ -74,8 +70,6 @@ export class Projection implements Picture {
   private readonly frame: IUniform<Texture | null> = { value: null };
   private section: Place = { left: 0, top: 0, width: 1, height: 1 };
   private height = 1;
-  /** How far down the stage the words of landing end. */
-  private rest = 0;
   private view: Readonly<View> | null = null;
   private dirty = true;
   private progress = 0;
@@ -108,7 +102,6 @@ export class Projection implements Picture {
     this.film = film;
     this.stage = one(host, "[data-flight-stage]");
     this.box = one(host, "[data-flight-film]");
-    this.landed = one(host, "[data-flight-landed]");
     this.object = new Mesh(
       new PlaneGeometry(2, 2),
       new ShaderMaterial({
@@ -133,7 +126,6 @@ export class Projection implements Picture {
     const measure = () => {
       this.section = scenery.locate(host);
       this.height = Math.max(this.stage.offsetHeight, 1);
-      this.rest = this.landed.offsetTop + this.landed.offsetHeight;
       const style = getComputedStyle(this.box);
       const stop = (name: string) => parseFloat(style.getPropertyValue(name)) / 100;
       this.fade.set(stop("--fade-clear"), stop("--fade-solid"), stop("--fade-foot"));
@@ -211,20 +203,14 @@ export class Projection implements Picture {
     this.host.classList.add("is-playing");
   }
 
-  /**
-   * Sizes the film's frames to the stage, as sharp as the scenery draws, within the film's budget, and gives its shots
-   * their room: what of the stage is always seen, and where the words of landing end.
-   */
+  /** Sizes the film's frames to the stage, as sharp as the scenery draws, within the film's budget. */
   private size(): void {
     const { view, film, height } = this;
     if (view == null || film == null) return;
     const { width } = this.section;
     const budget = this.options.light ? BUDGET.light : BUDGET.full;
     const ratio = Math.min(view.ratio, 2, Math.sqrt(budget / (width * height)));
-    film.setSize(Math.max(1, Math.round(width * ratio)), Math.max(1, Math.round(height * ratio)), {
-      rest: Math.min(this.rest / height, 1),
-      safe: Math.min(view.safe / height, 1),
-    });
+    film.setSize(Math.max(1, Math.round(width * ratio)), Math.max(1, Math.round(height * ratio)));
     this.dirty = true;
   }
 }

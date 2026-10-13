@@ -37,11 +37,19 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
     pointer-events: none;
   }
 
-  /* Over a page: "leaving" one, or "cover"ing one that opened under it. */
+  /* Over a page: "leaving" one, "cover"ing one that opened under it, or "lifting" as that one comes through. */
   :global(html[data-curtain]) .curtain {
     visibility: visible;
     opacity: 1;
     pointer-events: auto;
+  }
+
+  /*
+   * Once it covers the screen, its ink is the page's colour too, which a phone's browser shows under its status bar and
+   * its toolbar; while it's passing, the page's own shows there.
+   */
+  :global(html[data-curtain="cover"]) {
+    background-color: var(--night);
   }
 
   /* Taken away because the page's motion didn't come in time (/head.js): it fades. */
@@ -56,7 +64,7 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
     position: absolute;
     inset: 0;
     overflow: hidden;
-    background: #0d0d12;
+    background: var(--night);
   }
 
   /* The page's four lights, low and soft in the dark. */
@@ -100,7 +108,8 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
     opacity: 0;
   }
 
-  :global(html[data-curtain="cover"]) .curtain__label {
+  :global(html[data-curtain="cover"]) .curtain__label,
+  :global(html[data-curtain="lifting"]) .curtain__label {
     opacity: 1;
   }
 

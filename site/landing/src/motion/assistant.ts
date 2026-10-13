@@ -28,7 +28,7 @@ const FRICTION = 6;
  * The AI section, told on a loop while it's in view, one request at a time. The headline ends on an empty line where
  * the caret blinks, over a row of places for cards, windows onto one surface (motion/assistant/field.ts). What's asked
  * is typed out, stirring it; the caret blinks on, a light reads through the words and the surface swells; then a
- * shockwave crosses the row at an even pace (the row's --sweep), and each card shows itself as the swell reaches
+ * shockwave crosses the row at an even pace, and each card shows itself as the swell reaches
  * it; the assistant that made them is named under the row. A while later the words are selected and gone, the
  * cards lift away, and the next request begins. Before any of it, as the row scrolls in, the cards slide into their
  * places from the left, the way the shockwave carries them, already moving and slowing to a stop, one a beat after another; and each shockwave carries
@@ -50,6 +50,8 @@ export class Assistant {
   /** The row's places, and how far along the shockwaves have carried them, in places. */
   private readonly places: HTMLElement;
   private readonly carried = { value: 0 };
+  /** How far across the row the shockwave is, in places. */
+  private readonly swept = { value: -BEFORE };
   /** The request whose cards are made; null while the places are empty. */
   private shown: number | null = null;
   private next = 0;
@@ -68,7 +70,6 @@ export class Assistant {
     root.classList.add("is-live");
     gsap.set(this.made, { autoAlpha: 0 });
     gsap.set(this.faces.flat(), { autoAlpha: 0 });
-    gsap.set(this.row, { "--sweep": -BEFORE });
     gsap.set(this.by, { autoAlpha: 0 });
     const arriving = all(root, "[data-place]");
     gsap.set(arriving, { x: () => -window.innerWidth * ARRIVING, force3D: true });
@@ -91,6 +92,7 @@ export class Assistant {
       onResize(this.places, () => this.place());
       const { Field } = await import("./assistant/field");
       this.field = Field.create(this.row, all(root, "[data-field]", HTMLCanvasElement));
+      this.field?.sweep(this.swept.value);
     });
   }
 
@@ -172,7 +174,7 @@ export class Assistant {
 
   /** Puts the row's places where they've been carried, and the surface under them where the screen has it. */
   private place(): void {
-    const [first, second] = all(this.places, "[data-place]");
+    const [first, second] = all(this.places, "[data-place]").filter((place) => place.offsetWidth > 0);
     const width = (second?.offsetLeft ?? 0) - (first?.offsetLeft ?? 0);
     gsap.set(this.places, { x: this.carried.value * width, force3D: true });
     this.field?.slide(this.carried.value);
@@ -211,7 +213,7 @@ export class Assistant {
 
   /**
    * Makes request `index`'s cards from `at`: the shockwave comes in from the row's left and crosses it, and each card
-   * shows itself as the swell reaches it, coming into focus and settling onto its place. Returns when it has crossed.
+   * shows itself as the swell reaches it, fading in and settling onto its place. Returns when it has crossed.
    */
   private fill(timeline: gsap.core.Timeline, index: number, at: number): number {
     const columns = Number(getComputedStyle(this.row).getPropertyValue("--n")) || 1;
@@ -221,7 +223,12 @@ export class Assistant {
     const when = (place: number): number => at + (place + BEFORE) * PLACE;
     timeline.set(this.faces[index] ?? [], { autoAlpha: 1 }, at);
     timeline.call(() => (this.byName.textContent = requests[index]?.by ?? ""), undefined, at);
-    timeline.fromTo(this.row, { "--sweep": -BEFORE }, { "--sweep": end, duration: crossing, ease: "none" }, at);
+    timeline.fromTo(
+      this.swept,
+      { value: -BEFORE },
+      { value: end, duration: crossing, ease: "none", onUpdate: () => this.field?.sweep(this.swept.value) },
+      at,
+    );
     // As it reaches the middle of the row it carries the row along with it, a place, where it stays.
     timeline.call(
       () => {
@@ -236,11 +243,17 @@ export class Assistant {
       undefined,
       when((columns - 1) / 2 - 1),
     );
-    this.made.forEach((made, place) => {
+    // Each place's card by where it is among those shown; one that isn't, before them or after, as if it were.
+    const first = Math.max(
+      this.made.findIndex((made) => made.offsetWidth > 0),
+      0,
+    );
+    this.made.forEach((made, index) => {
+      const place = index - first;
       timeline.fromTo(
         made,
-        { autoAlpha: 0, y: made.offsetWidth * 0.03, scale: 0.985, filter: "blur(12px)" },
-        { autoAlpha: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out" },
+        { autoAlpha: 0, y: made.offsetWidth * 0.03, scale: 0.985 },
+        { autoAlpha: 1, y: 0, scale: 1, duration: 0.7, ease: "expo.out" },
         when(place - REACH),
       );
     });
@@ -259,13 +272,12 @@ export class Assistant {
     // The surface under them carries on as the shockwave left it: it's settled everywhere, so taking the shockwave
     // off the row now changes nothing in it, and it calms on from there.
     timeline.call(() => this.field?.uncover(), undefined, at);
-    timeline.set(this.row, { "--sweep": -BEFORE }, at);
+    timeline.set(this.swept, { value: -BEFORE, onComplete: () => this.field?.sweep(-BEFORE) }, at);
     timeline.to(
       this.made,
       {
         autoAlpha: 0,
         y: (_: number, made: HTMLElement) => -made.offsetWidth * 0.06,
-        filter: "blur(6px)",
         duration: 0.5,
         ease: "power2.in",
         stagger: 0.05,

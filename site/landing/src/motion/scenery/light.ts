@@ -11,8 +11,9 @@ import {
   WebGLRenderTarget,
   type WebGLRenderer,
 } from "three";
-import { damp } from "../math";
+import type { Edges } from "../edges";
 import type { Mood } from "../frame";
+import { damp } from "../math";
 import type { Pointer } from "../pointer";
 import type { Picture, View } from "../scenery";
 
@@ -24,6 +25,8 @@ const SCALE = 4;
  * per second), so however the cards come it swells and settles smoothly, and with dozens at once it fills and holds.
  */
 const gathering = { gather: 0.1, inhale: 0.9, exhale: 0.32 } as const;
+/** How long the light leaves between reading its foot back from the GPU while it changes, in milliseconds. */
+const FOOT_EVERY = 120;
 
 const vertex = /* glsl */ `
   varying vec2 vUv;
@@ -137,7 +140,8 @@ function rgb(hex: string): [number, number, number] {
  * The light behind the page: four pastel lights that change with each section's mood, drawn at a quarter of the
  * window's resolution, and only when they change: as the mood turns, and where there's a mouse, as they drift and
  * lean toward it. Every frame of the scenery stretches that picture over the window, gathering it a little where
- * cards come to rest, as they do on the collection's deck.
+ * cards come to rest, as they do on the collection's deck. As it changes, its colour along the screen's foot is read
+ * back, without waiting on the GPU, for the page past the screen's foot (motion/edges.ts) to carry it on.
  */
 export class Light implements Picture {
   readonly object: Mesh;
@@ -162,11 +166,15 @@ export class Light implements Picture {
   /** How far the page is scrolled, as the light last saw it. */
   private scroll = 0;
   private dirty = true;
+  /** Whether its foot is being read back, and whether it has changed since it began to be. */
+  private reading = false;
+  private changed = false;
 
   /** Where there's a mouse (`drifting`), the lights drift and lean toward it. */
   constructor(
     private readonly drifting: boolean,
     private readonly pointer: Pointer,
+    private readonly edges: Edges,
   ) {
     this.target.texture.minFilter = LinearFilter;
     this.target.texture.magFilter = LinearFilter;
@@ -272,9 +280,54 @@ export class Light implements Picture {
     uniforms.uWeights.value = [state.w0, state.w1, state.w2, state.w3];
     renderer.setRenderTarget(this.target);
     renderer.render(this.pass, this.camera);
+    this.readFoot(renderer);
   }
 
   restore(): void {
     this.dirty = true;
+  }
+
+  /**
+   * Reads the light's foot back from the GPU, without waiting on it, and paints the page past the screen's foot with
+   * its colour; one reading at a time, a moment apart, and once more after the last change.
+   */
+  private readFoot(renderer: WebGLRenderer): void {
+    if (this.reading) {
+      this.changed = true;
+      return;
+    }
+    this.reading = true;
+    this.changed = false;
+    const { target } = this;
+    const foot = new Uint8Array(target.width * 4);
+    // The target's rows run from its foot up.
+    renderer
+      .readRenderTargetPixelsAsync(target, 0, 0, target.width, 1, foot)
+      .then(() => {
+        this.edges.paint(this.average(foot));
+      })
+      .catch((error: unknown) => {
+        console.error(error);
+      })
+      .finally(() => {
+        setTimeout(() => {
+          this.reading = false;
+          if (this.changed) this.readFoot(renderer);
+        }, FOOT_EVERY);
+      });
+  }
+
+  /** The colour of a row of the light's pixels, all of it taken together. */
+  private average(row: Uint8Array): string {
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    for (let at = 0; at < row.length; at += 4) {
+      r += row[at] ?? 0;
+      g += row[at + 1] ?? 0;
+      b += row[at + 2] ?? 0;
+    }
+    const mean = (sum: number) => String(Math.round(sum / Math.max(row.length / 4, 1)));
+    return `rgb(${mean(r)} ${mean(g)} ${mean(b)})`;
   }
 }

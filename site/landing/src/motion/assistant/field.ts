@@ -54,7 +54,7 @@ const vertex = /* glsl */ `
  * deep water. Stirred (uStir), it goes higher and quicker, its waves keeping time by a clock that runs as fast as it's
  * stirred (uPhase); behind the shockwave the sea keeps the time of a calm one (uCalm).
  *
- * The shockwave crosses it with the light (uSweep, in places, as the row's --sweep): a crest across the sea, square
+ * The shockwave crosses it with the light (uSweep, in places): a crest across the sea, square
  * to the row. It's seen coming, its way readied (uSurge) once the words are sent: the sea swells beyond it, then
  * draws down and goes glassy, waves uFlattened times flatter, as it nears. Its crest's lines flare as it passes,
  * thicker and blooming, and behind it the sea settles, so each card is uncovered over still water.
@@ -251,8 +251,7 @@ interface View {
 /**
  * The sea under the AI section's empty places (see `fragment`), drawn once a frame for each one by one renderer of
  * its own, off the page, and copied into the canvas in it: the places scroll with the page, and the scenery's picture
- * lags the page by a frame. It's drawn only while the section's on screen and the places are empty; the shockwave goes
- * where the row's --sweep is.
+ * lags the page by a frame. It's drawn only while the section's on screen and the places are empty.
  */
 export class Field {
   private readonly uniforms = {
@@ -288,6 +287,8 @@ export class Field {
   private readonly stir = { now: IDLE, to: IDLE };
   private readonly surge = { now: 0, to: 0 };
   private covered = false;
+  /** How far across the row, in places, the shockwave's crest is. */
+  private swept = -1;
 
   /** The sea in `canvases`, the places in `row`; null where WebGL isn't there. */
   static create(row: HTMLElement, canvases: HTMLCanvasElement[]): Field | null {
@@ -363,6 +364,11 @@ export class Field {
     this.uniforms.uSlid.value = places;
   }
 
+  /** The shockwave's crest is `places` across the row. */
+  sweep(places: number): void {
+    this.swept = places;
+  }
+
   /** Each canvas's size, and where its place is in the row as it's laid out now. */
   measure(): void {
     const ratio = Math.min(window.devicePixelRatio, 1.5);
@@ -402,19 +408,13 @@ export class Field {
     return 0.45 + 1.3 * stir;
   }
 
-  /** How far across the row, in places, the shockwave's crest is. */
-  private sweep(): number {
-    const places = parseFloat(this.row.style.getPropertyValue("--sweep"));
-    return Number.isNaN(places) ? -1 : places;
-  }
-
   private draw(): void {
     const { uniforms } = this;
     uniforms.uPhase.value = this.phase;
     uniforms.uCalm.value = this.calm;
     uniforms.uStir.value = this.stir.now;
     uniforms.uSurge.value = this.surge.now;
-    uniforms.uSweep.value = this.sweep();
+    uniforms.uSweep.value = this.swept;
     uniforms.uScale.value = sea.scale;
     uniforms.uHeight.value = sea.height;
     uniforms.uSharpness.value = sea.sharpness;
