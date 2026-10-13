@@ -1,10 +1,12 @@
-# Rondo as it runs in production, for self-hosting and for trying a build locally. Copy .env.example
-# to .env (its values run Rondo on this machine; the docs' "Run your own server" says what to change
-# on a server), then:
-#   docker compose up -d            the released images (RONDO_VERSION), or this checkout's if unset
-#   docker compose up --build       this checkout, built
-#   docker compose -f compose.yaml -f compose.dev.yaml up --build   development (compose.dev.yaml)
-# Either way Rondo is at RONDO_PUBLIC_URL, http://localhost:23900/app/ unless you change it.
+# Rondo's services, in one file that needs nothing beside it but .env (copy .env.example):
+#   docker compose up -d --wait     what Rondo depends on: Postgres, Kratos, Hydra (and Mailpit, by
+#                                   .env.example's profiles). In development Rondo's own servers run
+#                                   on this machine, each reloading itself (Procfile.dev).
+#   COMPOSE_PROFILES=app            Rondo itself as well, from the release this file comes with (or
+#                                   RONDO_VERSION's), as self-hosting runs it; `--build` builds this
+#                                   checkout instead.
+# Rondo is at RONDO_PUBLIC_URL, http://localhost:23900/app/ unless you change it. HTTPS is a reverse
+# proxy's job, in front of port 23900 (the docs' "Run your own server").
 #
 # Rondo's ports are 23900-23912, so it runs beside other projects' stacks:
 #   23900 the front door (`web`, or Vite in development)   23901 Go server   23902 sync server
@@ -18,6 +20,10 @@ x-postgres: &postgres
 x-database: &database "postgres://rondo:${POSTGRES_PASSWORD:?set it in .env}@postgres:5432/rondo?sslmode=disable"
 x-kratos-database: &kratos-database "postgres://rondo:${POSTGRES_PASSWORD}@postgres:5432/kratos?sslmode=disable"
 x-hydra-database: &hydra-database "postgres://rondo:${POSTGRES_PASSWORD}@postgres:5432/hydra?sslmode=disable"
+# The release every image comes from, unless RONDO_VERSION names another; release-please keeps it.
+x-api-image: &api-image ghcr.io/sourcelocation/rondo-api:${RONDO_VERSION:-v0.1.7} # x-release-please-version
+x-sync-image: &sync-image ghcr.io/sourcelocation/rondo-sync:${RONDO_VERSION:-v0.1.7} # x-release-please-version
+x-web-image: &web-image ghcr.io/sourcelocation/rondo-web:${RONDO_VERSION:-v0.1.7} # x-release-please-version
 
 services:
   postgres:
@@ -50,6 +56,9 @@ services:
       - { source: kratos-schema, target: /etc/kratos/identity.schema.json }
       - { source: kratos-courier, target: /etc/kratos/courier.jsonnet }
     ports: ["127.0.0.1:23904:4433", "127.0.0.1:23905:4434"]
+    # In development its hooks reach the Go server on this machine there (RONDO_HOOKS_URL).
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    healthcheck: { test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:4433/health/ready"], interval: 2s, retries: 30 }
     depends_on: { kratos-migrate: { condition: service_completed_successfully } }
 
   hydra-migrate:
@@ -67,17 +76,21 @@ services:
       SECRETS_SYSTEM: "${HYDRA_SYSTEM_SECRET:?set it in .env}"
     configs: [{ source: hydra, target: /etc/hydra/hydra.yml }]
     ports: ["127.0.0.1:23906:4444", "127.0.0.1:23907:4445"]
+    healthcheck: { test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:4444/health/ready"], interval: 2s, retries: 30 }
     depends_on: { hydra-migrate: { condition: service_completed_successfully } }
 
+  # Rondo itself (the app profile): the Go server, migrating first, the sync server, and the web app.
   migrate:
     <<: *postgres
-    image: ghcr.io/sourcelocation/rondo-api:${RONDO_VERSION:-dev}
+    profiles: [app]
+    image: *api-image
     pull_policy: never # `api` pulls or builds the image
     command: migrate
     environment: { RONDO_DATABASE_URL: *database }
 
   api:
-    image: ghcr.io/sourcelocation/rondo-api:${RONDO_VERSION:-dev}
+    profiles: [app]
+    image: *api-image
     build: { context: .., dockerfile: server/Dockerfile }
     restart: unless-stopped
     command: serve
@@ -87,6 +100,8 @@ services:
       RONDO_KRATOS_PUBLIC_URL: http://kratos:4433
       RONDO_KRATOS_ADMIN_URL: http://kratos:4434
       RONDO_HYDRA_ADMIN_URL: http://hydra:4445
+      RONDO_SMTP_HOST: ${RONDO_SMTP_HOST:-mail}
+      RONDO_SMTP_PORT: ${RONDO_SMTP_PORT:-1025}
       # The image runs as "nonroot", whose home the volume takes over (and its owner with it).
       RONDO_MEDIA_DIR: /home/nonroot/media
     volumes: ["media:/home/nonroot"]
@@ -94,7 +109,8 @@ services:
     depends_on: { migrate: { condition: service_completed_successfully } }
 
   sync:
-    image: ghcr.io/sourcelocation/rondo-sync:${RONDO_VERSION:-dev}
+    profiles: [app]
+    image: *sync-image
     build: { context: .., dockerfile: app/Dockerfile, target: sync }
     restart: unless-stopped
     environment:
@@ -108,19 +124,20 @@ services:
   # The front door: the web app under /app, and every other path to its service
   # (app/platforms/web/Caddyfile).
   web:
-    image: ghcr.io/sourcelocation/rondo-web:${RONDO_VERSION:-dev}
+    profiles: [app]
+    image: *web-image
     build: { context: .., dockerfile: app/Dockerfile, target: web }
     restart: unless-stopped
     ports: ["127.0.0.1:23900:8080"]
     depends_on: [api, sync, kratos, hydra]
 
-  # COMPOSE_PROFILES=mail (as in .env.example): sign-in codes land in Mailpit, at http://localhost:23908.
+  # The mail profile (as in .env.example): sign-in codes land in Mailpit, at http://localhost:23908.
   mail:
     profiles: [mail]
     image: axllent/mailpit:v1.31.5
     ports: ["127.0.0.1:23908:8025", "127.0.0.1:23909:1025"]
 
-  # COMPOSE_PROFILES=s3: S3-compatible storage in place of the media volume.
+  # The s3 profile: S3-compatible storage in place of the media volume.
   storage:
     profiles: [s3]
     image: rustfs/rustfs:1.0.1
@@ -128,22 +145,10 @@ services:
     volumes: ["storage:/data"]
     ports: ["127.0.0.1:23910:9000"]
 
-  # COMPOSE_PROFILES=tls: Caddy takes a certificate for RONDO_HOST (its DNS must point here) and
-  # serves Rondo on ports 80 and 443.
-  edge:
-    profiles: [tls]
-    image: caddy:2.11.7-alpine
-    restart: unless-stopped
-    command: ["caddy", "reverse-proxy", "--from", "${RONDO_PUBLIC_URL}", "--to", "web:8080"]
-    ports: ["80:80", "443:443", "443:443/udp"]
-    volumes: ["edge:/data"]
-    depends_on: [web]
-
 volumes:
   database: {}
   media: {}
   storage: {}
-  edge: {}
 
 configs:
   # Kratos and Hydra keep their own databases beside Rondo's; the tests (`go test`, Gradle's
@@ -183,7 +188,7 @@ configs:
             ui_url: "${RONDO_PUBLIC_URL}/app/sign-in"
             lifespan: 30m
             after:
-              code: { hooks: [{ hook: web_hook, config: &registered { url: "http://api:8080/api/hooks/kratos/registration", method: POST, body: "base64://ZnVuY3Rpb24oY3R4KSB7IGlkZW50aXR5X2lkOiBjdHguaWRlbnRpdHkuaWQgfQ==", response: { ignore: true }, auth: &auth { type: api_key, config: { name: Authorization, value: "${RONDO_HOOK_SECRET:?set it in .env}", in: header } } } }, { hook: session }] }
+              code: { hooks: [{ hook: web_hook, config: &registered { url: "${RONDO_HOOKS_URL:-http://api:8080}/api/hooks/kratos/registration", method: POST, body: "base64://ZnVuY3Rpb24oY3R4KSB7IGlkZW50aXR5X2lkOiBjdHguaWRlbnRpdHkuaWQgfQ==", response: { ignore: true }, auth: &auth { type: api_key, config: { name: Authorization, value: "${RONDO_HOOK_SECRET:?set it in .env}", in: header } } } }, { hook: session }] }
               passkey: { hooks: [{ hook: web_hook, config: *registered }, { hook: session }] }
               oidc: { hooks: [{ hook: web_hook, config: *registered }, { hook: session }] }
           settings: { ui_url: "${RONDO_PUBLIC_URL}/app/settings", privileged_session_max_age: 10m, required_aal: highest_available }
@@ -200,16 +205,51 @@ configs:
         delivery_strategy: http
         http:
           request_config:
-            url: "http://api:8080/api/hooks/kratos/courier"
+            url: "${RONDO_HOOKS_URL:-http://api:8080}/api/hooks/kratos/courier"
             method: POST
             body: "file:///etc/kratos/courier.jsonnet"
             auth: *auth
       ciphers: { algorithm: xchacha20-poly1305 }
       log: { level: info, format: json }
+  # Who someone is to Kratos: an email address.
   kratos-schema:
-    file: kratos/identity.schema.json
+    content: |
+      {
+        "$$id": "https://rondo.matthewsource.com/schemas/user.json",
+        "$$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Rondo user",
+        "type": "object",
+        "properties": {
+          "traits": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "format": "email",
+                "maxLength": 254,
+                "ory.sh/kratos": {
+                  "credentials": { "code": { "identifier": true, "via": "email" }, "passkey": { "display_name": true } },
+                  "verification": { "via": "email" }
+                }
+              }
+            },
+            "required": ["email"],
+            "additionalProperties": false
+          }
+        }
+      }
   kratos-courier:
-    file: kratos/courier.jsonnet
+    content: |
+      // Kratos's messages as Rondo's mail sender takes them: it renders them with Rondo's own templates.
+      local data(ctx) = if 'template_data' in ctx && ctx.template_data != null then ctx.template_data else {};
+      local first(d, keys) = std.foldl(function(found, k) if found != '' then found else std.toString(std.get(d, k, '')), keys, '');
+
+      function(ctx) {
+        template_type: ctx.template_type,
+        recipient: ctx.recipient,
+        code: first(data(ctx), ['login_code', 'registration_code', 'verification_code', 'recovery_code']),
+        url: first(data(ctx), ['verification_url', 'recovery_url']),
+      }
 
   # Hydra is the OAuth server AI assistants sign in through, to reach /mcp. The web app handles its
   # login step (for whoever is signed in there) and asks for consent.

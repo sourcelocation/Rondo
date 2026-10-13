@@ -4,12 +4,12 @@ icon: Server
 description: Host Rondo on a server of your own, with Docker Compose.
 ---
 
-Rondo's servers are open source, and the images that run `rondo.matthewsource.com` run on a server of yours. One Compose file starts all of it behind [Caddy](https://caddyserver.com), which gets the HTTPS certificate on its own.
+Rondo's servers are open source, and the images that run `rondo.matthewsource.com` run on a server of yours. One Compose file starts all of it on one port, and the reverse proxy you choose serves that over HTTPS.
 
 ## What you need
 
 - A Linux server on x86-64 with Docker and Docker Compose. The images aren't built for ARM yet.
-- A hostname whose DNS points at the server, and ports 80 and 443 open to it.
+- A hostname whose DNS points at the server, and a reverse proxy that serves it over HTTPS: [Caddy](https://caddyserver.com), nginx, Traefik or a Cloudflare Tunnel.
 - An SMTP login to send sign-in codes from. Any mail provider's works.
 
 ## Start it
@@ -17,28 +17,27 @@ Rondo's servers are open source, and the images that run `rondo.matthewsource.co
 <Steps>
 <Step>
 
-Get the files:
+Get the Compose file and its settings, from the latest [release](https://github.com/sourcelocation/Rondo/releases):
+
+{/* x-release-please-start-version */}
 
 ```bash
-git clone https://github.com/sourcelocation/Rondo.git
-cd Rondo/server
+mkdir rondo && cd rondo
+curl -fL -O https://raw.githubusercontent.com/sourcelocation/Rondo/v0.1.7/server/compose.yaml
+curl -fL -o .env https://raw.githubusercontent.com/sourcelocation/Rondo/v0.1.7/server/.env.example
 ```
+
+{/* x-release-please-end */}
 
 </Step>
 <Step>
 
-Copy the settings:
+The settings run Rondo on your own computer as they are. Change every one marked "Self-hosting":
 
-```bash
-cp .env.example .env
-```
-
-They run Rondo on your own computer as they are. Change every one marked "Self-hosting":
-
-- `RONDO_PUBLIC_URL` to `https://<your hostname>`, `RONDO_HOST` to the hostname, and `COMPOSE_PROFILES` to `tls`, so Caddy gets the certificate.
-- `RONDO_VERSION` to a [release](https://github.com/sourcelocation/Rondo/releases) to run, and `ORY_DEV` to nothing.
+- `RONDO_PUBLIC_URL` to `https://<your hostname>`, `RONDO_HOST` to the hostname, and `COMPOSE_PROFILES` to `app`, so Rondo's own servers start.
+- `RONDO_VERSION` to nothing, so the images match `compose.yaml`'s release. Remove `RONDO_HOOKS_URL`, and set `ORY_DEV` to nothing.
 - The five secrets: make each with `openssl rand -hex 32`, except `KRATOS_CIPHER_SECRET`, which must be 32 characters: `openssl rand -hex 16`.
-- Your SMTP login, and your own email address in `RONDO_OWNER_EMAIL`.
+- Your SMTP login (uncomment those lines), and your own email address in `RONDO_OWNER_EMAIL`.
 - Remove `RONDO_STAFF_PASSKEY` and the development Web Push keys.
 
 </Step>
@@ -47,8 +46,23 @@ They run Rondo on your own computer as they are. Change every one marked "Self-h
 Start it:
 
 ```bash
-docker compose up -d
+docker compose up -d --wait
 ```
+
+Rondo now answers on `http://localhost:23900`, on the server only.
+
+</Step>
+<Step>
+
+Point your reverse proxy at it. With [Caddy](https://caddyserver.com) on the server, which gets the certificate on its own:
+
+```text title="/etc/caddy/Caddyfile"
+<your hostname> {
+	reverse_proxy localhost:23900
+}
+```
+
+With another proxy, send every path on the hostname to `localhost:23900`, with its `Host` and `X-Forwarded-*` headers.
 
 </Step>
 <Step>
@@ -68,7 +82,6 @@ Open your hostname and sign in with the address in `RONDO_OWNER_EMAIL`. That acc
 | `kratos`   | [Ory Kratos](https://www.ory.sh/kratos/): sign-in                | `/auth`                                    |
 | `hydra`    | [Ory Hydra](https://www.ory.sh/hydra/): AI assistants' OAuth     | `/oauth2`, `/userinfo` and OAuth discovery |
 | `postgres` | One PostgreSQL, with a database each for Rondo, Kratos and Hydra |                                            |
-| `edge`     | HTTPS, in front of `web`                                         |                                            |
 
 Pictures and sounds are kept in the `media` volume. Share links lead into the web app, and `/docs` leads to these docs.
 
@@ -99,7 +112,12 @@ The Go server reads `.env` as well, so its other settings go there too:
 
 ## Upgrade
 
-Back up first, set `RONDO_VERSION` to the new release, and run `docker compose up -d`. The database is migrated before the servers start.
+Back up first, download the new release's `compose.yaml` over the old one (as in [Start it](#start-it)), and run `docker compose up -d --wait`. The database is migrated before the servers start. Keep your `.env`.
+
+<Callout title="From the tls profile">
+  Compose used to serve HTTPS itself, with the `tls` profile. It's gone: put a reverse proxy in front of port 23900 (above),
+  change `COMPOSE_PROFILES` from `tls` to `app`, and remove the `rondo_edge` volume once Rondo answers.
+</Callout>
 
 <Callout title="From server/self-host">
   Rondo used to run from `server/self-host`, on PostgreSQL 16. Back up there (below) and stop it, move your `.env` to

@@ -3,7 +3,12 @@
   "release-type": "simple",
   "include-component-in-tag": false,
   "packages": {
-    ".": {}
+    ".": {
+      "extra-files": [
+        "server/compose.yaml",
+        "site/docs/content/self-hosting.mdx"
+      ]
+    }
   },
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true

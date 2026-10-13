@@ -6,8 +6,8 @@ import { PUBLIC_RONDO_RELEASE } from "astro:env/client";
  * slips, or a preview). /head.js puts the answer on <html> before a page paints, and the styles read it.
  */
 
-/** Thursday 22 October 2026, 18:00 in its maker's time zone (UTC+3). */
-export const LAUNCH = Date.parse("2026-10-22T18:00:00+03:00");
+/** Thursday 29 October 2026, 18:00 in its maker's time zone (UTC+3). */
+export const LAUNCH = Date.parse("2026-10-29T18:00:00+03:00");
 
 /** The maker's time zone, which pages built ahead of the visitor's clock state the launch in. */
 const MAKER_ZONE = "Etc/GMT-3";
@@ -34,12 +34,12 @@ function format(options: Intl.DateTimeFormatOptions, inMakerZone: boolean): stri
   return new Intl.DateTimeFormat(locale(), { ...options, ...zone }).format(LAUNCH);
 }
 
-/** The launch day, as "October 22": in the maker's time zone when built, in the visitor's in their browser. */
+/** The launch day, as "October 29": in the maker's time zone when built, in the visitor's in their browser. */
 export function launchDay(inMakerZone = false): string {
   return format({ month: "long", day: "numeric" }, inMakerZone);
 }
 
-/** The launch, as "Thursday, October 22 at 6:00 PM". */
+/** The launch, as "Thursday, October 29 at 6:00 PM". */
 export function launchMoment(inMakerZone = false): string {
   return format({ weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }, inMakerZone);
 }

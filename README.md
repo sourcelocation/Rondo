@@ -91,23 +91,24 @@
 
 A Go server and a Kotlin sync server over PostgreSQL, with [Kratos](https://www.ory.sh/kratos/), [Hydra](https://www.ory.sh/hydra/) and any S3 store (or a folder).
 
-[`server/compose.yaml`](server/compose.yaml) runs all of it, from the released images or this checkout; [the guide](https://rondo.matthewsource.com/docs/self-hosting) puts it on a server of your own. Below runs Rondo from source.
+[`server/compose.yaml`](server/compose.yaml) runs all of it from the released images; [the guide](https://rondo.matthewsource.com/docs/self-hosting) puts it on a server of your own. Below runs Rondo from source: Docker runs what Rondo depends on, and Rondo's own servers run on this machine (Go, JDK 25, Node 24 and pnpm), each reloading itself as you edit.
 
 ```bash
 git clone https://github.com/sourcelocation/rondo.git
 cd rondo/server && cp .env.example .env
-# Postgres, Kratos, Hydra, Mailpit, and the Go server (:23901) under Air: it migrates and restarts as you edit
-docker compose -f compose.yaml -f compose.dev.yaml up --build
+# Postgres, Kratos, Hydra and Mailpit; they stay up, so this is only needed again after a reboot or a `down`
+docker compose up -d --wait
 ```
 
 ```bash
-cd app && go run github.com/air-verse/air@v1.67.4 -c sync/.air.toml   # the sync server, :23902, likewise
-cd app/platforms/web && pnpm install && pnpm dev    # the web app, http://localhost:23900/app/
+cd app/platforms/web && pnpm install
+# From the repository root: the Go server (:23901), the sync server (:23902) and the web app, http://localhost:23900/app/
+overmind start
 ```
 
-The web app rebuilds the Kotlin client as you edit and proxies everything on one origin. Sign-in codes land in Mailpit at http://localhost:23908. Ports: 23900–23912 ([`server/compose.yaml`](server/compose.yaml)).
+[`Procfile`](Procfile) lists the three, for [overmind](https://github.com/DarthSim/overmind) or any Procfile runner (`uvx honcho start` needs no install), or run each line in a terminal of its own. The Go server migrates and restarts on every save, the sync server rebuilds through Gradle, and the web app rebuilds the Kotlin client and proxies everything on one origin. Sign-in codes land in Mailpit at http://localhost:23908. Ports: 23900–23912 ([`server/compose.yaml`](server/compose.yaml)).
 
-To run it as production does, from images, leave out `compose.dev.yaml`, the sync server and Vite: `docker compose up --build` serves the same address. `.env.example`'s secrets are public, for this machine only. Production runs four images on k3s.
+To run it as production does, from containers, stop the Procfile and add the `app` profile: `docker compose --profile app up --build` builds this checkout and serves the same address. `.env.example`'s secrets are public, for this machine only. Production runs four images on k3s.
 
 ## Repository
 
