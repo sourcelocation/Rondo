@@ -33,7 +33,10 @@ const FOCUS = 9;
 const BOUNDLESS = 0.62;
 /** How blurred the count and infinity are at the far ends of their crossfade, in pixels. */
 const HAZE = 16;
-/** How far down the screen the section's top is, as a share of the screen, when the stacking starts: its words show. */
+/**
+ * How far down the screen the section's top is, as a share of what's always seen, when the stacking starts: its words
+ * show.
+ */
 const CUE = 0.6;
 /** How many of the front card's frames are kept for the cards behind to follow: over a second's worth, at any rate. */
 const TRAIL = 256;
@@ -358,8 +361,8 @@ export class Pile implements Picture {
     const deck = this.top + this.place.top;
     this.fade = clamp((deck + this.place.height) / this.place.height, 0, 1);
     // The stacking starts once the section's words are on screen, or the deck wholly is, coming to it from above or
-    // below; cards then fly into the section to meet the deck as it comes up.
-    if (!this.started && (this.top <= view.height * CUE || deck + this.place.height <= view.height)) {
+    // below, clear of any toolbars; cards then fly into the section to meet the deck as it comes up.
+    if (!this.started && (this.top <= view.safe * CUE || deck + this.place.height <= view.safe)) {
       this.started = true;
       this.plan();
     }

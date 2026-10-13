@@ -1,5 +1,5 @@
 import { gsap } from "gsap";
-import { one } from "../motion/dom";
+import { one, onResize } from "../motion/dom";
 import { launchDay } from "./launch";
 
 /** Told to every form on the page when the visitor joins through any of them. */
@@ -195,7 +195,9 @@ export class NotifyPanel {
       const input = panel.querySelector<HTMLInputElement>("[data-notify-input]");
       if (input != null && input.tabIndex >= 0) input.focus({ preventScroll: true });
     });
-    window.addEventListener("resize", () => {
+    // The page laid out anew (a window resized, a phone turned) moves the button; a phone's toolbars coming and going
+    // don't.
+    onResize(document.documentElement, () => {
       if (panel.matches(":popover-open")) this.place();
     });
     document.addEventListener(JOINED, () => this.label("On the list", "You’re on the launch list"));

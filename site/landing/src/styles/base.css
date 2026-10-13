@@ -125,6 +125,14 @@
   --section: clamp(96px, 3.75rem + 6vw, 176px);
   --stack: clamp(20px, 1rem + 0.8vw, 32px);
   --nav: 72px;
+  /*
+   * The screen's height, two ways, both steady while a phone's toolbars come and go (motion/screen.ts measures the
+   * same): --screen with them away, which anything drawn edge to edge fills, the toolbars passing over it; and
+   * --screen-safe with them out, what's always seen, which anything that has to be seen is framed in. Never the height
+   * in between (dvh, or the window's), which changes as they move.
+   */
+  --screen: 100vh;
+  --screen-safe: 100vh;
   /* The logo's height in the bar. */
   --logo-bar: 28px;
 
@@ -134,6 +142,13 @@
   --size-lead: clamp(1.0625rem, 0.99rem + 0.32vw, 1.3125rem);
   --size-small: 0.875rem;
   --size-micro: 0.75rem;
+}
+
+@supports (height: 100lvh) {
+  :root {
+    --screen: 100lvh;
+    --screen-safe: 100svh;
+  }
 }
 
 @media (width < 640px) {
@@ -164,7 +179,7 @@ html {
 
 body {
   margin: 0;
-  min-height: 100svh;
+  min-height: var(--screen-safe);
   background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);

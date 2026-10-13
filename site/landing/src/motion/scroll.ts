@@ -1,11 +1,16 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { onResize } from "./dom";
+import type { Screen } from "./screen";
 
 /**
  * The page's scrolling, which the browser does itself, natively, on every device: on its own thread, at the screen's
- * full rate, however busy the page's script is. Nothing here moves the page; the motion only follows it. ScrollTrigger
- * measures the page again whenever its height changes (fonts arriving, an answer opening, the screen turning), once
- * the change has settled; on its own it measures only as the page opens and as a desktop's window resizes.
+ * full rate, however busy the page's script is. Nothing here moves the page; the motion only follows it.
+ *
+ * ScrollTrigger measures the page only when this says: once the screen (motion/screen.ts) or the page's height has
+ * changed (a phone turned, fonts arriving, an answer opening) and the change has settled, so a long change costs one.
+ * Its own measuring on the window's resizes is off: a phone's browser resizes the window as its toolbars come and go,
+ * when nothing the motion measures by has changed.
  */
 export class Scrolling {
   /** The whole page's scroll, followed for how fast it goes. */
@@ -13,8 +18,21 @@ export class Scrolling {
   /** When the page last scrolled (performance.now()). */
   private moved = 0;
 
-  constructor() {
-    this.follow();
+  constructor(screen: Screen) {
+    ScrollTrigger.config({ autoRefreshEvents: "visibilitychange,DOMContentLoaded,load" });
+    const remeasure = gsap
+      .delayedCall(0.25, () => {
+        ScrollTrigger.refresh();
+      })
+      .pause();
+    screen.onChange(() => remeasure.restart(true));
+    let height = document.body.offsetHeight;
+    onResize(document.body, () => {
+      const now = document.body.offsetHeight;
+      if (now === height) return;
+      height = now;
+      remeasure.restart(true);
+    });
     window.addEventListener(
       "scroll",
       () => {
@@ -37,21 +55,5 @@ export class Scrolling {
     do {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     } while (performance.now() - this.moved < 150);
-  }
-
-  /** Has ScrollTrigger measure the page again a moment after its height last changed, so a long change costs one. */
-  private follow(): void {
-    const remeasure = gsap
-      .delayedCall(0.25, () => {
-        ScrollTrigger.refresh();
-      })
-      .pause();
-    let height = document.body.offsetHeight;
-    new ResizeObserver(() => {
-      const now = document.body.offsetHeight;
-      if (now === height) return;
-      height = now;
-      remeasure.restart(true);
-    }).observe(document.body);
   }
 }

@@ -26,9 +26,11 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
 </div>
 
 <style>
+  /* As tall as the screen with the browser's toolbars away, so it covers what's under them too as they come and go. */
   .curtain {
     position: fixed;
-    inset: 0;
+    inset: 0 0 auto;
+    height: var(--screen);
     z-index: 90;
     visibility: hidden;
     opacity: 0;
@@ -78,9 +80,11 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
     visibility: hidden;
   }
 
+  /* The name, in the middle of what's always seen. */
   .curtain__centre {
     position: absolute;
-    inset: 0;
+    inset: 0 0 auto;
+    height: var(--screen-safe);
     display: grid;
     place-content: center;
   }

@@ -26,7 +26,6 @@
   "devDependencies": {
     "@astrojs/check": "0.9.10",
     "@tweakpane/core": "2.0.5",
-    "@tweakpane/plugin-essentials": "0.2.1",
     "@types/prismjs": "1.26.6",
     "@types/qrcode": "1.5.6",
     "@types/three": "0.186.0",

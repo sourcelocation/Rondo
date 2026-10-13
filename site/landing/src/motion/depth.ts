@@ -16,9 +16,9 @@ export function depth(stage: Stage): void {
     // Lagging is sitting lower than its place as it comes in and higher as it goes: it travels less than the page.
     gsap.fromTo(
       element,
-      { y: () => -share * window.innerHeight },
+      { y: () => -share * stage.screen.height },
       {
-        y: () => share * window.innerHeight,
+        y: () => share * stage.screen.height,
         ease: "none",
         scrollTrigger: {
           trigger: element,

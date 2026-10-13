@@ -7,14 +7,15 @@ import restTall from "../assets/flight/rest-tall.webp";
 import { links } from "../content/links";
 
 /**
- * Offline, and in sync: a film of an airliner skimming the cloud tops, white in the page's pastel light, drawn by the scenery behind the
- * page and played by the scroll (motion/flight.ts). The section is several screens tall and the film holds the screen
- * through it: it opens on the plane's business cabin, seen from a little ahead, with the words above the clouds over
- * the sky; as the page scrolls the camera swings in through a window, turns to the laptop on the empty seat's table,
- * and settles there, Rondo in airplane mode, as the words of landing come up over the cabin. The film fades into the
- * page above and below. Its posters, drawn by the film itself at twice the pixels, stand in until it plays: its
- * opening shot, full screen (16:10, and 1:2 for phones), so it takes over from them seamlessly; and, without motion,
- * where it would have come to rest (2:1, and 4:5), the words then laid out above and below it.
+ * Offline, and in sync: a film of an airliner skimming the cloud tops, white in the page's pastel light, drawn by the
+ * scenery behind the page and played by the scroll (motion/flight.ts). The section is the film's timeline, laid out:
+ * a stage a screen tall, which holds the screen while the track under it scrolls past, and a still end. It opens on
+ * the plane's business cabin, seen from a little ahead, with the words above the clouds over the sky; as the page
+ * scrolls the camera swings in through a window, turns to the laptop on the empty seat's table, and settles there,
+ * Rondo in airplane mode, under the words of landing, which come up over the cabin. The film fades into the page
+ * above and below. Its posters, drawn by the film itself at twice the pixels, stand in until it plays: its opening
+ * shot, full screen (16:10, and 1:2 for phones), so it takes over from them seamlessly; and, without motion, where it
+ * would have come to rest (2:1, and 4:5), the words then laid out above and below it.
  */
 ---
 
@@ -26,7 +27,7 @@ import { links } from "../content/links";
       </h2>
     </div>
 
-    <div class="flight__film" aria-hidden="true">
+    <div class="flight__film" aria-hidden="true" data-flight-film>
       {/* The posters: the film's opening shot and its last, framed for wide screens and for tall ones. */}
       <Image
         class="flight__poster flight__poster--wide"
@@ -77,6 +78,8 @@ import { links } from "../content/links";
       </p>
     </div>
   </div>
+
+  <div class="flight__track" data-flight-track></div>
 </section>
 
 <script>
@@ -87,28 +90,43 @@ import { links } from "../content/links";
 </script>
 
 <style>
-  /* Several screens tall: the scroll through it plays the film, which holds the screen meanwhile. */
+  /*
+   * The film's timeline, laid out in screens: the stage, then the track the camera flies along while the stage holds
+   * the screen, and a still end (::after), to read by.
+   */
   .flight {
     position: relative;
-    height: 522svh;
   }
 
-  /* The screen the film holds: the scenery draws it here, behind the words, where the posters stand in until then. */
+  .flight__track {
+    height: calc(var(--screen) * 3.86);
+  }
+
+  .flight::after {
+    content: "";
+    display: block;
+    height: calc(var(--screen) * 0.36);
+  }
+
+  /*
+   * The screen the film holds: the scenery draws it here, behind the words, where the posters stand in until then. As
+   * tall as the screen with the toolbars away, as the scenery is, so they come and go over it.
+   */
   .flight__stage {
     position: sticky;
     top: 0;
-    height: 100svh;
+    height: var(--screen);
     overflow: hidden;
   }
 
   /*
-   * The words, over the film's top: its sky at the opening, the cabin beyond the laptop at rest, both faded into the
-   * page there.
+   * The words, over the film's top: its sky at the opening, the cabin above the laptop at rest, both faded into the
+   * page there. The film frames the laptop under them (motion/flight/film.ts).
    */
   .flight__copy {
     position: absolute;
     inset-inline: 0;
-    top: calc(var(--nav) + clamp(24px, 6svh, 72px));
+    top: calc(var(--nav) + clamp(24px, 0.5rem + 3.2vw, 72px));
     z-index: 1;
     display: grid;
     justify-items: center;
@@ -129,12 +147,31 @@ import { links } from "../content/links";
     color: var(--ink-2);
   }
 
-  /* The film: the whole screen, its top fading into the page under the words, and its foot into the page below. */
+  /*
+   * The film: the whole stage, its top fading into the page under the words, and its foot into the page below: clear
+   * down to --fade-clear, solid from --fade-solid to --fade-foot, then clear again by the foot. The scenery fades the
+   * film it draws here by the same (motion/scenery/projection.ts reads them).
+   */
   .flight__film {
+    --fade-clear: 6%;
+    --fade-solid: 42%;
+    --fade-foot: 86%;
     position: absolute;
     inset: 0;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 6%, #000 42%, #000 86%, transparent);
-    mask-image: linear-gradient(to bottom, transparent 6%, #000 42%, #000 86%, transparent);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent var(--fade-clear),
+      #000 var(--fade-solid),
+      #000 var(--fade-foot),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent var(--fade-clear),
+      #000 var(--fade-solid),
+      #000 var(--fade-foot),
+      transparent
+    );
   }
 
   /* Once the film has a frame, drawn behind them, the posters fade away over it. */
@@ -162,14 +199,6 @@ import { links } from "../content/links";
   }
 
   @media (width < 760px) {
-    /*
-     * A phone's frame has the laptop higher, as high as the screen is short: the words of landing keep to their heading
-     * and its link, clear of it on any phone.
-     */
-    .flight__copy--landed .lead {
-      display: none;
-    }
-
     .flight__poster--wide {
       display: none;
     }
@@ -185,8 +214,12 @@ import { links } from "../content/links";
    */
   @media (prefers-reduced-motion: reduce) {
     .flight {
-      height: auto;
       padding-top: var(--section);
+    }
+
+    .flight__track,
+    .flight::after {
+      display: none;
     }
 
     .flight__stage {
@@ -201,10 +234,11 @@ import { links } from "../content/links";
     }
 
     .flight__film {
+      --fade-clear: 0%;
+      --fade-solid: 18%;
+      --fade-foot: 84%;
       position: relative;
-      height: clamp(440px, 50vw, 88svh);
-      -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 84%, transparent);
-      mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 84%, transparent);
+      height: clamp(440px, 50vw, var(--screen-safe) * 0.88);
     }
 
     .flight__poster--wide,
@@ -218,10 +252,6 @@ import { links } from "../content/links";
   }
 
   @media (prefers-reduced-motion: reduce) and (width < 760px) {
-    .flight__copy--landed .lead {
-      display: block;
-    }
-
     .flight__film {
       height: auto;
       aspect-ratio: 4 / 5;

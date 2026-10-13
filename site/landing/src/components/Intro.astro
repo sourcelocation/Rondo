@@ -22,12 +22,18 @@ import Logo from "./Logo.astro";
 </div>
 
 <style>
+  /*
+   * As tall as the screen with the browser's toolbars away, so the white covers what's under them too; the mark and
+   * the spinner in the middle of what's always seen.
+   */
   .intro {
     --mark: clamp(72px, 9vw, 112px);
     position: fixed;
-    inset: 0;
+    inset: 0 0 auto;
+    height: var(--screen);
     z-index: 95;
     display: grid;
+    grid-template-rows: var(--screen-safe);
     place-items: center;
     visibility: hidden;
     pointer-events: none;

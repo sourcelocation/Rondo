@@ -31,6 +31,11 @@ export interface Frame {
   focus: number;
   /** Whether the cloud deck can be seen: not once the camera is through the window. */
   deck: boolean;
+  /**
+   * How far the camera has settled at the seat, from the window (0) to at rest (1): the shot comes to be framed under
+   * the words of landing as it does (motion/flight/film.ts).
+   */
+  seated: number;
 }
 
 const clamp01 = (x: number) => Math.min(Math.max(x, 0), 1);
@@ -44,12 +49,12 @@ const share = (x: number, from: number, to: number) => clamp01((x - from) / (to 
 /**
  * An ease between two keyframes, as an F-curve (or CSS's cubic-bezier): from 0 to 1, flat at both ends, so it leaves
  * and arrives at rest. Its handles reach `leave` and `arrive` of the way across (from the start, and back from the
- * end): a long handle lingers at its end, a short one gets going (or stops) briskly. They can be changed as it plays.
+ * end): a long handle lingers at its end, a short one gets going (or stops) briskly.
  */
-export class Ease {
+class Ease {
   constructor(
-    public leave: number,
-    public arrive: number,
+    private readonly leave: number,
+    private readonly arrive: number,
   ) {}
 
   at(x: number): number {
@@ -70,23 +75,19 @@ export class Ease {
 
 /** Where the open window's glass clears, in metres from it (in front of it below 0), as the camera nears it. */
 const UNTINT = { from: -3.2, to: -0.9 } as const;
-/** How much higher than square on the screen the camera looks at rest, so the cabin beyond shows above it. */
-const LIFT = (7 * Math.PI) / 180;
 
-/** The move's timing, which can be changed as it plays: in development, a panel does (motion/flight/tuning.ts). */
-export const timing = {
-  /**
-   * How the camera travels the curve, from the opening to the seat: setting off slowly from far out, and coming to the
-   * window three quarters of the way through, leaving the rest for the cabin.
-   */
-  travel: new Ease(0.55, 0.6),
-  /**
-   * When the target sets off from the window, as a share of the flight (it arrives at the laptop as the camera comes
-   * to rest), and how it goes: off briskly enough to keep well ahead of the camera, which is fast as it reaches the
-   * window, and settling on the laptop as slowly as it can, as the camera settles.
-   */
-  target: { from: 0.63, ease: new Ease(0.2, 1) },
-};
+/**
+ * How the camera travels the curve, from the opening to the seat: setting off slowly from far out, and coming to the
+ * window three quarters of the way through (motion/flight.ts brings the words of landing up then), leaving the rest
+ * for the cabin.
+ */
+const TRAVEL = new Ease(0.55, 0.6);
+/**
+ * When the target sets off from the window, as a share of the flight (it arrives at the laptop as the camera comes to
+ * rest), and how it goes: off briskly enough to keep well ahead of the camera, which is fast as it reaches the window,
+ * and settling on the laptop as slowly as it can, as the camera settles.
+ */
+const TARGET = { from: 0.63, ease: new Ease(0.2, 1) } as const;
 
 /**
  * Where the camera waits, from the window: how far out, how far above, and how far ahead (toward the nose), which
@@ -138,17 +139,9 @@ export class Shots {
       .divideScalar(-3 * r * r * at);
     leave.sub(off(leave)).add(across);
 
-    const pitch = Math.asin(-screen.normal.y) + LIFT;
-    const look = screen.normal
-      .clone()
-      .setY(0)
-      .normalize()
-      .negate()
-      .multiplyScalar(Math.cos(pitch))
-      .setY(Math.sin(pitch));
-    const laptop = end.clone().addScaledVector(look, screen.viewing);
-    // Leaving the window toward the seat, as the camera comes in, and coming to the laptop from the seat.
-    this.target = new CubicBezierCurve3(window.clone(), end.clone(), end.clone(), laptop);
+    // Leaving the window toward the seat, as the camera comes in, and coming to the laptop's screen from the seat, to
+    // look at it square on.
+    this.target = new CubicBezierCurve3(window.clone(), end.clone(), end.clone(), screen.centre.clone());
   }
 
   /** Where along the curve (by its own parameter) it passes the fuselage's side, the window. */
@@ -171,9 +164,8 @@ export class Shots {
    */
   at(progress: number, clock: number, nudge: Readonly<Vector2>, frame: Frame): void {
     const { position, aim } = frame;
-    const { travel, target } = timing;
-    this.path.getPoint(travel.at(progress), position);
-    this.target.getPoint(target.ease.at(share(progress, target.from, 1)), aim);
+    this.path.getPoint(TRAVEL.at(progress), position);
+    this.target.getPoint(TARGET.ease.at(share(progress, TARGET.from, 1)), aim);
 
     // The air's slow sway, which the camera rides until it sets off.
     const calm = 1 - ease(progress / 0.05);
@@ -193,6 +185,7 @@ export class Shots {
     frame.clear = ease(share(depth, UNTINT.from, UNTINT.to));
     frame.inside = depth > -8;
     frame.deck = depth < 0;
+    frame.seated = ease(share(depth, 0, this.depth));
     // The lens starts focusing on the laptop as the window starts to clear, quickly at first.
     frame.focus = 1 - (1 - share(depth, UNTINT.from, this.depth)) ** 2;
 

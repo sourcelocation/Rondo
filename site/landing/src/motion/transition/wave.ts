@@ -1,3 +1,4 @@
+import type { Screen } from "../screen";
 import type { Point } from "../transition";
 
 /** Where the curtain's edge is, as it passes: a circle round `from`, `radius` across, and how much its glass shows. */
@@ -113,8 +114,8 @@ type Uniform = "uBuffer" | "uSize" | "uFrom" | "uRadius" | "uFront" | "uGlass" |
 export class Wave {
   private readonly uniforms: Record<Uniform, WebGLUniformLocation | null>;
 
-  /** The sheet in `canvas`; null where WebGL isn't there. */
-  static create(canvas: HTMLCanvasElement): Wave | null {
+  /** The sheet in `canvas`, as big as `screen`; null where WebGL isn't there. */
+  static create(canvas: HTMLCanvasElement, screen: Screen): Wave | null {
     const gl = canvas.getContext("webgl", {
       alpha: true,
       premultipliedAlpha: true,
@@ -124,7 +125,7 @@ export class Wave {
     });
     if (gl == null) return null;
     try {
-      return new Wave(canvas, gl);
+      return new Wave(canvas, gl, screen);
     } catch (error) {
       console.error(error);
       return null;
@@ -134,6 +135,7 @@ export class Wave {
   private constructor(
     private readonly canvas: HTMLCanvasElement,
     private readonly gl: WebGLRenderingContext,
+    private readonly screen: Screen,
   ) {
     const program = gl.createProgram();
     gl.attachShader(program, this.shader(gl.VERTEX_SHADER, vertex));
@@ -171,8 +173,7 @@ export class Wave {
   /** Draws the sheet with its edge at `edge`. */
   draw(edge: Edge): void {
     const { gl, canvas, uniforms } = this;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    const { width, height } = this.screen;
     const ratio = Math.min(window.devicePixelRatio, 2);
     const across = Math.max(1, Math.round(width * ratio));
     const down = Math.max(1, Math.round(height * ratio));

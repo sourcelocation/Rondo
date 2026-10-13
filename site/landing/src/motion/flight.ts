@@ -1,16 +1,15 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { one } from "./dom";
-import type { Tuning } from "./flight/tuning";
 import type { Projection } from "./scenery/projection";
 import type { Stage } from "./stage";
 
 /**
- * The flight's film (motion/flight/film.ts), in its section, played by the scroll. The section is several screens
- * tall and the film holds the screen through it while the scroll flies the camera in: from the opening shot, which
- * sets off as soon as the section comes into view, the words above the clouds over it, through the window to the
- * laptop, the words of landing coming up over the cabin as the camera comes in. A little of the scroll is left still
- * at the end, to read by.
+ * The flight's film (motion/flight/film.ts), in its section, played by the scroll. The section is the film's timeline,
+ * laid out (components/Flight.astro): the flight runs from the section coming into view, the camera setting off from
+ * the opening shot as soon as the plane shows, to the end of the track, the stage holding the screen meanwhile, the
+ * words above the clouds over it at first, through the window to the laptop, the words of landing coming up over the
+ * cabin as the camera comes in. A still end follows, to read by.
  *
  * The film is made on the scenery's GPU and shown by it (motion/scenery/projection.ts), as the page loads, a step at a
  * time on frames when the page is still: the page's opening waits for it (under the intro, or the curtain), so nothing
@@ -19,19 +18,16 @@ import type { Stage } from "./stage";
  */
 
 /**
- * The share of the section's scroll, from its coming into view, the flight takes, before a still end; and the share of
- * the flight at which the camera comes through the window (motion/flight/shots.ts).
+ * When the words change over, as shares of the flight: those above the clouds leave once the camera is under way from
+ * the opening, and those of landing come up once it's through the window, which it is three quarters of the way in
+ * (as motion/flight/shots.ts's travel has it).
  */
-const FLIGHT = { to: 0.931, window: 0.74 } as const;
+const WORDS = { leave: 0.556, land: 0.755 } as const;
 
 export class FlightFilm {
   private projection: Projection | null = null;
   /** How far in the scroll says the camera should be, 0 to 1. */
   private progress = 0;
-  /** In development, the panel tuning the flight's timing. */
-  private tuning: Tuning | null = null;
-  /** The section's scroll, which flies the camera. */
-  private readonly scroll: ScrollTrigger | null = null;
 
   constructor(
     private readonly host: HTMLElement,
@@ -39,50 +35,28 @@ export class FlightFilm {
   ) {
     if (stage.reduced) return;
     stage.prepare(this.load());
-    // From the section coming into view, so the camera sets off as soon as the plane shows.
-    this.scroll = ScrollTrigger.create({
-      trigger: host,
-      start: "top bottom",
-      end: "bottom bottom",
-      onUpdate: ({ progress }) => {
-        this.progress = Math.min(progress / FLIGHT.to, 1);
-        this.projection?.play(this.progress);
-        this.tuning?.follow(this.progress);
-      },
-    });
-    // The words: those above the clouds leave once the camera is under way from the opening; those of landing come up
-    // once the camera is through the window.
-    const through = FLIGHT.window * FLIGHT.to;
-    gsap
-      .timeline({ scrollTrigger: { trigger: host, start: "top bottom", end: "bottom bottom", scrub: true } })
-      .to(one(host, "[data-flight-above]"), { autoAlpha: 0, y: -48, ease: "power1.in", duration: 0.062 }, 0.517)
+    const words = gsap
+      .timeline()
+      .to(one(host, "[data-flight-above]"), { autoAlpha: 0, y: -48, ease: "power1.in", duration: 0.067 }, WORDS.leave)
       .fromTo(
         one(host, "[data-flight-landed]"),
         { autoAlpha: 0, y: 32 },
-        { autoAlpha: 1, y: 0, ease: "power2.out", duration: 0.083 },
-        through + 0.014,
+        { autoAlpha: 1, y: 0, ease: "power2.out", duration: 0.089 },
+        WORDS.land,
       )
       .set({}, {}, 1);
-    // In development, with ?tune in the address, a panel for tuning the flight's timing.
-    if (import.meta.env.DEV && new URLSearchParams(location.search).has("tune"))
-      void import("./flight/tuning").then(({ Tuning }) => (this.tuning = new Tuning(this)));
-  }
-
-  /** How far in the camera is, 0 to 1. */
-  get flown(): number {
-    return this.progress;
-  }
-
-  /** Scrolls the page to `progress` of the flight. */
-  seek(progress: number): void {
-    const { scroll } = this;
-    if (scroll == null) return;
-    window.scrollTo({ top: scroll.start + (scroll.end - scroll.start) * progress * FLIGHT.to, behavior: "instant" });
-  }
-
-  /** Draws the film again where it is, as after its timing changes. */
-  redraw(): void {
-    this.projection?.jump(this.progress);
+    ScrollTrigger.create({
+      trigger: host,
+      start: "top bottom",
+      endTrigger: one(host, "[data-flight-track]"),
+      end: "bottom bottom",
+      animation: words,
+      scrub: true,
+      onUpdate: ({ progress }) => {
+        this.progress = progress;
+        this.projection?.play(progress);
+      },
+    });
   }
 
   private async load(): Promise<void> {

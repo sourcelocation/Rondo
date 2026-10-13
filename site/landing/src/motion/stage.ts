@@ -1,10 +1,11 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
-import { hasFinePointer } from "./dom";
+import { hasFinePointer, one } from "./dom";
 import { Pointer } from "./pointer";
 import { Reveals } from "./reveal";
 import type { Scenery } from "./scenery";
+import { Screen } from "./screen";
 import { Scrolling } from "./scroll";
 
 gsap.registerPlugin(ScrollTrigger, SplitText);
@@ -13,8 +14,9 @@ gsap.registerPlugin(ScrollTrigger, SplitText);
 export type Opening = (lightUp: () => void) => void;
 
 /**
- * What every scene on a page shares: whether to move at all, the pointer, the scrolling, the scenery behind the page
- * and the reveals. motion/page.ts makes one for each page; scenes get it when they're mounted (motion/scenes.ts).
+ * What every scene on a page shares: whether to move at all, the screen, the pointer, the scrolling, the scenery
+ * behind the page and the reveals. motion/page.ts makes one for each page; scenes get it when they're mounted
+ * (motion/scenes.ts).
  */
 export class Stage {
   /**
@@ -24,8 +26,9 @@ export class Stage {
   readonly reduced: boolean;
   /** Whether the visitor points with a mouse or a trackpad, which can hover. */
   readonly fine = hasFinePointer();
-  readonly scroll = new Scrolling();
-  readonly pointer = new Pointer();
+  readonly screen = new Screen(one(document, "[data-screen]"));
+  readonly scroll = new Scrolling(this.screen);
+  readonly pointer = new Pointer(this.screen);
   readonly reveals: Reveals;
   /**
    * The scenery behind the page (motion/scenery.ts), on pages that have it: fetched with three.js as the page opens,
@@ -58,7 +61,7 @@ export class Stage {
       code == null || host == null
         ? Promise.resolve(null)
         : Promise.all([code, calm])
-            .then(([{ Scenery }]) => Scenery.mount(host, this.fine, this.pointer))
+            .then(([{ Scenery }]) => Scenery.mount(host, this.fine, this.pointer, this.screen))
             .catch((error: unknown) => {
               console.error(error);
               return null;

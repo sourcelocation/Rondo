@@ -11,7 +11,8 @@ import { releaseAt } from "../launch/launch";
  * A page of the site: its head, the type and the base styles, the artwork for the page to use, the intro a page
  * opens with and the curtain between pages, and the motion every page runs (motion/page.ts), which brings to life
  * whatever scenes the page's components declare. It's built as Rondo is at build time, on a computer; /head.js
- * corrects both before it paints.
+ * corrects both before it paints. The screen's probe, never seen, is how the motion measures the screen as CSS has it
+ * (motion/screen.ts).
  */
 interface Props {
   title: string;
@@ -54,6 +55,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       Skip to content
     </a>
     <Sprite />
+    <div class="screen" aria-hidden="true" data-screen>
+      <i data-screen-safe></i>
+    </div>
     <slot />
     <Curtain />
     <Intro />
@@ -62,3 +66,21 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     </script>
   </body>
 </html>
+
+<style>
+  /* The screen's probe: as wide as the screen, as tall as it is with the toolbars away, and inside, with them out. */
+  .screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--screen);
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .screen i {
+    display: block;
+    height: var(--screen-safe);
+  }
+</style>

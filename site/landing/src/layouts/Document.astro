@@ -29,7 +29,7 @@ const { title, heading, description } = Astro.props;
   .glow {
     position: fixed;
     inset: 0 0 auto;
-    height: 70svh;
+    height: calc(var(--screen) * 0.7);
     pointer-events: none;
     background:
       radial-gradient(50% 70% at 15% 0%, rgb(169 202 255 / 45%), transparent 70%),
@@ -42,7 +42,7 @@ const { title, heading, description } = Astro.props;
     align-content: center;
     justify-items: start;
     gap: clamp(24px, 1rem + 1.4vw, 40px);
-    min-height: 72svh;
+    min-height: calc(var(--screen-safe) * 0.72);
     padding-block: calc(var(--nav) + 64px) 96px;
   }
 

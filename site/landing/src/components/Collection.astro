@@ -86,9 +86,9 @@ const resting = [
 
 <style>
   .pile {
-    --card-w: clamp(240px, min(38vw, 54svh), 540px);
+    --card-w: clamp(240px, min(38vw, var(--screen-safe) * 0.54), 540px);
     --card-h: calc(var(--card-w) * 0.66);
-    --foot: clamp(40px, 8svh, 96px);
+    --foot: clamp(40px, 1rem + 4vw, 96px);
     position: relative;
     overflow-x: clip;
   }
@@ -101,7 +101,7 @@ const resting = [
     position: relative;
     display: grid;
     grid-template-rows: auto 1fr;
-    min-height: 100svh;
+    min-height: var(--screen-safe);
     padding-top: calc(var(--nav) + clamp(16px, 0.5rem + 2.5vw, 56px));
   }
 

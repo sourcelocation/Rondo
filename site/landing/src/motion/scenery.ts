@@ -1,17 +1,19 @@
 import { gsap } from "gsap";
 import { Color, type Object3D, OrthographicCamera, Scene, WebGLRenderer } from "three";
-import { onResize } from "./dom";
 import { damp } from "./math";
 import type { Pointer } from "./pointer";
 import { Light } from "./scenery/light";
+import type { Screen } from "./screen";
 
 /**
- * The window as the scenery draws it: its size in CSS pixels, the pixels drawn for each, and how far the page is
- * scrolled as the scenery follows it, smoothly, a little behind the page.
+ * The screen as the scenery draws it: its size in CSS pixels, with the toolbars away (`height`, which the canvas
+ * fills) and how much of it is always seen (`safe`, with them out, motion/screen.ts), the pixels drawn for each, and
+ * how far the page is scrolled as the scenery follows it, smoothly, a little behind the page.
  */
 export interface View {
   width: number;
   height: number;
+  safe: number;
   ratio: number;
   scroll: number;
 }
@@ -64,7 +66,7 @@ export class Scenery {
   /** Unused by the pictures, which place themselves; three.js wants one to draw a scene with. */
   private readonly camera = new OrthographicCamera();
   private readonly pictures: Picture[] = [];
-  private readonly view: View = { width: 1, height: 1, ratio: 1, scroll: window.scrollY };
+  private readonly view: View = { width: 1, height: 1, safe: 1, ratio: 1, scroll: window.scrollY };
   /** Pixels drawn for each CSS pixel: 0 until the first size sets it. */
   private ratio = 0;
   private ceiling = 1;
@@ -73,8 +75,8 @@ export class Scenery {
   private slow = 0;
   private quick = 0;
 
-  /** The scenery in `host`, or null where WebGL isn't there. */
-  static mount(host: HTMLElement, fine: boolean, pointer: Pointer): Scenery | null {
+  /** The scenery in `host`, as big as `screen`, or null where WebGL isn't there. */
+  static mount(host: HTMLElement, fine: boolean, pointer: Pointer, screen: Screen): Scenery | null {
     const canvas = document.createElement("canvas");
     let renderer: WebGLRenderer;
     try {
@@ -89,14 +91,15 @@ export class Scenery {
     } catch {
       return null;
     }
-    return new Scenery(host, renderer, fine, pointer);
+    return new Scenery(host, renderer, fine, pointer, screen);
   }
 
   private constructor(
-    private readonly host: HTMLElement,
+    host: HTMLElement,
     readonly renderer: WebGLRenderer,
     private readonly fine: boolean,
     pointer: Pointer,
+    private readonly screen: Screen,
   ) {
     renderer.setClearColor(new Color(1, 1, 1), 1);
     this.light = new Light(fine, pointer);
@@ -116,7 +119,7 @@ export class Scenery {
     host.append(canvas);
     host.classList.add("is-drawn");
     this.resize();
-    onResize(host, () => {
+    screen.onChange(() => {
       this.resize();
     });
     gsap.ticker.add(this.tick);
@@ -162,9 +165,10 @@ export class Scenery {
   }
 
   private resize(): void {
-    const { view } = this;
-    view.width = Math.max(1, this.host.clientWidth);
-    view.height = Math.max(1, this.host.clientHeight);
+    const { view, screen } = this;
+    view.width = screen.width;
+    view.height = screen.height;
+    view.safe = screen.safe;
     const budget = this.fine ? BUDGET.mouse : BUDGET.touch;
     this.ceiling = Math.max(
       FLOOR,

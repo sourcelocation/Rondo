@@ -496,8 +496,8 @@ const misuses = [
 
   /* The mark's crop is 293 of the logo's 302 high (brand.ts), so the word starts there. */
   .build__line--seam {
-    top: -60svh;
-    bottom: -60svh;
+    top: calc(var(--screen) * -0.6);
+    bottom: calc(var(--screen) * -0.6);
     left: calc(var(--x) / 2 + var(--x) * 293 / 302);
     right: auto;
     width: 1px;

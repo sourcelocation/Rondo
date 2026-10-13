@@ -108,7 +108,8 @@ import portrait from "../assets/maker/sourcelocation.webp";
   scene("[data-portrait]", (root, stage) => new Portrait(root, stage.reduced, stage.fine));
   scene(
     "[data-work]",
-    (list, stage) => new WorkPreview(list, one(document, "[data-preview]"), stage.pointer, stage.reduced),
+    (list, stage) =>
+      new WorkPreview(list, one(document, "[data-preview]"), stage.pointer, stage.screen, stage.reduced),
   );
 </script>
 

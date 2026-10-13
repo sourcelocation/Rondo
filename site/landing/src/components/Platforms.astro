@@ -443,12 +443,13 @@ const ratings = ["Again", "Hard", "Good", "Easy"];
   }
 
   /*
-   * The stage: everything inside is measured in its width (cqw), so the picture scales as one; it's as wide as one
-   * screen's height leaves room for, under the words.
+   * The stage: everything inside is measured in its width (cqw), so the picture scales as one. It's as wide as lets it
+   * stand whole in what's always seen, clear of the bar with some air above and below; on a screen too short for that
+   * (a phone turned) no narrower than can still be read, running past the screen.
    */
   .trio {
     position: relative;
-    width: min(100%, 1180px, (100svh - 230px) * 1.85);
+    width: min(100%, 1180px, max((var(--screen-safe) - 2 * (var(--nav) + 43px)) * 100 / 54, 28rem));
     aspect-ratio: 100 / 54;
     container-type: inline-size;
     font-size: 1cqw;

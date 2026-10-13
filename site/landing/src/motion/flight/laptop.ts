@@ -105,7 +105,7 @@ export class Laptop {
   readonly glow = { value: 1 };
   /** What's on the screen. */
   readonly study: Study;
-  /** The screen's middle, and the way it faces, in the laptop's own frame. */
+  /** The screen's middle, the way it faces, in the laptop's own frame, and its size. */
   static readonly screen = {
     centre: new Vector3(
       0,
@@ -113,6 +113,8 @@ export class Laptop {
       -BASE.depth / 2 + HINGE + SCREEN.up * Math.cos(OPEN),
     ),
     normal: new Vector3(0, -Math.cos(OPEN), Math.sin(OPEN)),
+    width: SCREEN.width,
+    height: SCREEN.height,
   };
   /**
    * How the cabin's shader draws the laptop's surfaces: on the base's top, the keyboard's black well and its keys

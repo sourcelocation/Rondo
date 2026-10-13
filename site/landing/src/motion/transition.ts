@@ -28,11 +28,6 @@ interface Trip {
   at: number;
 }
 
-/** Where the curtain's edges always spread from, either way: the middle of the top of the screen. */
-function top(): Point {
-  return { x: window.innerWidth / 2, y: 0 };
-}
-
 /**
  * The curtain the site's pages open through, passing like a wave. Following a link to another of them, its front
  * (dark, with the page's light glowing in it) spreads down over the page from the middle of its top, inside a ring of
@@ -74,6 +69,11 @@ export class Curtain {
     this.canvas = one(root, "[data-curtain-wave]", HTMLCanvasElement);
     this.label = one(root, "[data-curtain-label]");
     if (document.documentElement.dataset.curtain === "cover" && !stage.reduced) this.makeWave();
+  }
+
+  /** Where the curtain's edges always spread from, either way: the middle of the top of the screen. */
+  private get source(): Point {
+    return { x: this.stage.screen.width / 2, y: 0 };
   }
 
   /** Takes over clicks on links to the site's pages, and fetches a page as soon as a link to it is reached for. */
@@ -119,7 +119,7 @@ export class Curtain {
       delete html.dataset.curtain;
       return;
     }
-    const from = top();
+    const from = this.source;
     const content = all(document, CONTENT);
     const parts = [this.root, this.sheet, this.canvas, this.label];
     // The name may still be rising, with the front.
@@ -183,9 +183,9 @@ export class Curtain {
           { autoAlpha: front ? 1 : 0, duration: duration * 0.6, ease: "power1.inOut" },
         );
     }
-    // Past the far corner, so the glass's shadow is gone too.
-    const reach =
-      Math.hypot(Math.max(from.x, window.innerWidth - from.x), Math.max(from.y, window.innerHeight - from.y)) + 48;
+    // Past the screen's far corner, the toolbars' away, so the glass's shadow is gone too.
+    const { width, height } = this.stage.screen;
+    const reach = Math.hypot(Math.max(from.x, width - from.x), Math.max(from.y, height - from.y)) + 48;
     const edge = { at: 0, glass: 0 };
     const draw = (): void => {
       wave.draw({ from, radius: edge.at * reach, front, glass: edge.glass });
@@ -205,7 +205,7 @@ export class Curtain {
   private makeWave(): Wave | null {
     if (!this.waveMade) {
       this.waveMade = true;
-      this.wave = Wave.create(this.canvas);
+      this.wave = Wave.create(this.canvas, this.stage.screen);
     }
     return this.wave?.usable === true ? this.wave : null;
   }
@@ -282,7 +282,7 @@ export class Curtain {
    */
   private cover(): Promise<void> {
     const html = document.documentElement;
-    const from = top();
+    const from = this.source;
     const content = all(document, CONTENT);
     html.dataset.curtain = "leaving";
     return new Promise((resolve) => {

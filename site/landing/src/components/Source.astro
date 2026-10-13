@@ -93,7 +93,7 @@ const facts: { value: string; label: string; href?: string }[] = [
 
   .lens {
     position: relative;
-    height: clamp(440px, 64svh, 640px);
+    height: clamp(440px, var(--screen-safe) * 0.64, 640px);
     margin-top: clamp(56px, 2rem + 4vw, 96px);
     border-radius: 32px;
     overflow: hidden;

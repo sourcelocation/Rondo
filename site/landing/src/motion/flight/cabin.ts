@@ -366,8 +366,17 @@ export class Cabin {
   readonly group = new Group();
   /** What casts the cabin's shadows (the fuselage, with its windows open, casts too: the airliner's). */
   readonly casters = new Group();
-  /** The laptop's screen, in the plane's frame: its middle, the way it faces, and how far out the camera rests. */
-  readonly screen: { readonly centre: Vector3; readonly normal: Vector3; readonly viewing: number };
+  /**
+   * The laptop's screen, in the plane's frame: its middle, the way it faces, how far out the camera rests, and its
+   * size, in metres.
+   */
+  readonly screen: {
+    readonly centre: Vector3;
+    readonly normal: Vector3;
+    readonly viewing: number;
+    readonly width: number;
+    readonly height: number;
+  };
   /** What's on the laptop's screen. */
   readonly study: Study;
   private readonly brightness: { value: number };
@@ -379,7 +388,8 @@ export class Cabin {
     laptop.rotation.y = TURN;
     laptop.updateMatrixWorld();
     const centre = Laptop.screen.centre.clone().applyMatrix4(laptop.matrixWorld);
-    this.screen = { centre, normal: FACING.clone(), viewing: VIEWING };
+    const { width, height } = Laptop.screen;
+    this.screen = { centre, normal: FACING.clone(), viewing: VIEWING, width, height };
 
     const material = new ShaderMaterial({
       vertexShader: vertex,

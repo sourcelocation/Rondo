@@ -43,6 +43,13 @@ import { type Frame, Shots } from "./shots";
 const SPEED = 23;
 /** How briskly the camera follows the scroll: a critically damped spring's natural frequency, in radians a second. */
 const FOLLOW = 7;
+/**
+ * How much of the room under the words of landing the laptop's screen takes at most, across and down, as the camera
+ * comes to rest: the rest is air round it, the keyboard below it running on down the frame.
+ */
+const FILL = { width: 0.8, height: 0.6 } as const;
+/** The least of what's always seen a shot keeps for itself at rest, however much the words of landing take. */
+const LEAST = 0.4;
 /** The frame's corners, in normalised device coordinates. */
 const CORNERS = [
   [-1, -1],
@@ -87,6 +94,16 @@ export interface FilmOptions {
   readonly light: boolean;
 }
 
+/**
+ * The part of the frame a shot is composed in, as shares of the frame's height from its top: down to `safe`, what's
+ * always seen, the rest of the frame running on under the browser's toolbars; and, at rest, from `rest`, where the
+ * words of landing over the frame's top end.
+ */
+export interface Room {
+  readonly rest: number;
+  readonly safe: number;
+}
+
 export class Film {
   /** The frame as last drawn. */
   texture: Texture | null = null;
@@ -106,11 +123,15 @@ export class Film {
     inside: false,
     focus: 0,
     deck: true,
+    seated: 0,
   };
   private readonly casters: { readonly draw: () => void };
   private readonly ray = new Vector3();
   private width = 1;
   private height = 1;
+  private room: Room = { rest: 0, safe: 1 };
+  /** How far the laptop's screen reaches from its middle, across and up, seen square on from the seat (tangents). */
+  private readonly screen: { readonly across: number; readonly up: number };
   /** Seconds the world has run (the clouds drifting, the strobes). */
   private clock = 0;
   /** Seconds the laptop has been studying: only while the camera's near enough to see it. */
@@ -182,6 +203,8 @@ export class Film {
     this.focus = new Focus(this.camera, options.light);
     this.scene.add(this.airliner.group, this.cabin.group, this.clouds.backdrop);
     this.shots = new Shots(this.cabin.screen);
+    const { width, height, viewing } = this.cabin.screen;
+    this.screen = { across: width / 2 / viewing, up: height / 2 / viewing };
 
     // What casts shadows, drawn once: the plane's depth from the sun and its outline for the clouds; and inside, the
     // cabin's, the fuselage's windows letting the sun through.
@@ -239,14 +262,15 @@ export class Film {
     this.stale = true;
   }
 
-  /** Draws its frames `width` × `height` pixels. */
-  setSize(width: number, height: number): void {
+  /** Draws its frames `width` × `height` pixels, its shots composed in `room`. */
+  setSize(width: number, height: number, room: Room): void {
+    this.room = room;
+    this.stale = true;
     if (width === this.width && height === this.height) return;
     this.width = width;
     this.height = height;
     this.clouds.setSize(width, height);
     this.focus.setSize(width, height);
-    this.stale = true;
   }
 
   /**
@@ -319,22 +343,30 @@ export class Film {
   }
 
   /**
-   * Points the camera as the shot says. A frame narrower than 16:9 keeps its width, down to nearly square; a
-   * portrait one is that frame, cropped at the sides.
+   * Points the camera as the shot says, composed in its room: what's always seen, its lens as the shot has it (a
+   * frame narrower than 16:9 keeps its width, down to nearly square; a portrait one is that frame, cropped at the
+   * sides). As the camera settles at the seat the room narrows to what's under the words of landing, and the laptop's
+   * screen, where the camera looks, comes to its middle, never bigger than the shot has it and never too big for it.
+   * The camera's frame is then stretched over the whole of the film's, a lens shift, so what's round the room is drawn
+   * too: the cabin behind the words, and the frame's foot running on under the toolbars.
    */
   private pose(): void {
-    const { camera, frame } = this;
+    const { camera, frame, room, width } = this;
     camera.position.copy(frame.position);
     camera.up.set(0, 1, 0);
     camera.lookAt(frame.aim);
     camera.rotateZ(frame.roll);
-    const aspect = this.width / this.height;
-    const tangent = Math.tan((frame.fov * Math.PI) / 360);
-    const kept = Math.max(aspect, 1.1);
-    const vertical = kept < 16 / 9 ? Math.atan((tangent * 16) / 9 / kept) * 2 : (frame.fov * Math.PI) / 180;
-    camera.fov = (vertical * 180) / Math.PI;
-    camera.aspect = aspect;
-    camera.updateProjectionMatrix();
+    const safe = this.height * room.safe;
+    const top = this.height * Math.min(room.rest, room.safe * (1 - LEAST)) * frame.seated;
+    const height = Math.max(safe - top, 1);
+    // The shot's lens over what's always seen, as a tangent from the middle to the top, kept to its scale over the room.
+    const kept = Math.max(width / safe, 1.1);
+    const tangent = Math.tan((frame.fov * Math.PI) / 360) * Math.max(16 / 9 / kept, 1);
+    const shot = (tangent * height) / safe;
+    const fitted = Math.max(this.screen.up / FILL.height, (this.screen.across * height) / (FILL.width * width));
+    const reach = Math.max(shot, fitted * frame.seated);
+    camera.fov = (Math.atan(reach) * 360) / Math.PI;
+    camera.setViewOffset(width, height, 0, -top, width, this.height);
     camera.updateMatrixWorld();
   }
 }

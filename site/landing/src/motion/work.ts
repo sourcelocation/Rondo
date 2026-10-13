@@ -2,10 +2,11 @@ import { gsap } from "gsap";
 import { all } from "./dom";
 import { clamp, damp } from "./math";
 import type { Pointer } from "./pointer";
+import type { Screen } from "./screen";
 
 /** The gap between the pointer and the picture's edge. */
 const GAP = 28;
-/** The picture's distance from the window's edges, and from its top: below the bar. */
+/** The picture's distance from the screen's edges, and from its top: below the bar. */
 const MARGIN = 16;
 const TOP = 88;
 
@@ -31,6 +32,7 @@ export class WorkPreview {
     list: HTMLElement,
     private readonly preview: HTMLElement,
     private readonly pointer: Pointer,
+    private readonly screen: Screen,
     private readonly still: boolean,
   ) {
     this.images = all(preview, ".preview__image");
@@ -57,13 +59,13 @@ export class WorkPreview {
     }
   }
 
-  /** Where the picture's corner goes for the pointer: to its left, beside it vertically, inside the window. */
+  /** Where the picture's corner goes for the pointer: to its left, beside it vertically, inside what's always seen. */
   private target(): { x: number; y: number } {
     const width = this.preview.offsetWidth;
     const height = this.preview.offsetHeight;
     return {
       x: Math.max(MARGIN, this.pointer.clientX - GAP - width),
-      y: clamp(this.pointer.clientY - height / 2, TOP, window.innerHeight - height - MARGIN),
+      y: clamp(this.pointer.clientY - height / 2, TOP, this.screen.safe - height - MARGIN),
     };
   }
 
