@@ -18,7 +18,6 @@ on:
       - app/gradle/wrapper/gradle-wrapper.properties
       - .github/workflows/images.yml
   pull_request:
-    branches-ignore: [production]
     paths:
       - "**/Dockerfile"
       - "**/.dockerignore"

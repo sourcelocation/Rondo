@@ -1,11 +1,9 @@
 name: CI
 
-# Release pull requests into production carry master's latest commit, which this already tested.
 on:
   push:
     branches: [master]
   pull_request:
-    branches-ignore: [production]
 
 concurrency:
   group: ci-${{ github.ref }}
