@@ -139,7 +139,10 @@ class DeckTable : Table {
      * instead of deleted.
      */
     private fun release(sql: Sql, deck: Deck): Boolean {
-        val lent = sql.query("SELECT DISTINCT deck_id FROM shares WHERE deck_id = ANY(?::uuid[])", subtree(sql, listOf(deck.id))) {
+        val lent = sql.query(
+            "SELECT DISTINCT deck_id FROM shares WHERE deck_id = ANY(?::uuid[])",
+            subtree(sql, listOf(deck.id)),
+        ) {
             it.getString(1)
         }
         if (lent.isEmpty()) return false
@@ -159,11 +162,14 @@ class TemplateTable : Table {
     override fun record(json: String) = Record.json.decodeFromString(TemplateRecord.serializer(), json)
 
     /** The stored note types of [ids], deleted ones included; those this server can't read left out. */
-    fun byId(sql: Sql, ids: Collection<String>): List<TemplateRecord> =
-        if (ids.isEmpty()) emptyList() else sql.query(
+    fun byId(sql: Sql, ids: Collection<String>): List<TemplateRecord> = if (ids.isEmpty()) {
+        emptyList()
+    } else {
+        sql.query(
             "SELECT (to_jsonb(t) - 'seq')::text FROM templates t WHERE id = ANY(?::uuid[])",
             ids.distinct(),
         ) { record(it.getString(1)) }
+    }
 
     /** Loads [ids] into [batch], unless they're there or Rondo's own. */
     fun need(ids: Collection<String>, batch: Batch) {
@@ -171,7 +177,12 @@ class TemplateTable : Table {
         for (r in byId(batch.sql, missing)) r.template()?.let { batch.templates.putIfAbsent(it.id, it) }
     }
 
-    override fun load(records: List<Record>, batch: Batch) = need(records.filterIsInstance<TemplateRecord>().map { it.id }, batch)
+    override fun load(records: List<Record>, batch: Batch) = need(
+        records.filterIsInstance<TemplateRecord>().map {
+            it.id
+        },
+        batch,
+    )
 
     override fun accept(record: Record, batch: Batch) {
         if (record !is TemplateRecord) return
@@ -208,14 +219,18 @@ class NoteTable(private val decks: DeckTable, private val templates: TemplateTab
     override fun record(json: String) = Record.json.decodeFromString(NoteRecord.serializer(), json)
 
     /** The live notes in [deckIds]. */
-    fun inDecks(sql: Sql, deckIds: Collection<String>): List<NoteRecord> = rows(sql, "deck_id = ANY(?::uuid[]) AND deleted_at IS NULL", deckIds)
+    fun inDecks(sql: Sql, deckIds: Collection<String>): List<NoteRecord> =
+        rows(sql, "deck_id = ANY(?::uuid[]) AND deleted_at IS NULL", deckIds)
 
     fun byId(sql: Sql, ids: Collection<String>): List<NoteRecord> = rows(sql, "id = ANY(?::uuid[])", ids)
 
-    private fun rows(sql: Sql, where: String, ids: Collection<String>): List<NoteRecord> =
-        if (ids.isEmpty()) emptyList() else sql.query("SELECT (to_jsonb(n) - 'seq' - 'search_text')::text FROM notes n WHERE $where", ids.distinct()) {
+    private fun rows(sql: Sql, where: String, ids: Collection<String>): List<NoteRecord> = if (ids.isEmpty()) {
+        emptyList()
+    } else {
+        sql.query("SELECT (to_jsonb(n) - 'seq' - 'search_text')::text FROM notes n WHERE $where", ids.distinct()) {
             record(it.getString(1))
         }
+    }
 
     override fun load(records: List<Record>, batch: Batch) {
         val incoming = records.filterIsInstance<NoteRecord>()
@@ -230,7 +245,22 @@ class NoteTable(private val decks: DeckTable, private val templates: TemplateTab
         val stored = batch.notes[record.id]
         if (stored != null && record.v <= stored.v) return
         // An app that predates tags sends none: the note keeps the ones it has.
-        val kept = if (record.tags == null) NoteRecord(record.id, record.ownerId, record.deckId, record.templateId, record.fields, record.v, record.deletedAt, stored?.tags.orEmpty()) else record
+        val kept = if (record.tags ==
+            null
+        ) {
+            NoteRecord(
+                record.id,
+                record.ownerId,
+                record.deckId,
+                record.templateId,
+                record.fields,
+                record.v,
+                record.deletedAt,
+                stored?.tags.orEmpty(),
+            )
+        } else {
+            record
+        }
         val n = kept.note()
         val template = Template.builtins[n.templateId] ?: batch.templates[n.templateId]
         n.check(batch.access, stored, template)?.let { return batch.reject(this, n.id, it) }
@@ -239,7 +269,11 @@ class NoteTable(private val decks: DeckTable, private val templates: TemplateTab
         // The media a note shows stay stored while it does (the media cleanup job reads note_media).
         batch.sql.exec("DELETE FROM note_media WHERE note_id = ?::uuid", n.id)
         for (hash in template.media(n)) {
-            batch.sql.exec("INSERT INTO note_media (note_id, hash) VALUES (?::uuid, decode(?, 'hex')) ON CONFLICT DO NOTHING", n.id, hash)
+            batch.sql.exec(
+                "INSERT INTO note_media (note_id, hash) VALUES (?::uuid, decode(?, 'hex')) ON CONFLICT DO NOTHING",
+                n.id,
+                hash,
+            )
         }
     }
 }
@@ -270,9 +304,10 @@ class SettingsTable : Table {
 
     override fun load(records: List<Record>, batch: Batch) {
         if (records.none { it is SettingsRecord }) return
-        batch.settings = batch.sql.query("SELECT (to_jsonb(s) - 'seq')::text FROM settings s WHERE user_id = ?::uuid", batch.actor) {
-            record(it.getString(1)).settings()
-        }.firstOrNull()
+        batch.settings =
+            batch.sql.query("SELECT (to_jsonb(s) - 'seq')::text FROM settings s WHERE user_id = ?::uuid", batch.actor) {
+                record(it.getString(1)).settings()
+            }.firstOrNull()
     }
 
     override fun accept(record: Record, batch: Batch) {

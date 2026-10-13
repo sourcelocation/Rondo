@@ -22,7 +22,8 @@ import app.rondo.core.sql.SqlFilter
 import java.util.UUID
 
 /** Hosted MCP's view: the actor's own decks and the ones lent to them, read from Postgres. */
-class PostgresWorkspace(override val actor: String, private val postgres: Postgres, private val sync: SyncService) : Workspace {
+class PostgresWorkspace(override val actor: String, private val postgres: Postgres, private val sync: SyncService) :
+    Workspace {
     private val hlc = Hlc(Hlc.DEVICE_MASK)
 
     /** The actor's decks and the ones lent to them, with everything under them; and the lends. */
@@ -45,7 +46,9 @@ class PostgresWorkspace(override val actor: String, private val postgres: Postgr
         val access = Access(actor, tree, lends) { true }
         val sql = "SELECT deck_id, count(*) FROM notes " +
             "WHERE deck_id = ANY(?::uuid[]) AND deleted_at IS NULL GROUP BY deck_id"
-        val counts = postgres.transaction { it.query(sql, tree.byId.keys) { r -> r.getString(1) to r.getInt(2) }.toMap() }
+        val counts = postgres.transaction {
+            it.query(sql, tree.byId.keys) { r -> r.getString(1) to r.getInt(2) }.toMap()
+        }
         val views = tree.byId.values.map { DeckView(it, tree.path(it.id), access.role(it.id), counts[it.id] ?: 0) }
         return views.filter { it.role != Role.NONE }
     }
@@ -80,7 +83,8 @@ class PostgresWorkspace(override val actor: String, private val postgres: Postgr
         return postgres.transaction { it.query(sql, ids, row = ::note) }.filter { it.deckId in decks }
     }
 
-    private fun note(r: java.sql.ResultSet): Note = Record.json.decodeFromString(NoteRecord.serializer(), r.getString(1)).note()
+    private fun note(r: java.sql.ResultSet): Note =
+        Record.json.decodeFromString(NoteRecord.serializer(), r.getString(1)).note()
 
     /** The events about [noteIds], with the voids taking any of them back. */
     override suspend fun events(noteIds: List<String>): List<Event> = postgres.transaction { sql ->
@@ -97,10 +101,14 @@ class PostgresWorkspace(override val actor: String, private val postgres: Postgr
         sql.query("SELECT timezone FROM settings WHERE user_id = ?::uuid", actor) { it.getString(1) }.firstOrNull()
     }
 
-    override suspend fun save(decks: List<Deck>, notes: List<Note>): Map<String, ErrorCode> = postgres.transaction { sql ->
-        val pushed = sync.push(sql, actor, decks.map(::DeckRecord) + notes.map(::NoteRecord))
-        pushed.rejected.associate { r -> r.id to (ErrorCode.entries.firstOrNull { it.value == r.code } ?: ErrorCode.INVALID) }
-    }
+    override suspend fun save(decks: List<Deck>, notes: List<Note>): Map<String, ErrorCode> =
+        postgres.transaction { sql ->
+            val pushed = sync.push(sql, actor, decks.map(::DeckRecord) + notes.map(::NoteRecord))
+            pushed.rejected.associate { r ->
+                r.id to
+                    (ErrorCode.entries.firstOrNull { it.value == r.code } ?: ErrorCode.INVALID)
+            }
+        }
 
     override fun clock(): Long = hlc.next()
 }

@@ -45,7 +45,11 @@ class AnkiImportTest {
      * What importing [bytes] at the top level would do, as the import screen sets it up by default:
      * made Rondo's ([translate]) with the likely suggestions, with the review [history] or not.
      */
-    private suspend fun Rondo.plan(bytes: ByteArray, translate: Boolean = true, history: Boolean = true): Pair<AnkiPackage, Plan> {
+    private suspend fun Rondo.plan(
+        bytes: ByteArray,
+        translate: Boolean = true,
+        history: Boolean = true,
+    ): Pair<AnkiPackage, Plan> {
         val pkg = imports.open(bytes) as AnkiPackage
         val conversion = AnkiConversion(pkg.contents())
         val base = if (translate) conversion.contents else pkg.contents()
