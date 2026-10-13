@@ -8,8 +8,8 @@ import { links } from "../content/links";
  * places for the cards that come of it, each a window onto one swelling wireframe surface
  * (motion/assistant/field.ts). What someone asks for is typed out ("…from my biology notes."), stirring it; a light
  * reads through the words and it swells; then a shockwave crosses the row, the surface heaving into a ridge whose lines
- * flare as it passes, and in its wake the water stills and each card is uncovered. Under the row, the assistant that
- * made them. Then the words are selected and gone, the cards go, and the next request is typed.
+ * flare as it passes, and in its wake the water stills and each card is uncovered. Then the words are selected and
+ * gone, the cards go, and the next request is typed.
  * motion/assistant.ts tells it; drawn here as it rests ("…with AI.", the first cards made), so it reads without the
  * motion.
  */
@@ -312,18 +312,6 @@ const places = Array.from({ length: 7 }, (_, index) => ({
   .card__back small {
     font: 400 max(10px, calc(var(--w) * 0.046)) / 1.2 var(--sans);
     color: var(--ink-3);
-  }
-
-  /* Who made them, under the row. */
-  .row__by {
-    margin-top: 20px;
-    font: 400 var(--size-micro) / 1 var(--mono);
-    letter-spacing: 0.02em;
-    color: var(--ink-3);
-  }
-
-  .row__by span {
-    color: var(--ink);
   }
 
   .ai__words {

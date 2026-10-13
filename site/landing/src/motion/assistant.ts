@@ -29,7 +29,7 @@ const FRICTION = 6;
  * the caret blinks, over a row of places for cards, windows onto one surface (motion/assistant/field.ts). What's asked
  * is typed out, stirring it; the caret blinks on, a light reads through the words and the surface swells; then a
  * shockwave crosses the row at an even pace, and each card shows itself as the swell reaches
- * it; the assistant that made them is named under the row. A while later the words are selected and gone, the
+ * it. A while later the words are selected and gone, the
  * cards lift away, and the next request begins. Before any of it, as the row scrolls in, the cards slide into their
  * places from the left, the way the shockwave carries them, already moving and slowing to a stop, one a beat after another; and each shockwave carries
  * the row a place along, where it stays, a card going round from its far end to its near one. With reduced motion the
@@ -43,8 +43,6 @@ export class Assistant {
   /** What's made in each place, in the row's order, and each request's card in each of them. */
   private made: HTMLElement[] = [];
   private faces: HTMLElement[][] = [];
-  private readonly by: HTMLElement;
-  private readonly byName: HTMLElement;
   /** The surface the empty places show (motion/assistant/field.ts), once it's there; never without WebGL. */
   private field: Field | null = null;
   /** The row's places, and how far along the shockwaves have carried them, in places. */
@@ -63,14 +61,11 @@ export class Assistant {
     this.row = one(root, "[data-row]");
     this.places = one(root, ".row__places");
     this.order();
-    this.by = one(root, "[data-by]");
-    this.byName = one(root, "[data-by-name]");
     if (stage.reduced) return;
     // Empty places, and nothing typed yet but the caret.
     root.classList.add("is-live");
     gsap.set(this.made, { autoAlpha: 0 });
     gsap.set(this.faces.flat(), { autoAlpha: 0 });
-    gsap.set(this.by, { autoAlpha: 0 });
     const arriving = all(root, "[data-place]");
     gsap.set(arriving, { x: () => -window.innerWidth * ARRIVING, force3D: true });
     this.typed.textContent = "";
@@ -222,7 +217,6 @@ export class Assistant {
     // When the light is `place` places across.
     const when = (place: number): number => at + (place + BEFORE) * PLACE;
     timeline.set(this.faces[index] ?? [], { autoAlpha: 1 }, at);
-    timeline.call(() => (this.byName.textContent = requests[index]?.by ?? ""), undefined, at);
     timeline.fromTo(
       this.swept,
       { value: -BEFORE },
@@ -257,18 +251,11 @@ export class Assistant {
         when(place - REACH),
       );
     });
-    timeline.fromTo(
-      this.by,
-      { autoAlpha: 0, y: 6 },
-      { autoAlpha: 1, y: 0, duration: 0.9, ease: "expo.out" },
-      when(columns),
-    );
     return when(end);
   }
 
   /** Takes `faces` away from `at`: the cards lift off their places and fade, from the left, leaving them empty. */
   private empty(timeline: gsap.core.Timeline, faces: HTMLElement[], at: number): void {
-    timeline.to(this.by, { autoAlpha: 0, duration: 0.3, ease: "power1.in" }, at - 0.2);
     // The surface under them carries on as the shockwave left it: it's settled everywhere, so taking the shockwave
     // off the row now changes nothing in it, and it calms on from there.
     timeline.call(() => this.field?.uncover(), undefined, at);

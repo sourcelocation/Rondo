@@ -8,17 +8,15 @@ import type { Flashcard } from "./cards";
 /** The headline's ending as it rests, before anything is asked. */
 export const resting = "with AI.";
 
-/** One request: the words that finish the headline, the assistant asked, and five of the cards that come of it. */
+/** One request: the words that finish the headline, and five of the cards that come of it. */
 export interface Request {
   readonly words: string;
-  readonly by: string;
   readonly cards: readonly Flashcard[];
 }
 
 export const requests: readonly Request[] = [
   {
     words: "from my biology notes.",
-    by: "Rondo",
     cards: [
       { deck: "Biology", front: "Ribosome", back: "Builds proteins from RNA" },
       { deck: "Biology", front: "Nucleus", back: "Holds the cell’s DNA" },
@@ -29,7 +27,6 @@ export const requests: readonly Request[] = [
   },
   {
     words: "with example sentences.",
-    by: "Claude",
     cards: [
       { deck: "Japanese › Verbs", front: "食べる", back: "朝ごはんを食べる。", detail: "I eat breakfast.", lang: "ja" },
       { deck: "Japanese › Verbs", front: "飲む", back: "コーヒーを飲む。", detail: "I drink coffee.", lang: "ja" },
@@ -40,7 +37,6 @@ export const requests: readonly Request[] = [
   },
   {
     words: "on the French Revolution.",
-    by: "ChatGPT",
     cards: [
       { deck: "History", front: "1789", back: "The Bastille falls" },
       { deck: "History", front: "Varennes", back: "The king’s flight fails" },
@@ -51,7 +47,6 @@ export const requests: readonly Request[] = [
   },
   {
     words: "on Europe’s capitals.",
-    by: "Gemini",
     cards: [
       { deck: "Geography", front: "Portugal", back: "Lisbon" },
       { deck: "Geography", front: "Norway", back: "Oslo" },
