@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.7](https://github.com/sourcelocation/Rondo/compare/v0.1.6...v0.1.7) (2026-10-13)
+
+
+### Bug Fixes
+
+* landing cards anim ([29198ff](https://github.com/sourcelocation/Rondo/commit/29198ff6e0ff779a5d3dd0ce69fa767a18b6b7d3))
+
 ## [0.1.6](https://github.com/sourcelocation/Rondo/compare/v0.1.5...v0.1.6) (2026-10-13)
 
 
