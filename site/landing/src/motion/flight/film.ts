@@ -19,6 +19,7 @@ import { Cabin } from "./cabin";
 import { bakeClouds, CloudVolume } from "./clouds";
 import { Focus } from "./focus";
 import { Model } from "./model";
+import { Nudge } from "./nudge";
 import { SUN, shared } from "./shading";
 import { type Frame, Shots } from "./shots";
 
@@ -120,6 +121,8 @@ export class Film {
   private progress = 0;
   private velocity = 0;
   private target = 0;
+  /** The pointer's nudge on the camera, which the page pushes as the pointer moves. */
+  readonly nudge = new Nudge();
 
   /**
    * Makes the film on `renderer` a step at a time, `pause` between the steps (until a frame the page is still), so
@@ -212,7 +215,7 @@ export class Film {
   private async prepare(pause: () => Promise<void>): Promise<void> {
     this.casters.draw();
     await pause();
-    this.shots.at(1, 0, this.frame);
+    this.shots.at(1, 0, this.nudge.offset, this.frame);
     this.pose();
     this.cabin.group.visible = true;
     await this.renderer.compileAsync(this.scene, this.camera);
@@ -253,9 +256,10 @@ export class Film {
   update(seconds: number): boolean {
     this.clock += seconds;
     this.follow(seconds);
+    const nudged = this.nudge.update(seconds);
     if (this.frame.inside) this.studied += seconds;
     const studying = this.frame.inside && this.cabin.study.at(this.studied);
-    return this.stale || this.progress !== this.target || this.frame.deck || studying;
+    return this.stale || this.progress !== this.target || this.frame.deck || studying || nudged;
   }
 
   /**
@@ -281,7 +285,7 @@ export class Film {
     this.stale = false;
     shared.uTime.value = this.clock;
     shared.uScroll.value = (this.clock * SPEED) % 100000;
-    this.shots.at(this.progress, this.clock, this.frame);
+    this.shots.at(this.progress, this.clock, this.nudge.offset, this.frame);
     this.pose();
     this.airliner.clear = this.frame.clear;
     this.cabin.group.visible = this.frame.inside;

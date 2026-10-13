@@ -1,189 +1,278 @@
 import { gsap } from "gsap";
-import { SplitText } from "gsap/SplitText";
-import { conversation } from "../content/assistants";
-import { all, one } from "./dom";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { requests } from "../content/assistants";
+import type { Field } from "./assistant/field";
+import { all, one, onResize } from "./dom";
 import { loopInView } from "./loop";
 import type { Stage } from "./stage";
 
-/** A card the assistant works on: the card, the light it passes over it, and what it gains. */
-interface Note {
-  readonly element: HTMLElement;
-  readonly scan: HTMLElement;
-  readonly more: HTMLElement;
-  readonly inner: Element[];
-  readonly bars: HTMLElement[];
-  /** Each bar's height, as the styles draw the recording. */
-  readonly heights: number[];
-}
-
-/** When each card is worked on, in seconds into the story. */
-const working = [4.3, 5.5, 6.7];
+/** How long the shockwave takes to cross one place in the row. */
+const PLACE = 0.16;
+/** Where the shockwave sets out from, off the row so it comes in, and how far past the last place it goes, in places. */
+const BEFORE = 1.6;
+const AFTER = 0.8;
+/** How far short of a card's left edge the shockwave's crest is when its swell reaches the card, in places. */
+const REACH = 0.4;
+/** How far to the left of their places the cards are, in screen widths, before they slide in, as the shockwave carries them. */
+const ARRIVING = 0.35;
+/** How long each shockwave takes to carry the row a place along. */
+const CARRYING = 2.2;
+/**
+ * How a push goes: the row picks up speed for the first share of it (`HIT`), then friction slows it to a stop
+ * (`FRICTION`, per unit of the push), landing exactly where it's carried to.
+ */
+const HIT = 0.14;
+const FRICTION = 6;
 
 /**
- * The AI section's stage, told on a loop while it's in view. The request is
- * typed and sent; the assistant thinks, then looks through the decks (its search tool spinning, then ticked) and
- * starts writing to the notes, its count running through all of them. Meanwhile each card in front lifts as a light
- * passes over it, opens to show what it gained (an example sentence with the word marked, its translation, and audio
- * whose bars grow in). Then the assistant's answer streams in, a word at a time. With
- * reduced motion the stage is simply shown as it ends.
+ * The AI section, told on a loop while it's in view, one request at a time. The headline ends on an empty line where
+ * the caret blinks, over a row of places for cards, windows onto one surface (motion/assistant/field.ts). What's asked
+ * is typed out, stirring it; the caret blinks on, a light reads through the words and the surface swells; then a
+ * shockwave crosses the row at an even pace (the row's --sweep), and each card shows itself as the swell reaches
+ * it; the assistant that made them is named under the row. A while later the words are selected and gone, the
+ * cards lift away, and the next request begins. Before any of it, as the row scrolls in, the cards slide into their
+ * places from the left, the way the shockwave carries them, already moving and slowing to a stop, one a beat after another; and each shockwave carries
+ * the row a place along, where it stays, a card going round from its far end to its near one. With reduced motion the
+ * section simply rests as it's drawn.
  */
 export class Assistant {
-  private readonly ask: HTMLElement;
-  private readonly tools: HTMLElement[];
-  private readonly progress: HTMLElement;
-  private readonly words: Element[];
+  private readonly line: HTMLElement;
   private readonly typed: HTMLElement;
-  private readonly notes: Note[];
+  private readonly select: HTMLElement;
+  private readonly row: HTMLElement;
+  /** What's made in each place, in the row's order, and each request's card in each of them. */
+  private made: HTMLElement[] = [];
+  private faces: HTMLElement[][] = [];
+  private readonly by: HTMLElement;
+  private readonly byName: HTMLElement;
+  /** The surface the empty places show (motion/assistant/field.ts), once it's there; never without WebGL. */
+  private field: Field | null = null;
+  /** The row's places, and how far along the shockwaves have carried them, in places. */
+  private readonly places: HTMLElement;
+  private readonly carried = { value: 0 };
+  /** The request whose cards are made; null while the places are empty. */
+  private shown: number | null = null;
+  private next = 0;
 
-  constructor(
-    private readonly root: HTMLElement,
-    stage: Stage,
-  ) {
-    this.ask = one(root, "[data-chat-ask]");
-    this.tools = all(root, "[data-chat-tool]");
-    this.progress = one(root, "[data-chat-progress]");
-    this.typed = one(root, "[data-chat-typed]");
-    this.notes = all(root, "[data-note]").map((element) => {
-      const more = one(element, "[data-note-more]");
-      const bars = all(element, "[data-note-bar]");
-      return {
-        element,
-        scan: one(element, "[data-note-scan]"),
-        more,
-        inner: [...one(more, ".note__inner").children],
-        bars,
-        heights: bars.map((bar) => Number(gsap.getProperty(bar, "scaleY"))),
-      };
+  constructor(root: HTMLElement, stage: Stage) {
+    this.line = one(root, ".typed");
+    this.typed = one(root, "[data-typed]");
+    this.select = one(root, "[data-typed-select]");
+    this.row = one(root, "[data-row]");
+    this.places = one(root, ".row__places");
+    this.order();
+    this.by = one(root, "[data-by]");
+    this.byName = one(root, "[data-by-name]");
+    if (stage.reduced) return;
+    // Empty places, and nothing typed yet but the caret.
+    root.classList.add("is-live");
+    gsap.set(this.made, { autoAlpha: 0 });
+    gsap.set(this.faces.flat(), { autoAlpha: 0 });
+    gsap.set(this.row, { "--sweep": -BEFORE });
+    gsap.set(this.by, { autoAlpha: 0 });
+    const arriving = all(root, "[data-place]");
+    gsap.set(arriving, { x: () => -window.innerWidth * ARRIVING, force3D: true });
+    this.typed.textContent = "";
+    this.line.classList.add("is-waiting");
+    // In development, with ?tune in the address, a panel for tuning the sea and the shockwave.
+    if (import.meta.env.DEV && new URLSearchParams(location.search).has("tune"))
+      void import("./assistant/tuning").then(({ Tuning }) => new Tuning());
+    // Not before the page is on screen, so nothing's typed under the intro.
+    void stage.arrived.then(async () => {
+      ScrollTrigger.create({
+        trigger: this.row,
+        start: "top 90%",
+        once: true,
+        onEnter: () => {
+          gsap.to(arriving, { x: 0, duration: 3, ease: "power3.out", stagger: 0.09, force3D: true });
+        },
+      });
+      loopInView(root, () => this.story(), { start: "top 70%", end: "bottom 15%" });
+      onResize(this.places, () => this.place());
+      const { Field } = await import("./assistant/field");
+      this.field = Field.create(this.row, all(root, "[data-field]", HTMLCanvasElement));
     });
-    if (stage.reduced) {
-      this.words = [];
-      return;
-    }
-    this.words = new SplitText(one(root, "[data-chat-reply]"), { type: "words" }).words;
-    // The cards open and close as the story goes: an open copy of them, unseen, keeps their room.
-    const cards = one(root, ".enrich");
-    const room = cards.cloneNode(true) as HTMLElement;
-    room.classList.add("enrich--room");
-    room.removeAttribute("data-depth");
-    cards.after(room);
-    this.clear();
-    loopInView(root, () => this.story(), { start: "top 70%", end: "bottom 15%" });
-  }
-
-  /** Back to before the request: an empty field, no conversation, the cards as they were. */
-  private clear(): void {
-    gsap.set([this.ask, ...this.tools, ...this.words], { opacity: 0 });
-    for (const tool of this.tools) tool.classList.add("is-working");
-    this.progress.textContent = "0";
-    this.typed.textContent = "Ask anything";
-    this.typed.classList.remove("is-typing");
-    this.root.classList.remove("is-thinking");
-    for (const note of this.notes) {
-      gsap.set(note.more, { height: 0 });
-      gsap.set(note.scan, { xPercent: -100, opacity: 0 });
-      gsap.set(note.bars, { scaleY: 0.08 });
-    }
   }
 
   private story(): gsap.core.Timeline {
-    // Tweens set their starting state when they start, not when the story is put together.
+    const index = this.next;
+    const request = requests[index];
     const timeline = gsap.timeline({ defaults: { immediateRender: false } });
-    timeline.call(() => this.clear(), undefined, 0);
+    if (request == null) return timeline;
+    this.next = (index + 1) % requests.length;
 
-    // The request is typed, a little unevenly, and sent.
-    const typing = { letters: 0 };
-    timeline.call(() => this.typed.classList.add("is-typing"), undefined, 0.5);
-    timeline.to(
-      typing,
-      {
-        letters: conversation.ask.length,
-        duration: 1.7,
-        ease: "power1.inOut",
-        onUpdate: () => (this.typed.textContent = conversation.ask.slice(0, Math.round(typing.letters))),
-      },
-      0.5,
-    );
+    // The last request's words are selected and gone, and its cards lift away; the caret waits.
+    let at = 0;
+    const shown = this.shown;
+    if (shown != null) {
+      timeline.fromTo(
+        this.select,
+        { backgroundSize: "0% 100%" },
+        { backgroundSize: "100% 100%", duration: 0.3, ease: "power2.inOut" },
+        0,
+      );
+      this.empty(timeline, this.faces[shown] ?? [], 0.3);
+      timeline.call(
+        () => {
+          this.typed.textContent = "";
+          gsap.set(this.select, { backgroundSize: "0% 100%" });
+          this.line.classList.add("is-waiting");
+        },
+        undefined,
+        0.45,
+      );
+      at = 0.45;
+    }
+    this.shown = null;
+
+    // What's asked, typed a letter at a time.
+    at += 0.6;
     timeline.call(
       () => {
-        this.typed.classList.remove("is-typing");
-        this.typed.textContent = "Ask anything";
+        this.line.classList.remove("is-waiting");
+        this.line.classList.add("is-typing");
+        this.field?.listen();
       },
       undefined,
-      2.4,
+      at,
     );
-    timeline.fromTo(
-      this.ask,
-      { opacity: 0, y: 18, scale: 0.96, transformOrigin: "100% 100%" },
-      { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: "expo.out" },
-      2.4,
+    for (let letters = 1; letters <= request.words.length; letters++) {
+      const words = request.words.slice(0, letters);
+      timeline.call(() => (this.typed.textContent = words), undefined, at);
+      at += this.pause(request.words, letters);
+    }
+
+    // Sent: the caret blinks on, a light reads through the words and the surface swells; as it leaves them, the
+    // shockwave crosses the row.
+    const sent = at + 0.2;
+    timeline.call(
+      () => {
+        this.line.classList.replace("is-typing", "is-waiting");
+        this.typed.classList.add("is-reading");
+        this.shown = index;
+        this.field?.think();
+      },
+      undefined,
+      sent,
     );
+    timeline.call(() => this.typed.classList.remove("is-reading"), undefined, sent + 1.05);
+    const made = this.fill(timeline, index, sent + 0.4);
+    timeline.call(() => this.field?.cover(), undefined, made);
 
-    // It thinks, then looks through the decks, and writes to every note, counting.
-    timeline.call(() => this.root.classList.add("is-thinking"), undefined, 2.7);
-    timeline.call(() => this.root.classList.remove("is-thinking"), undefined, 3.3);
-    const [search, update] = this.tools;
-    if (search != null) {
-      timeline.fromTo(search, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.5, ease: "expo.out" }, 3.3);
-      timeline.call(() => search.classList.remove("is-working"), undefined, 3.9);
-    }
-    if (update != null) {
-      timeline.fromTo(update, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.5, ease: "expo.out" }, 4.0);
-      const count = { n: 0 };
-      timeline.to(
-        count,
-        {
-          n: conversation.update.total,
-          duration: 4.1,
-          ease: "power1.inOut",
-          onUpdate: () => (this.progress.textContent = String(Math.round(count.n))),
-        },
-        4.1,
-      );
-      timeline.call(() => update.classList.remove("is-working"), undefined, 8.25);
-    }
-    this.notes.forEach((note, index) => this.enrich(timeline, note, working[index] ?? 4));
-
-    // The answer streams in, a word at a time.
-    timeline.to(this.words, { opacity: 1, duration: 0.35, stagger: 0.045, ease: "power1.out" }, 8.5);
-
-    // A while to take it in, then it all goes, for the next assistant.
-    const out = 13;
-    timeline.to(
-      [this.ask, ...this.tools, ...this.words],
-      { opacity: 0, y: -6, duration: 0.5, ease: "power2.in", stagger: 0.01 },
-      out,
-    );
-    for (const note of this.notes) {
-      timeline.to(note.more, { height: 0, duration: 0.6, ease: "power3.inOut" }, out + 0.1);
-    }
-    timeline.set([this.ask, ...this.tools, ...this.words], { y: 0 }, out + 0.8);
+    // A while to take them in.
+    timeline.set({}, {}, made + 2.6);
     return timeline;
   }
 
+  /** What's made in each place and each request's card in it, in the order the row has them now. */
+  private order(): void {
+    this.made = all(this.places, "[data-made]");
+    this.faces = requests.map((_, index) => this.made.flatMap((made) => all(made, "[data-face]")[index] ?? []));
+  }
+
+  /** Puts the row's places where they've been carried, and the surface under them where the screen has it. */
+  private place(): void {
+    const [first, second] = all(this.places, "[data-place]");
+    const width = (second?.offsetLeft ?? 0) - (first?.offsetLeft ?? 0);
+    gsap.set(this.places, { x: this.carried.value * width, force3D: true });
+    this.field?.slide(this.carried.value);
+  }
+
   /**
-   * A card worked on: it lifts as the light passes over it, opens to show its example, its translation and its
-   * audio, the recording's bars growing in, and settles.
+   * Once the row has been carried a whole place, the card that went off its far end comes round to its near one, and
+   * the row steps back a place under it, so nothing on screen moves.
    */
-  private enrich(timeline: gsap.core.Timeline, note: Note, at: number): void {
-    timeline.to(note.element, { y: -6, scale: 1.025, duration: 0.35, ease: "power2.out" }, at);
+  private wrap(): void {
+    if (this.carried.value < 1 - 1e-3) return;
+    const last = this.places.lastElementChild;
+    if (last != null) this.places.prepend(last);
+    this.carried.value -= 1;
+    this.order();
+    this.field?.measure();
+    this.place();
+  }
+
+  /**
+   * How far along its push the row is at `progress` through it, from 0 to 1: its speed builds over the first `HIT` of
+   * it, then friction takes it down, so it comes to rest just as it arrives.
+   */
+  private carrying(progress: number): number {
+    const coasting = (1 - Math.exp(-FRICTION * (1 - HIT))) / FRICTION;
+    const total = HIT / 2 + coasting;
+    if (progress < HIT) return (progress * progress) / (2 * HIT) / total;
+    return (HIT / 2 + (1 - Math.exp(-FRICTION * (progress - HIT))) / FRICTION) / total;
+  }
+
+  /** How long the letter at `index` takes to type: unevenly, as people type, and a beat after each word. */
+  private pause(text: string, index: number): number {
+    const jitter = ((index * 37) % 11) / 330;
+    return 0.03 + jitter + (text[index - 1] === " " ? 0.05 : 0);
+  }
+
+  /**
+   * Makes request `index`'s cards from `at`: the shockwave comes in from the row's left and crosses it, and each card
+   * shows itself as the swell reaches it, coming into focus and settling onto its place. Returns when it has crossed.
+   */
+  private fill(timeline: gsap.core.Timeline, index: number, at: number): number {
+    const columns = Number(getComputedStyle(this.row).getPropertyValue("--n")) || 1;
+    const end = columns + AFTER;
+    const crossing = (end + BEFORE) * PLACE;
+    // When the light is `place` places across.
+    const when = (place: number): number => at + (place + BEFORE) * PLACE;
+    timeline.set(this.faces[index] ?? [], { autoAlpha: 1 }, at);
+    timeline.call(() => (this.byName.textContent = requests[index]?.by ?? ""), undefined, at);
+    timeline.fromTo(this.row, { "--sweep": -BEFORE }, { "--sweep": end, duration: crossing, ease: "none" }, at);
+    // As it reaches the middle of the row it carries the row along with it, a place, where it stays.
+    timeline.call(
+      () => {
+        gsap.to(this.carried, {
+          value: Math.round(this.carried.value) + 1,
+          duration: CARRYING,
+          ease: (progress: number) => this.carrying(progress),
+          onUpdate: () => this.place(),
+          onComplete: () => this.wrap(),
+        });
+      },
+      undefined,
+      when((columns - 1) / 2 - 1),
+    );
+    this.made.forEach((made, place) => {
+      timeline.fromTo(
+        made,
+        { autoAlpha: 0, y: made.offsetWidth * 0.03, scale: 0.985, filter: "blur(12px)" },
+        { autoAlpha: 1, y: 0, scale: 1, filter: "blur(0px)", duration: 0.7, ease: "expo.out" },
+        when(place - REACH),
+      );
+    });
     timeline.fromTo(
-      note.scan,
-      { xPercent: -100, opacity: 1 },
-      { xPercent: 100, duration: 1.1, ease: "power1.inOut" },
+      this.by,
+      { autoAlpha: 0, y: 6 },
+      { autoAlpha: 1, y: 0, duration: 0.9, ease: "expo.out" },
+      when(columns),
+    );
+    return when(end);
+  }
+
+  /** Takes `faces` away from `at`: the cards lift off their places and fade, from the left, leaving them empty. */
+  private empty(timeline: gsap.core.Timeline, faces: HTMLElement[], at: number): void {
+    timeline.to(this.by, { autoAlpha: 0, duration: 0.3, ease: "power1.in" }, at - 0.2);
+    // The surface under them carries on as the shockwave left it: it's settled everywhere, so taking the shockwave
+    // off the row now changes nothing in it, and it calms on from there.
+    timeline.call(() => this.field?.uncover(), undefined, at);
+    timeline.set(this.row, { "--sweep": -BEFORE }, at);
+    timeline.to(
+      this.made,
+      {
+        autoAlpha: 0,
+        y: (_: number, made: HTMLElement) => -made.offsetWidth * 0.06,
+        filter: "blur(6px)",
+        duration: 0.5,
+        ease: "power2.in",
+        stagger: 0.05,
+      },
       at,
     );
-    timeline.to(note.more, { height: "auto", duration: 0.8, ease: "expo.out" }, at + 0.3);
-    timeline.fromTo(
-      note.inner,
-      { opacity: 0, y: 8, filter: "blur(6px)" },
-      { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.6, ease: "expo.out", stagger: 0.09 },
-      at + 0.4,
-    );
-    timeline.to(
-      note.bars,
-      { scaleY: (index: number) => note.heights[index] ?? 1, duration: 0.5, ease: "back.out(3)", stagger: 0.025 },
-      at + 0.7,
-    );
-    timeline.to(note.element, { y: 0, scale: 1, duration: 0.9, ease: "elastic.out(1, 0.55)" }, at + 0.75);
+    const gone = at + 0.5 + 0.05 * (this.made.length - 1);
+    timeline.set(faces, { autoAlpha: 0 }, gone);
   }
 }

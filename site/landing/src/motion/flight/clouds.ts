@@ -115,7 +115,10 @@ const march = /* glsl */ `
   uniform mat4 uCameraWorld;
   uniform sampler2D uOccupancy;
   uniform mat4 uOccupancyMatrix;
+  // The most samples a ray takes inside the clouds, where each costs the light's way to the sun; and the most steps
+  // it takes at all, the cheap ones over the tops included, so a ray skimming them still reaches the deck far off.
   uniform float uSteps;
+  const int STEPS = 256;
   varying vec2 vScreen;
 
   // Extinction deep in a cloud, per metre, and toward the sun (less, as light that scatters still gets through).
@@ -186,20 +189,24 @@ const march = /* glsl */ `
     float transmittance = 1.0;
     vec3 light = vec3(0.0);
     float t = enter + jitter(gl_FragCoord.xy) * 0.6;
-    for (int i = 0; i < 112; i++) {
-      if (float(i) >= uSteps || t > leave || transmittance < 0.012) break;
+    float samples = 0.0;
+    for (int i = 0; i < STEPS; i++) {
+      if (samples >= uSteps || t > leave || transmittance < 0.012) break;
       vec3 p = origin + direction * t;
       vec2 top = topAt(p.xz);
-      // Above the tops (with room for the billows' rise) there's nothing: stride toward them.
+      // Longer steps further off, where the detail is finer than a pixel.
+      float stride = clamp(0.3 + t * 0.009, 0.3, 14.0);
+      // Above the tops (with room for the billows' rise) there's nothing: stride toward them, never in steps shorter
+      // than those through the clouds there, or a ray skimming the tops would spend all its steps getting nowhere.
       float clear = p.y - (min(top.x, top.y) + 4.0);
       if (clear > 0.0) {
-        t += max(clear / (abs(direction.y) + 1.1), 0.4);
+        t += max(clear / (abs(direction.y) + 1.1), stride);
         continue;
       }
       float near = 1.0 - smoothstep(120.0, 420.0, t);
       float density = cloudAt(p, top, near);
-      float stride = clamp(0.3 + t * 0.009, 0.3, 14.0);
       if (density > 0.004) {
+        samples += 1.0;
         float extinction = density * DENSITY;
         // The plane's shadow, softer the deeper below it.
         vec4 seen = uOccupancyMatrix * vec4(p, 1.0);
@@ -423,7 +430,7 @@ export class CloudVolume {
 
   private readonly steps: { value: number };
 
-  /** `steps` caps how far each ray is marched: fewer on small screens. */
+  /** `steps` caps how many samples each ray takes inside the clouds: fewer on small screens. */
   constructor(
     maps: CloudMaps,
     occupancy: Occupancy,

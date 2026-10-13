@@ -3,6 +3,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { pagePath, pages } from "../content/pages";
 import { all, one } from "./dom";
 import type { Stage } from "./stage";
+import { Wave } from "./transition/wave";
 
 /**
  * Where a leaving page tells the next about the way there, which /head.js reads before the next page paints: that
@@ -16,7 +17,7 @@ const CONTENT = "main, body > footer, [data-scenery]";
 /** How long the curtain's front takes to cover the screen, in seconds. */
 const COVER = 1.0;
 
-interface Point {
+export interface Point {
   x: number;
   y: number;
 }
@@ -42,12 +43,17 @@ function top(): Point {
  * other sites, new tabs) open as usual, and with reduced motion so does every link.
  */
 export class Curtain {
+  /** The sheet standing still, as a page opens under it before its motion comes. */
   private readonly sheet: HTMLElement;
-  /** The ring along the curtain's front, coming over a page. */
-  private readonly front: HTMLElement;
-  /** The ring along its back, the next page coming through. */
-  private readonly back: HTMLElement;
+  /** Where the sheet's drawn as it passes. */
+  private readonly canvas: HTMLCanvasElement;
   private readonly label: HTMLElement;
+  /**
+   * The sheet as it passes, made once the curtain may soon pass (a link reached for, or a page opening under it), so
+   * its first frame doesn't wait for the GPU; null until then, and where WebGL isn't.
+   */
+  private wave: Wave | null = null;
+  private waveMade = false;
   private readonly prefetched = new Set<string>();
   /** The way this page is being left, once it is. */
   private trip: Trip | null = null;
@@ -65,9 +71,9 @@ export class Curtain {
     private readonly stage: Stage,
   ) {
     this.sheet = one(root, "[data-curtain-sheet]");
-    this.front = one(root, "[data-curtain-front]");
-    this.back = one(root, "[data-curtain-back]");
+    this.canvas = one(root, "[data-curtain-wave]", HTMLCanvasElement);
     this.label = one(root, "[data-curtain-label]");
+    if (document.documentElement.dataset.curtain === "cover" && !stage.reduced) this.makeWave();
   }
 
   /** Takes over clicks on links to the site's pages, and fetches a page as soon as a link to it is reached for. */
@@ -83,7 +89,9 @@ export class Curtain {
     });
     const reaching = (event: Event) => {
       const url = this.destination(event.target);
-      if (url != null) this.prefetch(url);
+      if (url == null) return;
+      this.prefetch(url);
+      this.makeWave();
     };
     document.addEventListener("pointerover", reaching, { passive: true });
     document.addEventListener("touchstart", reaching, { passive: true });
@@ -100,7 +108,7 @@ export class Curtain {
 
   /**
    * Opens the page under the curtain: the curtain's back, the page, spreads down through it from the middle of the
-   * top, inside a ring of glass, settling from a little larger as it comes. Resolves as it starts, so what opens the
+   * top, behind a lip of glass, settling from a little larger as it comes. Resolves as it starts, so what opens the
    * page plays as it comes through. At once without a curtain.
    */
   async lift(): Promise<void> {
@@ -113,7 +121,7 @@ export class Curtain {
     }
     const from = top();
     const content = all(document, CONTENT);
-    const parts = [this.root, this.sheet, this.front, this.back, this.label];
+    const parts = [this.root, this.sheet, this.canvas, this.label];
     // The name may still be rising, with the front.
     gsap.killTweensOf(this.label);
     let measured = false;
@@ -127,8 +135,7 @@ export class Curtain {
           onComplete: () => {
             delete html.dataset.curtain;
             gsap.set(parts, { clearProps: "all" });
-            this.sheet.style.removeProperty("mask-image");
-            this.sheet.style.removeProperty("-webkit-mask-image");
+            this.wave?.rest();
             // Anything scrolling reveals that was measured as the page came through, settling from larger, is measured
             // again now the page is in place, or everything far down it would play late, and the last of it never.
             ScrollTrigger.removeEventListener("refresh", remeasured);
@@ -136,12 +143,7 @@ export class Curtain {
           },
         })
         .to(this.label, { scale: 0.86, opacity: 0, filter: "blur(10px)", duration: 0.4, ease: "power2.in" })
-        .add(
-          this.spread(this.back, from, 1.3, "power3.out", (radius) => {
-            this.cut(from, radius, false);
-          }),
-          0.1,
-        )
+        .add(this.spread(false, from, 1.3, "power3.out"), 0.1)
         .fromTo(
           content,
           { scale: 1.06, opacity: 1, transformOrigin: (_: number, target: Element) => this.origin(target, from) },
@@ -152,14 +154,11 @@ export class Curtain {
     });
   }
 
-  /**
-   * The curtain's front coming over, cutting what `shape` cuts to it as it spreads from `from`, and the next page's
-   * name rising in its middle.
-   */
-  private coming(from: Point, shape: (radius: number) => void): gsap.core.Timeline {
+  /** The curtain's front coming over as it spreads from `from`, and the next page's name rising in its middle. */
+  private coming(from: Point): gsap.core.Timeline {
     return gsap
       .timeline()
-      .add(this.spread(this.front, from, COVER, "power3.out", shape), 0)
+      .add(this.spread(true, from, COVER, "power3.out"), 0)
       .fromTo(
         this.label,
         { opacity: 0, y: 16, filter: "blur(8px)" },
@@ -169,41 +168,46 @@ export class Curtain {
   }
 
   /**
-   * One of the curtain's edges moving: a circle round `from` grows to the screen's far corner, `ring` along it, and
-   * `shape` cuts whatever that edge cuts (the sheet, or the next page) to it, given its radius as it goes.
+   * One of the curtain's edges moving, the `front` or the back: a circle round `from` grows to the screen's far
+   * corner, with its glass, the sheet drawn to it each frame in place of the still one. Where it can't be drawn, the
+   * sheet fades in or out instead.
    */
-  private spread(
-    ring: HTMLElement,
-    from: Point,
-    duration: number,
-    ease: string,
-    shape: (radius: number) => void,
-  ): gsap.core.Timeline {
-    // Past the far corner, so the ring's glow is gone too.
+  private spread(front: boolean, from: Point, duration: number, ease: string): gsap.core.Timeline {
+    const wave = this.makeWave();
+    if (wave == null) {
+      return gsap
+        .timeline()
+        .fromTo(
+          this.sheet,
+          { autoAlpha: front ? 0 : 1 },
+          { autoAlpha: front ? 1 : 0, duration: duration * 0.6, ease: "power1.inOut" },
+        );
+    }
+    // Past the far corner, so the glass's shadow is gone too.
     const reach =
       Math.hypot(Math.max(from.x, window.innerWidth - from.x), Math.max(from.y, window.innerHeight - from.y)) + 48;
-    const wave = { at: 0 };
-    const edge = (): void => {
-      const radius = wave.at * reach;
-      shape(radius);
-      gsap.set(ring, { x: from.x - radius, y: from.y - radius, width: radius * 2, height: radius * 2 });
+    const edge = { at: 0, glass: 0 };
+    const draw = (): void => {
+      wave.draw({ from, radius: edge.at * reach, front, glass: edge.glass });
     };
-    edge();
+    // Its first frame drawn before it takes the still sheet's place, so the two swap in the same frame.
+    draw();
+    gsap.set(this.sheet, { autoAlpha: 0 });
+    gsap.set(this.canvas, { autoAlpha: 1 });
     return gsap
-      .timeline()
-      .to(wave, { at: 1, duration, ease, onUpdate: edge })
-      .fromTo(ring, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.12, ease: "none" }, 0)
-      .to(ring, { autoAlpha: 0, duration: 0.3, ease: "power1.in" }, duration * 0.7);
+      .timeline({ onUpdate: draw })
+      .to(edge, { at: 1, duration, ease }, 0)
+      .to(edge, { glass: 1, duration: 0.12, ease: "none" }, 0)
+      .to(edge, { glass: 0, duration: 0.3, ease: "power1.in" }, duration * 0.7);
   }
 
-  /** Masks the sheet to the circle of `radius` round `from` (`inside`), or to all but it. */
-  private cut(from: Point, radius: number, inside: boolean): void {
-    const at = `circle at ${from.x}px ${from.y}px`;
-    const mask = inside
-      ? `radial-gradient(${at}, #000 ${radius}px, transparent ${radius + 1.5}px)`
-      : `radial-gradient(${at}, transparent ${radius}px, #000 ${radius + 1.5}px)`;
-    this.sheet.style.setProperty("mask-image", mask);
-    this.sheet.style.setProperty("-webkit-mask-image", mask);
+  /** The sheet as it passes, made the first time it's asked for; null where it can't be drawn. */
+  private makeWave(): Wave | null {
+    if (!this.waveMade) {
+      this.waveMade = true;
+      this.wave = Wave.create(this.canvas);
+    }
+    return this.wave?.usable === true ? this.wave : null;
   }
 
   /** `point` on the screen, from `target`'s corner, for it to scale about. */
@@ -282,9 +286,7 @@ export class Curtain {
     const content = all(document, CONTENT);
     html.dataset.curtain = "leaving";
     return new Promise((resolve) => {
-      this.covering = this.coming(from, (radius) => {
-        this.cut(from, radius, true);
-      })
+      this.covering = this.coming(from)
         .eventCallback("onComplete", () => {
           html.dataset.curtain = "cover";
           resolve();

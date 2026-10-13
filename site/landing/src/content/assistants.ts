@@ -1,64 +1,63 @@
+import type { Flashcard } from "./cards";
+
 /**
- * The AI assistants section: what it shows an assistant doing (motion/assistant.ts), which is enriching cards
- * someone already has, and the other things anyone can ask one for.
+ * The AI section: what's asked, in the words that finish the headline ("Make your cards …"), and a hand of the cards
+ * that come of it (motion/assistant.ts).
  */
 
-/** The assistant the conversation is with (the others are only named). */
-export const assistantName = "Claude";
+/** The headline's ending as it rests, before anything is asked. */
+export const resting = "with AI.";
 
-/** What's asked, how the assistant goes about it, and what it says when it's done. */
-export const conversation = {
-  ask: "Add an example sentence and audio to every card in Japanese › Verbs.",
-  search: { tool: "search_notes", found: "48 notes in Japanese › Verbs" },
-  update: { tool: "update_notes", total: 48 },
-  reply: "Done: all 48 cards have an example sentence and audio now. Want readings for the kanji next?",
-} as const;
-
-/** A card the assistant enriches: what it had, and what it gets. */
-export interface Enrichment {
-  readonly word: string;
-  readonly reading: string;
-  readonly meaning: string;
-  readonly example: string;
-  /** The example with the card's word marked out, as `[before, word, after]`. */
-  readonly marked: readonly [string, string, string];
-  readonly gloss: string;
-  readonly seconds: number;
+/** One request: the words that finish the headline, the assistant asked, and five of the cards that come of it. */
+export interface Request {
+  readonly words: string;
+  readonly by: string;
+  readonly cards: readonly Flashcard[];
 }
 
-export const enriched: readonly Enrichment[] = [
+export const requests: readonly Request[] = [
   {
-    word: "食べる",
-    reading: "たべる",
-    meaning: "to eat",
-    example: "朝ごはんを食べる。",
-    marked: ["朝ごはんを", "食べる", "。"],
-    gloss: "I eat breakfast.",
-    seconds: 2,
+    words: "from my biology notes.",
+    by: "Rondo",
+    cards: [
+      { deck: "Biology", front: "Ribosome", back: "Builds proteins from RNA" },
+      { deck: "Biology", front: "Nucleus", back: "Holds the cell’s DNA" },
+      { deck: "Biology", front: "Mitochondria", back: "Where cells make ATP" },
+      { deck: "Biology", front: "Golgi body", back: "Packs proteins to ship" },
+      { deck: "Biology", front: "Lysosome", back: "Breaks down waste" },
+    ],
   },
   {
-    word: "飲む",
-    reading: "のむ",
-    meaning: "to drink",
-    example: "毎朝コーヒーを飲む。",
-    marked: ["毎朝コーヒーを", "飲む", "。"],
-    gloss: "I drink coffee every morning.",
-    seconds: 3,
+    words: "with example sentences.",
+    by: "Claude",
+    cards: [
+      { deck: "Japanese › Verbs", front: "食べる", back: "朝ごはんを食べる。", detail: "I eat breakfast.", lang: "ja" },
+      { deck: "Japanese › Verbs", front: "飲む", back: "コーヒーを飲む。", detail: "I drink coffee.", lang: "ja" },
+      { deck: "Japanese › Verbs", front: "覚える", back: "単語を覚える。", detail: "I learn the words.", lang: "ja" },
+      { deck: "Japanese › Verbs", front: "行く", back: "図書館に行く。", detail: "I go to the library.", lang: "ja" },
+      { deck: "Japanese › Verbs", front: "読む", back: "本を読む。", detail: "I read a book.", lang: "ja" },
+    ],
   },
   {
-    word: "行く",
-    reading: "いく",
-    meaning: "to go",
-    example: "明日、図書館に行く。",
-    marked: ["明日、図書館に", "行く", "。"],
-    gloss: "I’m going to the library tomorrow.",
-    seconds: 2,
+    words: "on the French Revolution.",
+    by: "ChatGPT",
+    cards: [
+      { deck: "History", front: "1789", back: "The Bastille falls" },
+      { deck: "History", front: "Varennes", back: "The king’s flight fails" },
+      { deck: "History", front: "Robespierre", back: "Leads the Terror" },
+      { deck: "History", front: "Thermidor", back: "Robespierre falls" },
+      { deck: "History", front: "1799", back: "Napoleon takes power" },
+    ],
   },
-];
-
-/** Everything else to ask for, as someone might put it. */
-export const requests: readonly string[] = [
-  "Make a deck from this article",
-  "Turn my notes into cloze cards",
-  "What’s due today?",
+  {
+    words: "on Europe’s capitals.",
+    by: "Gemini",
+    cards: [
+      { deck: "Geography", front: "Portugal", back: "Lisbon" },
+      { deck: "Geography", front: "Norway", back: "Oslo" },
+      { deck: "Geography", front: "Hungary", back: "Budapest" },
+      { deck: "Geography", front: "Estonia", back: "Tallinn" },
+      { deck: "Geography", front: "Greece", back: "Athens" },
+    ],
+  },
 ];

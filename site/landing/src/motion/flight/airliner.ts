@@ -336,22 +336,23 @@ const lightVertex = /* glsl */ `
   varying vec2 vCorner;
   varying float vFlash;
 
-  float pulse(float t, float at) {
-    float d = (t - at) / 0.035;
-    return exp(-d * d);
+  // A light swelling and fading smoothly once every PERIOD seconds, brightest the share at of the way into each, and
+  // dark between.
+  const float PERIOD = 2.4;
+  float cycle(float at) {
+    float wave = 0.5 - 0.5 * cos((uTime / PERIOD - at) * 6.2831853);
+    return wave * wave * wave;
   }
 
   void main() {
-    // Strobes double-flash every 1.4 s; beacons flash once a second, top and bottom in turn; the tail light stays on.
+    // The strobes swell and fade together; the beacons, top and bottom, in turn between them; the tail light stays on.
     float kind = light.w;
-    float t = mod(uTime, 1.4);
-    float flash = kind < 0.5
-      ? pulse(t, 0.0) + pulse(t, 0.13)
-      : kind < 1.5 ? pulse(mod(uTime + 0.5 * step(0.0, -light.y), 1.0), 0.06) * 0.8 : 0.22;
+    float flash = kind < 0.5 ? cycle(0.0) : kind < 1.5 ? cycle(0.25 + 0.5 * step(0.0, -light.y)) * 0.8 : 0.22;
     vFlash = flash;
     vCorner = position.xy;
     vec4 centre = viewMatrix * vec4(light.xyz, 1.0);
-    float size = 0.5 + 1.6 * flash;
+    // Small, the glow growing only a little with the light: a point on the plane, not a flare.
+    float size = 0.3 + 0.4 * flash;
     gl_Position = projectionMatrix * (centre + vec4(position.xy * size, 0.0, 0.0));
   }
 `;
@@ -362,8 +363,8 @@ const lightFragment = /* glsl */ `
 
   void main() {
     float r = length(vCorner);
-    float glow = exp(-r * r * 9.0) * 0.8 + exp(-r * r * 90.0);
-    gl_FragColor = vec4(vec3(glow * vFlash), 1.0);
+    float glow = exp(-r * r * 9.0) * 0.35 + exp(-r * r * 90.0);
+    gl_FragColor = vec4(vec3(glow * vFlash * 0.7), 1.0);
   }
 `;
 

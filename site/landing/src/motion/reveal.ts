@@ -114,29 +114,62 @@ export class Reveals {
   }
 
   /**
-   * A headline: each word condenses out of a wide, blurred haze into its tight spacing, like a breath out.
-   * Words keep their kerning (split by letters, they would lose it).
+   * A headline: each word condenses out of a wide, blurred haze into its tight spacing, like a breath out. Its letters
+   * gather in from around the middle on transforms alone, each a layer the GPU moves: tightening the spacing itself
+   * would lay the line out again every frame, and the letters would step into place a pixel at a time. Each comes to
+   * rest where the whole word's kerning puts it, so nothing shifts when the words are joined back up.
    */
   private hero(element: HTMLElement): () => gsap.core.Timeline {
-    const split = new SplitText(element, { type: "words", aria: "auto" });
-    const spacing = getComputedStyle(element).letterSpacing;
-    const size = parseFloat(getComputedStyle(element).fontSize);
-    gsap.set(element, { opacity: 1 });
-    gsap.set(split.words, {
-      opacity: 0,
-      yPercent: 16,
-      filter: "blur(28px)",
-      letterSpacing: `${parseFloat(spacing) + size * 0.06}px`,
+    const kerned = this.letterStarts(element);
+    const split = new SplitText(element, { type: "words,chars", aria: "auto" });
+    const box = element.getBoundingClientRect();
+    const zoom = box.width / element.offsetWidth || 1;
+    const middle = box.left + box.width / 2;
+    const letters = split.chars.map((char, index) => {
+      const { left, width } = char.getBoundingClientRect();
+      const rest = kerned.length === split.chars.length ? (kerned[index]! - left) / zoom : 0;
+      return {
+        rest,
+        wide: rest + ((left + width / 2 - middle) / zoom) * 0.12,
+        word: split.words.findIndex((word) => word.contains(char)),
+      };
     });
+    gsap.set(element, { opacity: 1 });
+    gsap.set(split.words, { opacity: 0, yPercent: 16, filter: "blur(28px)" });
+    gsap.set(split.chars, { x: (index: number) => letters[index]!.wide, force3D: true });
+    const motion = { duration: 2.2, ease: "expo.out" };
     return () =>
-      gsap.timeline({ onComplete: () => split.revert() }).to(split.words, {
-        opacity: 1,
-        yPercent: 0,
-        filter: "blur(0px)",
-        letterSpacing: spacing,
-        duration: 2.2,
-        stagger: 0.16,
-        ease: "expo.out",
-      });
+      gsap
+        .timeline({ onComplete: () => split.revert() })
+        .to(split.words, { opacity: 1, yPercent: 0, filter: "blur(0px)", stagger: 0.16, ...motion }, 0)
+        .to(
+          split.chars,
+          {
+            x: (index: number) => letters[index]!.rest,
+            stagger: (index: number) => letters[index]!.word * 0.16,
+            force3D: true,
+            ...motion,
+          },
+          0,
+        );
+  }
+
+  /** Where each letter of an element's text starts on screen, laid out whole, with its kerning. */
+  private letterStarts(element: HTMLElement): number[] {
+    const starts: number[] = [];
+    const range = document.createRange();
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node != null; node = walker.nextNode()) {
+      let offset = 0;
+      for (const letter of node.textContent ?? "") {
+        if (letter.trim() !== "") {
+          range.setStart(node, offset);
+          range.setEnd(node, offset + letter.length);
+          starts.push(range.getBoundingClientRect().left);
+        }
+        offset += letter.length;
+      }
+    }
+    return starts;
   }
 }

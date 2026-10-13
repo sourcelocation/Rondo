@@ -1,18 +1,18 @@
-import { CubicBezierCurve3, Vector3 } from "three";
+import { CubicBezierCurve3, type Vector2, Vector3 } from "three";
 import { layout } from "./airliner";
 
 /**
  * The camera's flight in, as one move: where the camera is and looks at any point of it, from 0 (the opening shot) to
  * 1 (at rest on the laptop). The page's scroll plays it (motion/flight.ts).
  *
- * It's made the way it would be in Blender, of two keyframes. The camera travels one Bézier curve, from where it
- * waits off the plane's left side (a little above and ahead of the business cabin's open window, so it looks back at
- * it at a slight angle) to the passenger's eyes at the laptop: the curve's first handle leaves the opening toward the
- * window, and its second comes in square through it, so the camera goes in steady and level, its eyes already at the
- * seat's height. The camera tracks a target: the window as it sets off, then the laptop, the target sliding from one
- * to the other as the camera nears the window, so it comes through already turning to the laptop, and keeps it in
- * the middle of the frame as it glides into the seat. How the travel and the slide are timed are two-key eases, as
- * F-curves between two keyframes: each starts from rest and comes back to rest.
+ * It's made the way it would be in Blender, of two keyframes. The camera travels one Bézier curve, from where it waits
+ * off the plane's left side (a little above and ahead of the business cabin's open window, so it looks back at it at a
+ * slight angle) to the passenger's eyes at the laptop: the curve's first handle leaves the opening toward the window,
+ * and its second comes in square through it, so the camera goes in steady and level, its eyes already at the seat's
+ * height. The camera looks at a target, an object of its own with its own keyframes: it waits on the window as the
+ * camera flies in, then, as the camera nears, goes on ahead of it along the same way in, through the window to the
+ * seat, and on to the laptop, where it comes to rest as the camera does. How the travel and the target are timed are
+ * two-key eases, as F-curves between two keyframes: each starts from rest and comes back to rest.
  */
 
 /** What the camera does at a moment, and what the scene does with it. */
@@ -44,12 +44,12 @@ const share = (x: number, from: number, to: number) => clamp01((x - from) / (to 
 /**
  * An ease between two keyframes, as an F-curve (or CSS's cubic-bezier): from 0 to 1, flat at both ends, so it leaves
  * and arrives at rest. Its handles reach `leave` and `arrive` of the way across (from the start, and back from the
- * end): a long handle lingers at its end, a short one gets going (or stops) briskly.
+ * end): a long handle lingers at its end, a short one gets going (or stops) briskly. They can be changed as it plays.
  */
-class Ease {
+export class Ease {
   constructor(
-    private readonly leave: number,
-    private readonly arrive: number,
+    public leave: number,
+    public arrive: number,
   ) {}
 
   at(x: number): number {
@@ -68,33 +68,39 @@ class Ease {
   }
 }
 
+/** Where the open window's glass clears, in metres from it (in front of it below 0), as the camera nears it. */
+const UNTINT = { from: -3.2, to: -0.9 } as const;
+/** How much higher than square on the screen the camera looks at rest, so the cabin beyond shows above it. */
+const LIFT = (7 * Math.PI) / 180;
+
+/** The move's timing, which can be changed as it plays: in development, a panel does (motion/flight/tuning.ts). */
+export const timing = {
+  /**
+   * How the camera travels the curve, from the opening to the seat: setting off slowly from far out, and coming to the
+   * window three quarters of the way through, leaving the rest for the cabin.
+   */
+  travel: new Ease(0.55, 0.6),
+  /**
+   * When the target sets off from the window, as a share of the flight (it arrives at the laptop as the camera comes
+   * to rest), and how it goes: off briskly enough to keep well ahead of the camera, which is fast as it reaches the
+   * window, and settling on the laptop as slowly as it can, as the camera settles.
+   */
+  target: { from: 0.63, ease: new Ease(0.2, 1) },
+};
+
 /**
  * Where the camera waits, from the window: how far out, how far above, and how far ahead (toward the nose), which
  * makes the slight angle it looks back at the window from.
  */
-const OPENING = { out: 78, up: 7.5, ahead: 12.6 } as const;
+const OPENING = { out: 137, up: 13.2, ahead: 22.1 } as const;
 /** The curve's handles, in metres: leaving the opening (toward the window), and coming in to the seat (square). */
-const HANDLES = { leave: 30, arrive: 2 } as const;
-/** How the camera travels the curve, from the opening to the seat. */
-const TRAVEL = new Ease(0.2, 0.85);
-/** Where the open window's glass clears, in metres from it (in front of it below 0), as the camera nears it. */
-const UNTINT = { from: -3.2, to: -0.9 } as const;
-/** How far past the window the camera looks on the way in, so its look is steady as it goes through. */
-const BEYOND = 3;
+const HANDLES = { leave: 90, arrive: 2 } as const;
 /**
- * The camera looks through the window's middle (along its own line through it), so the window stays in the middle
- * of the frame as it comes: `amount` of the way (0 looks just past the window, `BEYOND` in, as the opening shot does;
- * 1 right at it), turned to by `turned` of the way in, and, nearing it, turned from again (from `from` to `to` metres
- * in front of it), its look steady as it goes through.
+ * How far the pointer's nudge moves the camera, across and up, as shares of how far it is from what it looks at (so it
+ * reads the same out in the air as at the seat), for each share of the window the nudge has.
  */
-const CENTRE = { amount: 1, turned: 0.25, from: -2.5, to: -0.5 } as const;
-/**
- * When the target slides from the window to the laptop, and how: late enough that the window stays in the middle of
- * the frame on the way to it, and done just inside, so the camera comes in looking at the laptop.
- */
-const LOOK = { from: 0.35, to: 0.68, ease: new Ease(0.6, 0.6) } as const;
-/** How much higher than square on the screen the camera looks at rest, so the cabin beyond shows above it. */
-const LIFT = (7 * Math.PI) / 180;
+const SHIFT = { across: 0.2, up: 0.3 } as const;
+const UP = new Vector3(0, 1, 0);
 
 export class Shots {
   /** The window, and the way in through it. */
@@ -104,19 +110,20 @@ export class Shots {
   private readonly path: CubicBezierCurve3;
   /** How deep past the window the camera comes to rest. */
   private readonly depth: number;
-  /** What the camera looks at on the way in, and at rest. */
-  private readonly through: Vector3;
-  private readonly laptop: Vector3;
+  /** The target's way: from the window, along the camera's way in to the seat, and on to the laptop. */
+  private readonly target: CubicBezierCurve3;
   private readonly sway = new Vector3();
   private readonly off = new Vector3();
-  private readonly ahead = new Vector3();
+  private readonly reach = new Vector3();
+  private readonly right = new Vector3();
+  private readonly above = new Vector3();
 
   constructor(screen: { readonly centre: Vector3; readonly normal: Vector3; readonly viewing: number }) {
     const { window, inward } = this;
-    const start = window.clone().add(new Vector3(-OPENING.out, OPENING.up, -OPENING.ahead));
     // At rest, out along the screen's normal, where the passenger's eyes would be.
     const end = screen.centre.clone().addScaledVector(screen.normal, screen.viewing);
     this.depth = end.clone().sub(window).dot(inward);
+    const start = window.clone().add(new Vector3(-OPENING.out, OPENING.up, -OPENING.ahead));
     const arrive = end.clone().addScaledVector(inward, -HANDLES.arrive);
     const leave = start.clone().add(window.clone().sub(start).setLength(HANDLES.leave));
     this.path = new CubicBezierCurve3(start, leave, arrive, end);
@@ -131,7 +138,6 @@ export class Shots {
       .divideScalar(-3 * r * r * at);
     leave.sub(off(leave)).add(across);
 
-    this.through = window.clone().addScaledVector(inward, BEYOND);
     const pitch = Math.asin(-screen.normal.y) + LIFT;
     const look = screen.normal
       .clone()
@@ -140,7 +146,9 @@ export class Shots {
       .negate()
       .multiplyScalar(Math.cos(pitch))
       .setY(Math.sin(pitch));
-    this.laptop = end.clone().addScaledVector(look, screen.viewing);
+    const laptop = end.clone().addScaledVector(look, screen.viewing);
+    // Leaving the window toward the seat, as the camera comes in, and coming to the laptop from the seat.
+    this.target = new CubicBezierCurve3(window.clone(), end.clone(), end.clone(), laptop);
   }
 
   /** Where along the curve (by its own parameter) it passes the fuselage's side, the window. */
@@ -158,21 +166,17 @@ export class Shots {
 
   /**
    * The camera `progress` of the way in (0 the opening shot, 1 at rest), drifting a little with the air (by `clock`,
-   * the world's time) until it sets off.
+   * the world's time) until it sets off, and moved a little by `nudge` (the pointer's push, across and down, in shares
+   * of the window), still looking where it was.
    */
-  at(progress: number, clock: number, frame: Frame): void {
+  at(progress: number, clock: number, nudge: Readonly<Vector2>, frame: Frame): void {
     const { position, aim } = frame;
-    this.path.getPoint(TRAVEL.at(progress), position);
-    const looking = LOOK.ease.at(share(progress, LOOK.from, LOOK.to));
-    // Past the window, along the camera's line through its middle.
-    const before = this.off.copy(position).sub(this.window).dot(this.inward);
-    const centred = CENTRE.amount * ease(progress / CENTRE.turned) * (1 - ease(share(before, CENTRE.from, CENTRE.to)));
-    this.ahead.copy(this.window).sub(position).setLength(BEYOND).add(this.window);
-    this.ahead.lerpVectors(this.through, this.ahead, centred);
-    aim.lerpVectors(this.ahead, this.laptop, looking);
+    const { travel, target } = timing;
+    this.path.getPoint(travel.at(progress), position);
+    this.target.getPoint(target.ease.at(share(progress, target.from, 1)), aim);
 
     // The air's slow sway, which the camera rides until it sets off.
-    const calm = 1 - ease(progress / 0.08);
+    const calm = 1 - ease(progress / 0.05);
     const s = clock * 0.37;
     this.sway.set(
       Math.sin(s * 1.3) + 0.6 * Math.sin(s * 2.9 + 1.1),
@@ -191,5 +195,17 @@ export class Shots {
     frame.deck = depth < 0;
     // The lens starts focusing on the laptop as the window starts to clear, quickly at first.
     frame.focus = 1 - (1 - share(depth, UNTINT.from, this.depth)) ** 2;
+
+    // The pointer's nudge: the camera moved across and up the way it was pushed, still looking at the same place.
+    // Held still through the window, whose frame is too close to move past, and back as the camera settles at the seat.
+    const free = Math.max(1 - ease(share(depth, -6, -2)), ease(share(depth, 0, this.depth)));
+    const { reach, right, above } = this;
+    reach.copy(position).sub(aim);
+    const distance = reach.length() * free;
+    right.crossVectors(UP, reach).normalize();
+    above.crossVectors(reach, right).normalize();
+    position
+      .addScaledVector(right, nudge.x * SHIFT.across * distance)
+      .addScaledVector(above, -nudge.y * SHIFT.up * distance);
   }
 }

@@ -11,6 +11,7 @@ import {
 } from "three";
 import { one, onResize } from "../dom";
 import { Film, type FilmOptions } from "../flight/film";
+import type { Pointer } from "../pointer";
 import type { Picture, Place, Scenery, View } from "../scenery";
 
 /** The most pixels the film draws a frame in: fewer for a light film. Never more than two for each CSS pixel. */
@@ -66,24 +67,29 @@ export class Projection implements Picture {
   private view: Readonly<View> | null = null;
   private dirty = true;
   private progress = 0;
+  /** Where the pointer was last frame, for how far it's moved since. */
+  private readonly pointed = new Vector2();
 
   /**
-   * The film for `host`'s stage, made on the scenery's GPU (`pause` between its steps) and shown by it from then on.
+   * The film for `host`'s stage, made on the scenery's GPU (`pause` between its steps) and shown by it from then on,
+   * its camera nudged a little as `pointer` moves.
    */
   static async create(
     scenery: Scenery,
     host: HTMLElement,
     options: FilmOptions,
+    pointer: Pointer,
     pause: () => Promise<void>,
   ): Promise<Projection> {
     const film = await Film.create(scenery.renderer, options, pause);
-    return new Projection(scenery, host, options, pause, film);
+    return new Projection(scenery, host, options, pointer, pause, film);
   }
 
   private constructor(
     scenery: Scenery,
     private readonly host: HTMLElement,
     private readonly options: FilmOptions,
+    private readonly pointer: Pointer,
     private readonly pause: () => Promise<void>,
     film: Film,
   ) {
@@ -148,6 +154,10 @@ export class Projection implements Picture {
     const moved = y !== this.stageAt.x;
     this.stageAt.set(y, this.height);
     this.rect.set(this.section.left, 0, this.section.width, this.height);
+    // A mouse's movement, not a finger's: a finger moves only to scroll, and the camera would lurch each time.
+    const { pointer, pointed } = this;
+    if (pointer.mouse && was) film.nudge.push(pointer.x - pointed.x, pointer.y - pointed.y);
+    pointed.set(pointer.x, pointer.y);
     if (film.update(seconds)) this.dirty = true;
     return this.dirty || moved || !was;
   }

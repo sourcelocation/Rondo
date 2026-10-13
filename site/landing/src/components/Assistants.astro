@@ -1,153 +1,77 @@
 ---
-import ArrowUp from "@lucide/astro/icons/arrow-up";
 import ArrowUpRight from "@lucide/astro/icons/arrow-up-right";
-import Check from "@lucide/astro/icons/check";
-import PenLine from "@lucide/astro/icons/pen-line";
-import Play from "@lucide/astro/icons/play";
-import Search from "@lucide/astro/icons/search";
-import { assistantName, conversation, enriched, requests } from "../content/assistants";
+import { requests, resting } from "../content/assistants";
 import { links } from "../content/links";
-import BrandIcon from "./BrandIcon.astro";
 
 /**
- * AI assistants: any assistant, inside Rondo or out, can work on your decks, and what people want most is for it to
- * make the cards they already have better. The stage shows that happening (motion/assistant.ts): a request typed to
- * an assistant, which finds the notes and works through them, each card gaining an example sentence and audio as a
- * light passes over it, the count running to all of them; then its answer, streamed in. The assistant is Claude; the
- * others are named in the words. Beside it, everything else one can ask for. Drawn here as it ends, so it reads
- * without the motion.
+ * AI. The headline is the request: "Make your cards", then an empty line where a caret blinks, and under it a row of
+ * places for the cards that come of it, each a window onto one swelling wireframe surface
+ * (motion/assistant/field.ts). What someone asks for is typed out ("…from my biology notes."), stirring it; a light
+ * reads through the words and it swells; then a shockwave crosses the row, the surface heaving into a ridge whose lines
+ * flare as it passes, and in its wake the water stills and each card is uncovered. Under the row, the assistant that
+ * made them. Then the words are selected and gone, the cards go, and the next request is typed.
+ * motion/assistant.ts tells it; drawn here as it rests ("…with AI.", the first cards made), so it reads without the
+ * motion.
  */
-// A recording's bars (their heights are in the styles below).
-const bars = Array.from({ length: 14 });
+// Every ending the headline takes, unseen in its place, so it keeps the room of the longest as they're typed.
+const endings = [resting, ...requests.map((request) => request.words)];
+// The row's places, each holding every request's card for it: seven, the requests'
+// five cards going round, so the row reaches past both edges of the widest screen all the while it's carried along.
+const size = requests[0]?.cards.length ?? 0;
+const places = Array.from({ length: 7 }, (_, index) => ({
+  cards: requests.flatMap((request) => request.cards[index % size] ?? []),
+}));
 ---
 
-<section class="section assistants" id="ai" aria-labelledby="ai-title" data-mood="ai">
-  <div class="container assistants__grid">
-    <div class="assistants__copy">
-      <h2 id="ai-title" class="heading" data-reveal="words">
-        Make your cards with AI
+<section class="section ai" id="ai" aria-labelledby="ai-title" data-mood="ai" data-ai>
+  <div class="container">
+    <div class="ai__head">
+      <h2 id="ai-title" class="heading ai__title">
+        <span data-reveal="words">Make your cards</span>
+        <em class="typed" data-reveal="fade">
+          <span class="visually-hidden">{resting}</span>
+          <span class="typed__cell" aria-hidden="true">
+            {endings.map((ending) => <span class="typed__room">{ending}</span>)}
+            <span class="typed__line"><span class="typed__select" data-typed-select><span class="typed__text" data-typed>{resting}</span></span><i class="typed__caret"></i></span>
+          </span>
+        </em>
       </h2>
-      <p class="lead" data-reveal="lines">
-        Create flashcards by using Rondo's built-in AI chat, or by connecting Rondo to ChatGPT, Claude, Gemini and
-        others.
-      </p>
-      <div class="asks" data-reveal="fade">
-        <p class="asks__title">Or ask it to</p>
-        <ul class="asks__list">
-          {requests.map((request) => (
-            <li class="ask">{request}</li>
-          ))}
-        </ul>
-      </div>
-      <p class="assistants__more" data-reveal="fade">
-        <a class="link" href={`${links.docs}agents`}>
+
+      <div class="ai__words">
+        <p class="lead" data-reveal="lines">
+          Ask AI like Claude, ChatGPT, Gemini to make your cards, and make the ones you have better.
+        </p>
+        <a class="link ai__link" href={`${links.docs}agents`} data-reveal="fade">
           Connect an assistant <ArrowUpRight aria-hidden="true" />
         </a>
-        <span>Claude, ChatGPT, Gemini, Codex, Cursor and any MCP client.</span>
-      </p>
+      </div>
     </div>
 
-    <div class="studio" aria-hidden="true" data-studio data-tilt>
-      <div class="chat">
-        <div class="chat__head">
-          <span class="chat__avatar">
-            <BrandIcon name="claude" />
-          </span>
-          <span class="chat__name">{assistantName}</span>
-        </div>
-
-        <div class="chat__log">
-          <p class="bubble" data-chat-ask>
-            {conversation.ask}
-          </p>
-          <div class="chat__step">
-            <p class="thinking" data-chat-thinking>
-              Looking through your decks
-            </p>
-            <p class="tool" data-chat-tool="search">
-              <span class="tool__icon">
-                <Search />
-              </span>
-              <code>{conversation.search.tool}</code>
-              <span class="tool__note">{conversation.search.found}</span>
-              <span class="tool__state">
-                <i class="tool__spin"></i>
-                <Check class="tool__done" />
-              </span>
-            </p>
-          </div>
-          <p class="tool" data-chat-tool="update">
-            <span class="tool__icon">
-              <PenLine />
-            </span>
-            <code>{conversation.update.tool}</code>
-            <span class="tool__note">
-              <b data-chat-progress>{conversation.update.total}</b> of {conversation.update.total} cards
-            </span>
-            <span class="tool__state">
-              <i class="tool__spin"></i>
-              <Check class="tool__done" />
-            </span>
-          </p>
-          <p class="reply" data-chat-reply>
-            {conversation.reply}
-          </p>
-        </div>
-
-        {/* The field, and an unseen one holding the whole request, which keeps the room it grows into as it's typed. */}
-        <div class="chat__compose">
-          <div class="chat__input chat__input--room">
-            <span class="chat__typed">{conversation.ask}</span>
-            <span class="chat__send"></span>
-          </div>
-          <div class="chat__input">
-            <span class="chat__typed" data-chat-typed>
-              Ask anything
-            </span>
-            <span class="chat__send">
-              <ArrowUp stroke-width={2.25} />
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <ul class="enrich" data-depth="-0.05">
-        {enriched.map((card) => (
-          <li class="note" data-note>
-            <i class="note__scan" data-note-scan></i>
-            <div class="note__head">
-              <span class="note__word" lang="ja">
-                <ruby>
-                  {card.word}
-                  <rt>{card.reading}</rt>
-                </ruby>
-              </span>
-              <span class="note__meaning">{card.meaning}</span>
-            </div>
-            <div class="note__more" data-note-more>
-              <div class="note__inner">
-                <p class="note__example" lang="ja">
-                  {card.marked[0]}
-                  <mark>{card.marked[1]}</mark>
-                  {card.marked[2]}
-                </p>
-                <p class="note__gloss">{card.gloss}</p>
-                <span class="note__audio">
-                  <span class="note__play">
-                    <Play />
+    <div class="row" aria-hidden="true" data-row>
+      <ol class="row__places">
+        {places.map(({ cards }) => (
+          <li class="card" data-place>
+            <canvas class="card__field" data-field></canvas>
+            <div class="card__made" data-made>
+              {cards.map((card) => (
+                <div class="card__face" data-face>
+                  <span class="card__deck">{card.deck}</span>
+                  <span class="card__front" lang={card.lang}>
+                    {card.front}
                   </span>
-                  <span class="note__bars">
-                    {bars.map(() => (
-                      <i data-note-bar />
-                    ))}
+                  <span class="card__back" lang={card.lang}>
+                    {card.back}
+                    {card.detail && <small lang="en">{card.detail}</small>}
                   </span>
-                  <small>0:0{card.seconds}</small>
-                </span>
-              </div>
+                </div>
+              ))}
             </div>
           </li>
         ))}
-      </ul>
+      </ol>
+      <p class="row__by" data-by>
+        Made by <span data-by-name>{requests[0]?.by}</span>
+      </p>
     </div>
   </div>
 </section>
@@ -156,628 +80,298 @@ const bars = Array.from({ length: 14 });
   import { Assistant } from "../motion/assistant";
   import { scene } from "../motion/scenes";
 
-  scene("[data-studio]", (root, stage) => new Assistant(root, stage));
+  scene("[data-ai]", (root, stage) => new Assistant(root, stage));
 </script>
 
 <style>
-  /* The stage on one side, the words on the other: the other way round from the sections either side. */
-  .assistants__grid {
+  /* The headline on the left, what it means beside it, sharing its foot. */
+  .ai__head {
     display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    grid-template-areas: "studio copy";
-    gap: clamp(48px, 6vw, 112px);
-    align-items: center;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 21rem);
+    align-items: end;
+    gap: var(--stack) clamp(32px, 4vw, 64px);
   }
 
-  .assistants__copy {
-    grid-area: copy;
+  /* The headline: its start, and the ending that's typed, on a line of its own. */
+  .ai__title {
     display: grid;
     justify-items: start;
-    gap: clamp(14px, 0.6rem + 0.7vw, 20px);
   }
 
-  .assistants__copy .lead {
-    max-width: 30em;
-  }
-
-  .asks {
-    display: grid;
-    gap: 8px;
-  }
-
-  .asks__title {
-    font-size: var(--size-small);
-    color: var(--ink-3);
-  }
-
-  .asks__list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  /* Each request as an assistant would show a suggestion: a quiet pill, which lifts toward a mouse. */
-  .ask {
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: rgb(255 255 255 / 64%);
-    box-shadow:
-      0 0 0 1px var(--line) inset,
-      0 1px 0 var(--glass-edge) inset;
-    font-size: 13px;
-    color: var(--ink-2);
-    transition:
-      transform 0.5s var(--ease-spring),
-      background-color 0.4s var(--ease-out),
-      color 0.4s var(--ease-out);
-  }
-
-  .ask:hover {
-    background: #fff;
-    color: var(--ink);
-    transform: translateY(-2px);
-  }
-
-  .assistants__more {
-    display: grid;
-    gap: 2px;
-    font-size: var(--size-small);
-    color: var(--ink-3);
-  }
-
-  .assistants__more a {
-    justify-self: start;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-weight: 500;
-    color: var(--ink);
-  }
-
-  .assistants__more :global(svg) {
-    width: 15px;
-    height: 15px;
-  }
-
-  /* The stage: the conversation behind, the cards it's working on in front of it and lower down. */
-  .studio {
-    grid-area: studio;
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
-    grid-template-areas: "chat enrich";
-    align-items: start;
-  }
-
-  .chat {
-    grid-area: chat;
-    position: relative;
-    z-index: 1;
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: 16px;
-    min-height: 470px;
-    padding: 18px;
-    border-radius: 28px;
-    background: linear-gradient(180deg, rgb(255 255 255 / 82%), rgb(255 255 255 / 60%));
-    box-shadow:
-      0 0 0 1px rgb(11 11 13 / 6%),
-      0 1px 0 var(--glass-edge) inset,
-      var(--shadow-2);
-    -webkit-backdrop-filter: blur(24px) saturate(1.5);
-    backdrop-filter: blur(24px) saturate(1.5);
-  }
-
-  .chat__head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--line);
-  }
-
-  /* Claude's own mark: its spark in its clay, on its paper. */
-  .chat__avatar {
-    display: grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: #f4f3ee;
-    box-shadow: 0 0 0 1px rgb(11 11 13 / 6%) inset;
-    color: #d97757;
-  }
-
-  .chat__avatar :global(svg) {
-    width: 18px;
-    height: 18px;
-  }
-
-  .chat__name {
-    font-size: 15px;
-    font-weight: 500;
-  }
-
-  .chat__tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: rgb(20 168 115 / 9%);
-    font-size: 12px;
-    font-weight: 500;
-    color: #0f7a54;
-  }
-
-  .chat__tag i {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--signal);
-  }
-
-  .chat__log {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .bubble {
-    align-self: flex-end;
-    max-width: 86%;
-    padding: 10px 14px;
-    border-radius: 18px 18px 6px;
-    background: var(--ink);
-    color: #fff;
-    font-size: 14px;
-    line-height: 1.45;
-  }
-
-  /* The thinking takes the place of the search it leads to, so the conversation never moves as it comes and goes. */
-  .chat__step {
+  /*
+   * The ending as it's typed: one cell holding every ending unseen, so the headline keeps the room of the longest,
+   * and the line being typed over them. It wraps as it goes, not balanced, so the words don't hop about as they come.
+   */
+  .typed {
     display: grid;
     width: 100%;
+    text-wrap: wrap;
   }
 
-  .chat__step > * {
+  .typed__cell {
+    display: grid;
+  }
+
+  .typed__cell > * {
     grid-area: 1 / 1;
   }
 
-  .thinking {
-    align-self: center;
-    font-size: 13px;
-    font-weight: 450;
-    color: transparent;
-    background: linear-gradient(90deg, var(--ink-3) 0 30%, var(--ink) 45%, var(--ink-3) 60% 100%) 0 0 / 300% 100%;
-    background-clip: text;
+  .typed__room {
+    visibility: hidden;
   }
 
-  @keyframes thinking {
-    from {
-      background-position: 100% 0;
-    }
+  /* Room for the caret too. */
+  .typed__room::after {
+    content: "";
+    display: inline-block;
+    width: 0.12em;
+  }
 
+  /* Selected, as an editor shows it: the page's own selection colour, swept across by the motion. */
+  .typed__select {
+    background: linear-gradient(rgb(169 202 255 / 55%), rgb(169 202 255 / 55%)) 0 0 / 0% 100% no-repeat;
+  }
+
+  /* Read: a light passes through the words, once, as the assistant takes them in. */
+  .typed__text.is-reading {
+    color: transparent;
+    background: linear-gradient(
+        100deg,
+        var(--ink) 0 38%,
+        #6f8fff 45%,
+        #b8a6ff 50%,
+        #6f8fff 55%,
+        var(--ink) 62% 100%
+      )
+      100% 0 / 320% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: reading 1s var(--ease-in-out) forwards;
+  }
+
+  @keyframes reading {
     to {
       background-position: 0% 0;
     }
   }
 
-  /* Shown only while the assistant thinks, in the motion, shimmering meanwhile. */
-  .thinking {
-    opacity: 0;
-    transition: opacity 0.3s var(--ease-out);
-  }
-
-  :global(.studio.is-thinking) .thinking {
-    opacity: 1;
-    animation: thinking 1.6s linear infinite;
-  }
-
-  /* An assistant's tool at work: its name, what it found or did, and a spinner that turns to a tick. */
-  .tool {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 8px 10px;
-    border-radius: 12px;
-    background: rgb(11 11 13 / 4%);
-    font-size: 12.5px;
-    color: var(--ink-2);
-  }
-
-  .tool code {
-    font: 500 12px var(--mono);
-    color: var(--ink);
-  }
-
-  .tool__icon {
-    display: grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
-    background: #fff;
-    box-shadow: 0 0 0 1px var(--line);
-  }
-
-  .tool__icon :global(svg) {
-    width: 12px;
-    height: 12px;
-  }
-
-  .tool__note b {
-    font-weight: 500;
-    color: var(--ink);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .tool__state {
-    display: grid;
-    margin-left: auto;
-  }
-
-  .tool__state > :global(*) {
-    grid-area: 1 / 1;
-  }
-
-  .tool__spin {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid rgb(11 11 13 / 12%);
-    border-top-color: var(--ink);
-    opacity: 0;
-    animation: tool-spin 0.8s linear infinite;
-  }
-
-  @keyframes tool-spin {
-    to {
-      transform: rotate(1turn);
-    }
-  }
-
-  .tool :global(.tool__done) {
-    width: 15px;
-    height: 15px;
-    color: var(--signal);
-    stroke-width: 2.6;
-  }
-
-  .tool.is-working .tool__spin {
-    opacity: 1;
-  }
-
-  .tool.is-working :global(.tool__done) {
-    opacity: 0;
-  }
-
-  .reply {
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--ink);
-  }
-
-  /*
-   * The field grows a line at a time as the request wraps, its send button keeping to the last line: upward, into the
-   * room an unseen field holding the whole request keeps under the conversation.
-   */
-  .chat__compose {
-    display: grid;
-    align-items: end;
-  }
-
-  .chat__compose > * {
-    grid-area: 1 / 1;
-  }
-
-  .chat__input--room {
-    visibility: hidden;
-  }
-
-  /* Room for the caret that follows what's typed, too. */
-  .chat__input--room .chat__typed::after {
-    content: "";
+  /* The caret: steady while typing, blinking while it waits, before the words and after them; gone at rest. */
+  .typed__caret {
     display: inline-block;
-    width: 2.5px;
-  }
-
-  .chat__input {
-    display: flex;
-    align-items: flex-end;
-    gap: 10px;
-    min-height: 46px;
-    padding: 6px 6px 6px 16px;
-    border-radius: 23px;
-    background: #fff;
-    box-shadow:
-      0 0 0 1px var(--line-2),
-      0 6px 16px -10px rgb(30 40 80 / 25%);
-    font-size: 14px;
-    color: var(--ink-3);
-  }
-
-  .chat__typed {
-    flex: 1;
-    min-width: 0;
-    padding-block: 7px;
-    line-height: 20px;
-    overflow-wrap: anywhere;
-  }
-
-  .chat__typed.is-typing {
-    color: var(--ink);
-  }
-
-  /* The caret, blinking at the end of what's being typed. */
-  .chat__typed.is-typing::after {
-    content: "";
-    display: inline-block;
-    width: 1.5px;
-    height: 1.1em;
-    margin-left: 1px;
-    vertical-align: -0.2em;
+    width: max(2px, 0.045em);
+    height: 0.8em;
+    margin-left: 0.06em;
+    vertical-align: -0.04em;
+    border-radius: 2px;
     background: var(--ink);
+    opacity: 0;
+  }
+
+  .typed.is-typing .typed__caret {
+    opacity: 1;
+  }
+
+  .typed.is-waiting .typed__caret {
     animation: caret 1s steps(1) infinite;
   }
 
   @keyframes caret {
+    0% {
+      opacity: 1;
+    }
+
     50% {
       opacity: 0;
     }
   }
 
-  .chat__send {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: var(--ink);
-    color: #fff;
-  }
-
-  .chat__send :global(svg) {
-    width: 16px;
-    height: 16px;
-  }
-
-  /* The cards being enriched, in front of the conversation. */
-  /* Just over the conversation's edge, and lower: in front of it without hiding any of it. */
-  .enrich {
-    grid-area: enrich;
+  /*
+   * The row: a place for each card, side by side, each nearly half the container wide, so the middle one is centred
+   * and the row runs off both edges of the screen. As it scrolls in, the cards slide into their places (the motion).
+   * A shockwave crosses it (motion/assistant/field.ts), and each card shows itself as it reaches it; without the
+   * motion, the first cards are made.
+   */
+  .row {
+    --n: 7;
+    --gap: clamp(14px, 0.4rem + 1.3vw, 36px);
     position: relative;
-    z-index: 2;
+    margin-top: clamp(64px, 2rem + 5vw, 128px);
+    container-type: inline-size;
+  }
+
+  .row__places {
+    /* A card's width, and the room it takes in the row with the gap after it, as its words are sized and uncovered by. */
+    --w: calc((100cqw - 4 * var(--gap)) * 0.45);
+    --place: calc(var(--w) + var(--gap));
     display: grid;
-    gap: 12px;
-    margin: 44px 0 0 -12px;
+    grid-template-columns: repeat(var(--n), var(--w));
+    gap: var(--gap);
+    width: calc(var(--n) * var(--place) - var(--gap));
+    margin-left: calc((100cqw - var(--n) * var(--place) + var(--gap)) / 2);
   }
 
   /*
-   * An open copy of the cards, unseen, in their place (motion/assistant.ts makes it): the cards open and close as the
-   * story goes, inside the room it keeps, so nothing on the page moves as they do.
+   * A card's place: pale glass and its outline, there before it's made, over the surface it's made from.
    */
-  .enrich--room {
+  .card {
+    --r: calc(var(--w) * 0.055);
+    position: relative;
+    aspect-ratio: 25 / 16;
+    border-radius: var(--r);
+    background: rgb(255 255 255 / 50%);
+    box-shadow: 0 0 0 1px var(--line-2) inset;
+    transition: translate 0.8s var(--ease-spring);
+    will-change: transform;
+  }
+
+  .card__field {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--r);
+    opacity: 0;
+    transition: opacity 1.6s var(--ease-out);
+  }
+
+  :global(.row.is-fielded) .card__field {
+    opacity: 1;
+  }
+
+  /* A made card lifts off its place toward a mouse. */
+  @media (hover: hover) and (pointer: fine) {
+    .card:hover {
+      translate: 0 calc(var(--w) * -0.02);
+    }
+  }
+
+  /*
+   * What's made in a place: the request's card, over the shadow it casts. The motion shows it as the shockwave reaches
+   * it, and takes it away.
+   */
+  .card__made {
+    position: absolute;
+    inset: 0;
+  }
+
+  .card__made::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r);
+    box-shadow: var(--shadow-2);
+  }
+
+  /*
+   * A card as the rest of the page draws one: its deck, its front, and its answer in the serif.
+   */
+  .card__face {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: calc(var(--w) * 0.06) calc(var(--w) * 0.07) calc(var(--w) * 0.065);
+    border-radius: var(--r);
+    background: linear-gradient(170deg, #fff 35%, #f7f8fa);
+    box-shadow:
+      0 1px 0 #fff inset,
+      0 0 0 1px rgb(11 11 13 / 6%) inset;
+  }
+
+  .card__face + .card__face {
     visibility: hidden;
   }
 
-  .note {
-    position: relative;
-    padding: 14px 16px;
-    border-radius: 18px;
-    background: linear-gradient(165deg, #fff 40%, #f7f8fb);
-    box-shadow:
-      0 0 0 1px rgb(11 11 13 / 6%),
-      0 1px 0 #fff inset,
-      0 18px 36px -22px rgb(30 40 80 / 40%);
-    overflow: hidden;
+  :global(.ai.is-live) .card__face {
+    visibility: visible;
   }
 
-  /*
-   * The light the assistant passes over a card as it works on it: a soft sheen, faintly tinted, unseen until the motion
-   * sweeps it across (which places it with xPercent alone, so there's no transform here for it to add to).
-   */
-  .note__scan {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      110deg,
-      transparent 32%,
-      rgb(186 212 255 / 10%) 40%,
-      rgb(200 206 255 / 30%) 47%,
-      rgb(225 214 255 / 34%) 50%,
-      rgb(200 206 255 / 30%) 53%,
-      rgb(186 212 255 / 10%) 60%,
-      transparent 68%
-    );
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .note__head {
-    position: relative;
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-  }
-
-  .note__word {
-    font-size: 22px;
-    line-height: 1.2;
-  }
-
-  .note__word rt {
-    font-size: 10px;
+  .card__deck {
+    justify-self: start;
+    font-size: max(10px, calc(var(--w) * 0.048));
+    font-weight: 450;
+    line-height: 1;
     color: var(--ink-3);
   }
 
-  .note__meaning {
-    font: 340 15px / 1.2 var(--serif);
+  .card__front {
+    align-self: center;
+    font-size: calc(var(--w) * 0.105);
+    font-weight: 420;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+  }
+
+  .card__back {
+    display: grid;
+    gap: 2px;
+    font: 340 max(11px, calc(var(--w) * 0.06)) / 1.25 var(--serif);
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  .card__back small {
+    font: 400 max(10px, calc(var(--w) * 0.046)) / 1.2 var(--sans);
     color: var(--ink-3);
   }
 
-  .note__more {
-    position: relative;
-    overflow: hidden;
+  /* Who made them, under the row. */
+  .row__by {
+    margin-top: 20px;
+    font: 400 var(--size-micro) / 1 var(--mono);
+    letter-spacing: 0.02em;
+    color: var(--ink-3);
   }
 
-  .note__inner {
+  .row__by span {
+    color: var(--ink);
+  }
+
+  .ai__words {
     display: grid;
     justify-items: start;
-    gap: 4px;
-    padding-top: 10px;
+    gap: 14px;
+    padding-bottom: 0.5em;
   }
 
-  .note__example {
-    font-size: 15px;
-    line-height: 1.5;
-  }
-
-  .note__example mark {
-    padding: 0 2px;
-    border-radius: 4px;
-    background: rgb(169 202 255 / 45%);
-    color: inherit;
-  }
-
-  .note__gloss {
-    font: 340 14px / 1.35 var(--serif);
-    color: var(--ink-2);
-  }
-
-  .note__audio {
+  .ai__link {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 6px;
-    padding: 4px 10px 4px 4px;
-    border-radius: 999px;
-    background: rgb(11 11 13 / 5%);
-    font-size: 11px;
-    color: var(--ink-3);
-    font-variant-numeric: tabular-nums;
+    gap: 4px;
+    font-size: var(--size-small);
+    font-weight: 500;
   }
 
-  .note__play {
-    display: grid;
-    place-items: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--ink);
-    color: #fff;
+  .ai__link :global(svg) {
+    width: 15px;
+    height: 15px;
   }
 
-  .note__play :global(svg) {
-    width: 10px;
-    height: 10px;
-    margin-left: 1px;
-    fill: currentcolor;
-  }
-
-  .note__bars {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    height: 16px;
-  }
-
-  .note__bars i {
-    width: 2px;
-    height: 100%;
-    border-radius: 2px;
-    background: var(--ink-2);
-    transform-origin: 50% 50%;
-  }
-
-  /* A recording's shape, each bar its own height (motion/assistant.ts grows them in). */
-  .note__bars i:nth-child(1) {
-    transform: scaleY(0.35);
-  }
-
-  .note__bars i:nth-child(2) {
-    transform: scaleY(0.6);
-  }
-
-  .note__bars i:nth-child(3) {
-    transform: scaleY(0.9);
-  }
-
-  .note__bars i:nth-child(4) {
-    transform: scaleY(0.55);
-  }
-
-  .note__bars i:nth-child(5) {
-    transform: scaleY(1);
-  }
-
-  .note__bars i:nth-child(6) {
-    transform: scaleY(0.7);
-  }
-
-  .note__bars i:nth-child(7) {
-    transform: scaleY(0.4);
-  }
-
-  .note__bars i:nth-child(8) {
-    transform: scaleY(0.85);
-  }
-
-  .note__bars i:nth-child(9) {
-    transform: scaleY(0.5);
-  }
-
-  .note__bars i:nth-child(10) {
-    transform: scaleY(0.75);
-  }
-
-  .note__bars i:nth-child(11) {
-    transform: scaleY(0.3);
-  }
-
-  .note__bars i:nth-child(12) {
-    transform: scaleY(0.6);
-  }
-
-  .note__bars i:nth-child(13) {
-    transform: scaleY(0.45);
-  }
-
-  .note__bars i:nth-child(14) {
-    transform: scaleY(0.25);
-  }
-
-  @media (width < 1100px) {
-    .assistants__grid {
+  @media (width < 1200px) {
+    .ai__head {
       grid-template-columns: minmax(0, 1fr);
-      grid-template-areas:
-        "copy"
-        "studio";
+    }
+
+    .ai__words {
+      max-width: 30rem;
     }
   }
 
-  @media (width < 640px) {
-    .studio {
-      grid-template-columns: minmax(0, 1fr);
-      grid-template-areas:
-        "chat"
-        "enrich";
+  /* On a smaller screen, the middle card wider, its neighbours showing at the edges. */
+  @media (width < 1024px) {
+    .row__places {
+      --w: 57cqw;
+    }
+  }
+
+  @media (width < 560px) {
+    .row__places {
+      --w: 66cqw;
     }
 
-    .chat {
-      min-height: 0;
-    }
-
-    .enrich {
-      margin: -28px 12px 0;
-    }
-
-    .note:nth-child(3) {
-      display: none;
+    .card {
+      aspect-ratio: 5 / 4;
     }
   }
 </style>

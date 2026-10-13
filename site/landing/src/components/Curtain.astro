@@ -3,10 +3,12 @@ import { pagePath, pages } from "../content/pages";
 
 /**
  * The curtain the site's pages open through (motion/transition.ts): a sheet of ink with the page's light glowing in
- * it, passing like a wave, each of its edges a ring of glass. Following a link, its front spreads down over the page
+ * it, passing like a wave, each of its edges a lip of glass. Following a link, its front spreads down over the page
  * from the middle of its top, the next page's name rising in its middle; its back, the next page, spreads down
- * through it the same way. It shows this page's name, for when this page opens under it. Without JavaScript, or with reduced motion, it never shows; if a page opens under it and its
- * motion doesn't come in time, /head.js takes it away, and it fades.
+ * through it the same way. As it passes, the motion draws it (motion/transition/wave.ts); standing still, as a page
+ * opens under it before its motion comes, it's the sheet here. It shows this page's name, for when this page opens
+ * under it. Without JavaScript, or with reduced motion, it never shows; if a page opens under it and its motion
+ * doesn't come in time, /head.js takes it away, and it fades.
  */
 const label = pages[pagePath(Astro.url.pathname)] ?? "";
 ---
@@ -15,8 +17,7 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
   <div class="curtain__sheet" data-curtain-sheet>
     <i class="curtain__light"></i>
   </div>
-  <i class="curtain__ring" data-curtain-front></i>
-  <i class="curtain__ring" data-curtain-back></i>
+  <canvas class="curtain__wave" data-curtain-wave></canvas>
   <div class="curtain__centre">
     <span class="curtain__label" data-curtain-label>
       {label}
@@ -48,7 +49,7 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
       visibility 0s 0.6s;
   }
 
-  /* The sheet; as its front spreads or its back opens, the motion masks it to a circle, or to all but one. */
+  /* The sheet standing still; the motion draws it in its place as it passes, or fades it where it can't. */
   .curtain__sheet {
     position: absolute;
     inset: 0;
@@ -67,34 +68,14 @@ const label = pages[pagePath(Astro.url.pathname)] ?? "";
       radial-gradient(36% 38% at 22% 88%, rgb(150 224 200 / 22%), transparent 70%);
   }
 
-  /*
-   * Each of the sheet's edges as it moves: a ring of glass, bright at its rim, what's under it softened and its colours
-   * lifted, a cool fringe outside and a warm one in. The motion sizes and shows it.
-   */
-  .curtain__ring {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    visibility: hidden;
-    box-shadow:
-      0 0 0 1.5px rgb(255 255 255 / 90%) inset,
-      0 0 0 5px rgb(255 120 200 / 10%) inset,
-      0 0 22px 5px rgb(255 255 255 / 55%) inset,
-      0 0 0 1.5px rgb(96 128 255 / 35%),
-      0 6px 30px rgb(30 40 90 / 22%);
-  }
-
-  .curtain__ring::before {
-    content: "";
+  /* The sheet as it passes, drawn by the motion, which shows it. */
+  .curtain__wave {
     position: absolute;
     inset: 0;
-    border-radius: inherit;
-    mask: radial-gradient(farthest-side, transparent calc(100% - 34px), #000 calc(100% - 10px));
-    -webkit-backdrop-filter: blur(6px) saturate(1.8) brightness(1.06);
-    backdrop-filter: blur(6px) saturate(1.8) brightness(1.06);
+    display: block;
+    width: 100%;
+    height: 100%;
+    visibility: hidden;
   }
 
   .curtain__centre {

@@ -26,6 +26,8 @@ const height = 302;
 const left = 151;
 const seam = 444;
 const right = 1455;
+/** The bookmark's sides, without the arrow reaching out of it to the right. */
+const bookmark = { left: 152, right: 355 };
 
 export const crops = {
   logo: `${left} ${top} ${right - left} ${height}`,
@@ -35,3 +37,9 @@ export const crops = {
 
 /** The whole logo's width for a height of 1. */
 export const logoAspect = (right - left) / height;
+
+/**
+ * How far the bookmark's middle sits left of the mark crop's, for a height of 1: the arrow pulls the crop's middle off
+ * it. The mark shifted right by this has its bookmark centred, the arrow reaching out to its right.
+ */
+export const markLean = ((left + seam) / 2 - (bookmark.left + bookmark.right) / 2) / height;
