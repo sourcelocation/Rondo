@@ -10,8 +10,8 @@ import { releaseAt } from "../launch/launch";
 /**
  * A page of the site: its head, the type and the base styles, the artwork for the page to use, the intro a page
  * opens with and the curtain between pages, and the motion every page runs (motion/page.ts), which brings to life
- * whatever scenes the page's components declare. It's built as Rondo is at build time, on a computer; /head.js
- * corrects both before it paints. The screen's probe, never seen, is how the motion measures the screen as CSS has it
+ * whatever scenes the page's components declare, and where their drawings put what's on them (/places.css). It's
+ * built as Rondo is at build time, on a computer; /head.js corrects both before it paints. The screen's probe, never seen, is how the motion measures the screen as CSS has it
  * (motion/screen.ts).
  */
 interface Props {
@@ -32,6 +32,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <script is:inline src="/head.js"></script>
+    <link rel="stylesheet" href="/places.css" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />

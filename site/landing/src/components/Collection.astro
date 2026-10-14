@@ -8,7 +8,7 @@ import { Stack } from "../motion/stack";
  * each slowing as it comes and settling onto the deck's face, which eases back to take it. The count beside climbs
  * to tens of thousands and blurs into infinity. The scenery draws all that (motion/scenery/pile.ts), where the still
  * deck here stands, sized and set as its cards are; without it the still deck shows, stacked, seen as the scenery
- * sees its deck (Stack).
+ * sees its deck (Stack), each card sized and shaded by /places.css.
  */
 const number = new Intl.NumberFormat("en");
 const stack = new Stack();
@@ -18,11 +18,7 @@ const resting = [
   ...Array.from({ length: stack.depth - 1 }, (_, index) => ({ depth: stack.depth - index, card: null })),
   { depth: 1, card: dealt[0] ?? finale },
   { depth: 0, card: finale },
-].map(({ depth, card }) => ({
-  card,
-  depth,
-  style: `--scale: ${stack.scale(depth).toFixed(5)}; --shade: ${stack.shade(depth).toFixed(4)}; opacity: ${stack.presence(depth)}`,
-}));
+];
 ---
 
 <section class="pile" id="collection" aria-labelledby="pile-title" data-mood="collection">
@@ -48,16 +44,16 @@ const resting = [
       </p>
     </div>
 
-    <div class="pile__stage" aria-hidden="true" style={`--horizon: ${stack.horizon}`} data-pile>
+    <div class="pile__stage" aria-hidden="true" data-pile>
       <i class="pile__floor"></i>
       <div class="pile__deck" data-pile-deck></div>
-      {resting.map(({ card, depth, style }) =>
+      {resting.map(({ card, depth }) =>
         card == null ? (
-          <i class="pile-card" style={style}></i>
+          <i class="pile-card" data-pile-card={depth}></i>
         ) : (
           <div
             class:list={["pile-card", { "pile-card--last": depth === 0 }]}
-            style={style}
+            data-pile-card={depth}
             data-pile-sizer={depth === 1 ? "" : undefined}
             data-pile-sizer-last={depth === 0 ? "" : undefined}
           >

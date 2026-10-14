@@ -1,5 +1,4 @@
 ---
-import { markLean } from "../brand";
 import Logo from "./Logo.astro";
 
 /**
@@ -13,7 +12,7 @@ import Logo from "./Logo.astro";
 ---
 
 <div class="intro" aria-hidden="true" data-intro>
-  <span class="intro__mark" style={`--lean: ${markLean}`} data-intro-mark>
+  <span class="intro__mark" data-intro-mark>
     <Logo mark />
   </span>
   <svg class="intro__spinner" viewBox="0 0 16 16" focusable="false">
@@ -56,7 +55,7 @@ import Logo from "./Logo.astro";
 
   /*
    * The mark, which the motion sweeps into view through a turning cut (--sweep). It's centred on its bookmark rather
-   * than its crop (--lean), so the bookmark stands over the spinner with the arrow reaching out to its right, and it
+   * than its crop (--lean, from /places.css), so the bookmark stands over the spinner with the arrow reaching out to its right, and it
    * turns and shrinks about the bookmark too. It's moved by `left`, as the motion's transforms take over `translate`.
    */
   .intro__mark {

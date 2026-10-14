@@ -1,20 +1,18 @@
 ---
 import { features } from "../content/features";
-import { area, curve, marks, plot, recall, reviews } from "../content/history";
+import { area, curve, marks, plot, reviews } from "../content/history";
 
 /**
  * Coming from Anki. One card's memory runs across the whole screen, from beyond its left edge: recall falls and is
  * refreshed at every review, the gaps growing, and halfway over it passes from Anki into Rondo without a break. The
- * scroll draws it (motion/history.ts); drawn here as it ends, so it reads without the motion. Under it, everything
- * else that came along, as one sentence.
+ * scroll draws it (motion/history.ts); drawn here as it ends, so it reads without the motion, with what's on it placed
+ * by /places.css. Under it, everything else that came along, as one sentence.
  */
 const { width, height, top, target } = plot;
 // The reviews and gaps on the screen: the card's first day runs in from beyond its edge.
 const done = reviews.filter((review) => review.x > 0 && review.x <= marks.now);
 const ahead = reviews.find((review) => review.x > marks.now);
 const named = reviews.filter((review) => review.labelX > 0);
-/** A place on the plot, as the share of its width and height that CSS positions things by. */
-const at = (x: number, y: number = target) => `--x: ${(x / width).toFixed(4)}; --y: ${(y / height).toFixed(4)}`;
 ---
 
 <section class="section anki" id="anki" aria-labelledby="anki-title" data-mood="anki">
@@ -29,10 +27,10 @@ const at = (x: number, y: number = target) => `--x: ${(x / width).toFixed(4)}; -
   </div>
 
   <figure class="memory" aria-hidden="true" data-memory>
-    <i class="memory__wash" style={at(marks.seam)}></i>
+    <i class="memory__wash" data-memory-wash></i>
     <ol class="memory__gaps">
       {named.map((review) => (
-        <li style={at(review.labelX)} data-memory-gap={review.x}>
+        <li data-memory-gap={review.x}>
           {review.label}
         </li>
       ))}
@@ -68,7 +66,7 @@ const at = (x: number, y: number = target) => `--x: ${(x / width).toFixed(4)}; -
         <path class="memory__ahead" d={curve(marks.now, marks.next - 1)} data-memory-ahead></path>
       </svg>
 
-      <div class="memory__seam" style={at(marks.seam, recall(marks.seam))}>
+      <div class="memory__seam" data-memory-seam>
         <i class="memory__seam-line"></i>
         <i class="memory__ripple"></i>
         <i class="memory__ripple"></i>
@@ -79,11 +77,10 @@ const at = (x: number, y: number = target) => `--x: ${(x / width).toFixed(4)}; -
       {done.map((review) => (
         <i
           class:list={["memory__review", { "memory__review--old": review.x < marks.seam }]}
-          style={at(review.x)}
           data-memory-review={review.x}
         />
       ))}
-      {ahead && <i class="memory__review memory__review--next" style={at(ahead.x)} data-memory-next />}
+      {ahead && <i class="memory__review memory__review--next" data-memory-next />}
 
       <div class="memory__probe" data-memory-probe>
         <i class="memory__probe-line"></i>
@@ -91,7 +88,7 @@ const at = (x: number, y: number = target) => `--x: ${(x / width).toFixed(4)}; -
         <span class="memory__probe-value" data-memory-probe-value></span>
       </div>
 
-      <i class="memory__head" style={at(marks.now, recall(marks.now))} data-memory-head></i>
+      <i class="memory__head" data-memory-head></i>
     </div>
 
   </figure>
