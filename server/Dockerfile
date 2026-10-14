@@ -1,5 +1,6 @@
 # The Go server (`rondo serve`, `rondo migrate`), built from the repository root: mail reads brand/dist.
-FROM golang:1.26.9 AS build
+# Always the latest Go, as CI and development use; go.mod's `go` is only the oldest it builds with.
+FROM golang:1 AS build
 WORKDIR /src/server
 COPY server/go.mod server/go.sum ./
 RUN go mod download

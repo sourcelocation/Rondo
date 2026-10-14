@@ -27,13 +27,15 @@ jobs:
         options: --health-cmd "pg_isready -U rondo" --health-interval 2s --health-timeout 3s --health-retries 30
     steps:
       - uses: actions/checkout@v7.0.1
+      # The latest Go, as the server's image builds with (server/Dockerfile), and a linter that knows it.
       - uses: actions/setup-go@v7.0.0
         with:
-          go-version-file: server/go.mod
+          go-version: stable
+          check-latest: true
           cache-dependency-path: server/go.sum
       - uses: golangci/golangci-lint-action@v9.3.0
         with:
-          version: v2.14.0
+          version: latest
           working-directory: server
       - name: Generated API code is current
         run: |

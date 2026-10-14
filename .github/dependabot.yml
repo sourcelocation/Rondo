@@ -42,6 +42,12 @@ updates:
     commit-message: { prefix: build, include: scope }
     groups:
       docker: { update-types: [minor, patch] }
+    ignore:
+      # Java stays on a long-term-support release (25); the next one (29) is a change of our own.
+      - dependency-name: eclipse-temurin
+        update-types: [version-update:semver-major]
+      # Go is always its latest (golang:1, server/Dockerfile).
+      - dependency-name: golang
 
   - package-ecosystem: docker-compose
     directory: /server
