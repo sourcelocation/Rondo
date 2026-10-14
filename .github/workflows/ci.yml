@@ -76,7 +76,7 @@ jobs:
       - uses: pnpm/action-setup@v6.1.0
         with:
           package_json_file: app/platforms/web/package.json
-      - uses: actions/setup-node@v7.0.0
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: app/platforms/web/.node-version
           cache: pnpm
