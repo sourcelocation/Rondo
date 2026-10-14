@@ -1,7 +1,7 @@
 # Rondo's services, in one file that needs nothing beside it but .env (copy .env.example):
 #   docker compose up -d --wait     what Rondo depends on: Postgres, Kratos, Hydra (and Mailpit, by
 #                                   .env.example's profiles). In development Rondo's own servers run
-#                                   on this machine, each reloading itself (Procfile.dev).
+#                                   on this machine, each reloading itself (Procfile).
 #   COMPOSE_PROFILES=app            Rondo itself as well, from the release this file comes with (or
 #                                   RONDO_VERSION's), as self-hosting runs it; `--build` builds this
 #                                   checkout instead.

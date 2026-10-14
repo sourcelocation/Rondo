@@ -14,9 +14,10 @@ EXPOSE 8081
 ENTRYPOINT ["/opt/sync/bin/sync"]
 
 FROM node:26.11.1-alpine AS web-build
-RUN npm install --global pnpm@11.22.0
 WORKDIR /src/app/platforms/web
 COPY app/platforms/web/package.json app/platforms/web/pnpm-lock.yaml app/platforms/web/pnpm-workspace.yaml ./
+# The pnpm package.json names (packageManager).
+RUN npm install --global "$(node -p 'require("./package.json").packageManager')"
 RUN pnpm install --frozen-lockfile
 COPY brand /src/brand
 COPY app/platforms/web ./

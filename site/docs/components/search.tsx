@@ -1,6 +1,5 @@
 "use client";
-import { useDocsSearch } from "fumadocs-core/search/client";
-import { staticClient } from "fumadocs-core/search/client/orama-static";
+import { useStaticSearch } from "fumadocs-core/search/client";
 import {
   SearchDialog,
   SearchDialogClose,
@@ -13,11 +12,12 @@ import {
   type SharedProps,
 } from "fumadocs-ui/components/dialog/search";
 
-/** Search over the index the build exports (/search.json), right in the browser. */
+/** Search over the index the build exports (/docs/search.json), right in the browser. */
 export function Search(props: SharedProps) {
-  const { search, setSearch, query } = useDocsSearch({ client: staticClient({ from: "/search.json" }) });
+  // fetch() doesn't know next.config.ts's basePath.
+  const search = useStaticSearch({ from: "/docs/search.json" });
   return (
-    <SearchDialog search={search} onSearchChange={setSearch} isLoading={query.isLoading} {...props}>
+    <SearchDialog {...search} {...props}>
       <SearchDialogOverlay />
       <SearchDialogContent>
         <SearchDialogHeader>
@@ -25,7 +25,7 @@ export function Search(props: SharedProps) {
           <SearchDialogInput />
           <SearchDialogClose />
         </SearchDialogHeader>
-        <SearchDialogList items={query.data !== "empty" ? query.data : null} />
+        <SearchDialogList />
       </SearchDialogContent>
     </SearchDialog>
   );

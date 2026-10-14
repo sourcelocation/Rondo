@@ -12,15 +12,15 @@
     "typecheck": "astro check"
   },
   "dependencies": {
-    "@lucide/astro": "1.52.0",
+    "@lucide/astro": "1.55.0",
     "@mdi/js": "7.4.47",
-    "astro": "7.3.5",
+    "astro": "7.3.8",
     "fflate": "0.8.3",
     "gsap": "3.15.0",
     "prismjs": "1.30.0",
     "qrcode": "1.5.4",
     "sharp": "0.35.5",
-    "simple-icons": "16.34.0",
+    "simple-icons": "16.35.0",
     "three": "0.186.1"
   },
   "devDependencies": {
@@ -31,6 +31,6 @@
     "@types/three": "0.186.0",
     "tweakpane": "4.0.5",
     "typescript": "6.0.3",
-    "vite": "8.3.2"
+    "vite": "8.3.4"
   }
 }

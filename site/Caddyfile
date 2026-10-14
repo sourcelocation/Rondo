@@ -21,7 +21,9 @@
 
 	handle {
 		root * /srv/landing
-		header Content-Security-Policy "default-src 'self'; frame-ancestors 'none'"
+		# Only the site's own files, but style attributes: the pages place what they draw by custom properties
+		# on the elements (--x, --y, --scale), worked out as they're built.
+		header Content-Security-Policy "default-src 'self'; style-src-attr 'unsafe-inline'; frame-ancestors 'none'"
 		header /.well-known/apple-app-site-association Content-Type application/json
 		try_files {path} {path}.html {path}/index.html
 		file_server

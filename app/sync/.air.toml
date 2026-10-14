@@ -1,7 +1,6 @@
-# The sync server with live reload, on this machine beside the web app's Gradle build: from app/,
-# `go run github.com/air-verse/air@v1.67.4 -c sync/.air.toml` rebuilds :sync (and the :core and :mcp it
-# uses) through the Gradle daemon on every change and restarts it on :23902, against
-# server/compose.yaml's services (sync/dev.env).
+# The sync server with live reload, on this machine beside the web app's Gradle build: from app/, Air
+# (a tool of server/go.mod; Procfile) rebuilds :sync (and the :core and :mcp it uses) through the Gradle
+# daemon on every change and restarts it on :23902, against server/compose.yaml's services (sync/dev.env).
 tmp_dir = "sync/build/air"
 env_files = ["sync/dev.env"]
 

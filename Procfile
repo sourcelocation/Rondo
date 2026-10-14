@@ -1,3 +1,4 @@
-api: go -C server run github.com/air-verse/air@v1.67.4
-sync: go -C app run github.com/air-verse/air@v1.67.4 -c sync/.air.toml
+# Air is a tool of server/go.mod; the sync server's runs from app/.
+api: go -C server tool air
+sync: cd app && $(go -C ../server tool -n air) -c sync/.air.toml
 web: pnpm --dir app/platforms/web dev

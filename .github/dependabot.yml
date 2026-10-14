@@ -1,0 +1,63 @@
+# Dependabot keeps Rondo's dependencies current: each Monday, one pull request per ecosystem for its
+# minor and patch updates, and one per major. Every version lives where its ecosystem reads it (go.mod,
+# its tools included; package.json, its packageManager included; the Gradle catalog and wrapper;
+# image tags; workflow steps), so none hides in a command. A release waits a week before it's offered.
+version: 2
+
+updates:
+  - package-ecosystem: gomod
+    directory: /server
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: build, include: scope }
+    groups:
+      go: { update-types: [minor, patch] }
+
+  - package-ecosystem: npm
+    directories: [/app/platforms/web, /site, /brand]
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: build, include: scope }
+    groups:
+      npm: { update-types: [minor, patch] }
+    ignore:
+      # kotlinx-datetime runs on js-joda in the browser: its majors move with kotlinx-datetime's.
+      - dependency-name: "@js-joda/*"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: gradle
+    directory: /app
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: build, include: scope }
+    groups:
+      # The compiler, its plugins and the standard library share one version.
+      kotlin: { patterns: ["org.jetbrains.kotlin*"] }
+      gradle: { update-types: [minor, patch] }
+
+  - package-ecosystem: docker
+    directories: [/app, /server, /site]
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: build, include: scope }
+    groups:
+      docker: { update-types: [minor, patch] }
+
+  - package-ecosystem: docker-compose
+    directory: /server
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: build, include: scope }
+    groups:
+      compose: { update-types: [minor, patch] }
+    ignore:
+      # Rondo's own images follow its releases (release-please-config.json).
+      - dependency-name: "ghcr.io/sourcelocation/*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: build, include: scope }
+    groups:
+      actions: { update-types: [minor, patch] }

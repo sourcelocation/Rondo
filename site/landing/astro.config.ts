@@ -8,8 +8,8 @@ import { defineConfig, envField } from "astro/config";
 export default defineConfig({
   site: "https://rondo.matthewsource.com",
   server: { port: 23911 },
-  // The Caddyfile's Content-Security-Policy allows only the site's own files: no inline scripts or styles and no
-  // data: URLs. So nothing is inlined into the pages, however small.
+  // The Caddyfile's Content-Security-Policy allows only the site's own files: no inline scripts or stylesheets and no
+  // data: URLs, only style attributes. So nothing is inlined into the pages, however small.
   build: { inlineStylesheets: "never" },
   vite: {
     build: { assetsInlineLimit: 0 },

@@ -1,6 +1,6 @@
-# The Go server with live reload, on this machine: from server/, `go run github.com/air-verse/air@v1.67.4`
-# (Procfile.dev) rebuilds it, migrates, and restarts `rondo serve` on :23901 on every change, against
-# compose.yaml's services (.env, then dev.env).
+# The Go server with live reload, on this machine: from server/, `go tool air` (Procfile) rebuilds it,
+# migrates, and restarts `rondo serve` on :23901 on every change, against compose.yaml's services (.env,
+# then dev.env).
 tmp_dir = "bin"
 env_files = [".env", "dev.env"]
 

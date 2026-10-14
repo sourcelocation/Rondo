@@ -35,9 +35,9 @@ sqldelight-async = { module = "app.cash.sqldelight:async-extensions", version.re
 sqldelight-jvm = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 sqldelight-web = { module = "app.cash.sqldelight:web-worker-driver", version.ref = "sqldelight" }
 hikari = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
-postgres = { module = "org.postgresql:postgresql", version = "42.7.13" }
+postgres = { module = "org.postgresql:postgresql", version = "42.7.14" }
 logback = { module = "ch.qos.logback:logback-classic", version = "1.6.5" }
-sentry = { module = "io.sentry:sentry", version = "8.59.0" }
+sentry = { module = "io.sentry:sentry", version = "8.60.0" }
 mcp = { module = "io.modelcontextprotocol:kotlin-sdk-server", version.ref = "mcp" }
 
 [plugins]
@@ -45,4 +45,4 @@ multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotl
 jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
-spotless = { id = "com.diffplug.spotless", version = "8.10.3" }
+spotless = { id = "com.diffplug.spotless", version = "8.10.4" }
