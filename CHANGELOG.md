@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.8](https://github.com/sourcelocation/Rondo/compare/v0.1.7...v0.1.8) (2026-10-14)
+
+
+### Bug Fixes
+
+* landing doesn't use inline css ([f47f8f3](https://github.com/sourcelocation/Rondo/commit/f47f8f3df0db46d5ee5eb89e5a7d1f47f617c07b))
+
 ## [0.1.7](https://github.com/sourcelocation/Rondo/compare/v0.1.6...v0.1.7) (2026-10-13)
 
 
