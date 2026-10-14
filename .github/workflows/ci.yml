@@ -13,8 +13,79 @@ permissions:
   contents: read
 
 jobs:
+  # What a change touches decides what runs. A skipped job passes as a required check; if this job
+  # fails, the checks run anyway.
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      server: ${{ steps.checks.outputs.server }}
+      app: ${{ steps.checks.outputs.app }}
+      # The release pull request is what's about to ship, so it builds every image.
+      images: >-
+        ${{ startsWith(github.head_ref, 'release-please--') && '["api","sync","web","site"]'
+        || steps.images.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - id: checks
+        uses: dorny/paths-filter@v4.0.3
+        with:
+          # The brand reaches the app only through dist/ and fonts/, which the Brand workflow keeps
+          # current with its sources.
+          filters: |
+            server:
+              - .github/workflows/ci.yml
+              - server/**
+            app:
+              - .github/workflows/ci.yml
+              - app/**
+              - server/api/**
+              - brand/dist/**
+              - brand/fonts/**
+      # What an image is built with that the checks don't compile: its Dockerfile, the lockfile and
+      # toolchain inside it, its server's config.
+      - id: images
+        uses: dorny/paths-filter@v4.0.3
+        with:
+          filters: |
+            api:
+              - .github/workflows/ci.yml
+              - .dockerignore
+              - server/Dockerfile
+              - server/go.mod
+              - server/go.sum
+            sync:
+              - .github/workflows/ci.yml
+              - .dockerignore
+              - app/Dockerfile
+              - app/gradle/libs.versions.toml
+              - app/gradle/wrapper/gradle-wrapper.properties
+            web:
+              - .github/workflows/ci.yml
+              - .dockerignore
+              - app/Dockerfile
+              - app/gradle/libs.versions.toml
+              - app/gradle/wrapper/gradle-wrapper.properties
+              - app/platforms/web/Caddyfile
+              - app/platforms/web/package.json
+              - app/platforms/web/pnpm-lock.yaml
+              - app/platforms/web/pnpm-workspace.yaml
+            site:
+              - .github/workflows/ci.yml
+              - .dockerignore
+              - site/Dockerfile
+              - site/Caddyfile
+              - site/package.json
+              - site/pnpm-lock.yaml
+              - site/pnpm-workspace.yaml
+
   server:
     name: Go server
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.server == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -52,6 +123,8 @@ jobs:
 
   app:
     name: Kotlin and web
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.app == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -90,3 +163,41 @@ jobs:
           pnpm format:check
           pnpm typecheck
           pnpm build
+
+  # Builds the images without pushing them, so a broken build shows up before a release. Pull requests
+  # only: master is what a pull request already built, and releases build the real images.
+  images:
+    name: Image ${{ matrix.image }}
+    needs: changes
+    if: ${{ github.event_name == 'pull_request' && needs.changes.outputs.images != '[]' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.changes.outputs.images) }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The same images release.yml lists. Reads the cache release builds write; the release pull
+      # request writes it too, so the release build after it reuses everything but the version.
+      - uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          file: >-
+            ${{ matrix.image == 'api' && 'server/Dockerfile' || matrix.image == 'site' && 'site/Dockerfile'
+            || 'app/Dockerfile' }}
+          target: ${{ (matrix.image == 'sync' || matrix.image == 'web') && matrix.image || '' }}
+          push: false
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rondo-${{ matrix.image }}:buildcache
+          cache-to: >-
+            ${{ startsWith(github.head_ref, 'release-please--') && format(
+            'type=registry,ref=ghcr.io/{0}/rondo-{1}:buildcache,mode=max', github.repository_owner, matrix.image)
+            || '' }}

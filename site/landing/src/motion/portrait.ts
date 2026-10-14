@@ -20,7 +20,10 @@ export class Portrait {
   }
 
   private unveil(root: HTMLElement, frame: HTMLElement, image: HTMLElement): void {
-    gsap.set(frame, { clipPath: "inset(16% 12% 16% 12% round 44px)" });
+    // The window keeps the frame's shape: a rounded card, or on small screens a circle.
+    const round = getComputedStyle(frame).borderRadius;
+    const from = round.endsWith("%") ? round : "44px";
+    gsap.set(frame, { clipPath: `inset(16% 12% round ${from})` });
     gsap.set(image, { scale: 1.3 });
     ScrollTrigger.create({
       trigger: root,
@@ -30,7 +33,7 @@ export class Portrait {
         gsap
           .timeline()
           .to(frame, {
-            clipPath: "inset(0% 0% 0% 0% round 28px)",
+            clipPath: `inset(0% 0% round ${round})`,
             duration: 1.8,
             ease: "expo.out",
             clearProps: "clipPath",

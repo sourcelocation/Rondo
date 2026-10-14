@@ -5,10 +5,17 @@ WORKDIR /src
 COPY server/api server/api
 COPY app app
 WORKDIR /src/app
-RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon --quiet :sync:installDist :client:jsBrowserProductionLibraryDistribution
+
+# Each target compiles only its own half of the app: the sync server for the JVM, the client for the
+# browser. They share no compiled output.
+FROM gradle AS sync-build
+RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon --quiet :sync:installDist
+
+FROM gradle AS client-js
+RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon --quiet :client:jsBrowserProductionLibraryDistribution
 
 FROM eclipse-temurin:25.0.4_7-jre-alpine AS sync
-COPY --from=gradle /src/app/sync/build/install/sync /opt/sync
+COPY --from=sync-build /src/app/sync/build/install/sync /opt/sync
 ENV JAVA_TOOL_OPTIONS="-Xmx192m -XX:+UseSerialGC" RONDO_SYNC_PORT=8081
 EXPOSE 8081
 ENTRYPOINT ["/opt/sync/bin/sync"]
@@ -21,7 +28,7 @@ RUN npm install --global "$(node -p 'require("./package.json").packageManager')"
 RUN pnpm install --frozen-lockfile
 COPY brand /src/brand
 COPY app/platforms/web ./
-COPY --from=gradle /src/app/platforms/web/src/kotlin src/kotlin
+COPY --from=client-js /src/app/platforms/web/src/kotlin src/kotlin
 ARG SENTRY_DSN=""
 ARG RELEASE=dev
 RUN VITE_SENTRY_DSN=$SENTRY_DSN VITE_RELEASE=$RELEASE pnpm build

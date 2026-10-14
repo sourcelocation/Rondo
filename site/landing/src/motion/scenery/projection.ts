@@ -6,7 +6,6 @@ import {
   ShaderMaterial,
   type Texture,
   Vector2,
-  Vector3,
   Vector4,
   type WebGLRenderer,
 } from "three";
@@ -32,19 +31,24 @@ const vertex = /* glsl */ `
 
 /**
  * The film's frame, faded into the page at the top and the foot of the section's stage (its top and height on the
- * screen, uStage), as the poster's mask is (uFade, its stops): under the words above it, and into what follows.
+ * screen, uStage), as the poster's mask is (uFade, its stops): under the words above it, and into what follows, its
+ * foot fading on past the stage's, so the page below comes clear only as the section goes on. Its top fade comes in
+ * with the stage, the edge of the page above, but stays at the screen's top as the stage goes: only the film and its
+ * foot go on up.
  */
 const fragment = /* glsl */ `
   uniform sampler2D uFrame;
   uniform vec4 uRect;
   uniform vec2 uStage;
-  uniform vec3 uFade;
+  uniform vec4 uFade;
   varying vec2 vUv;
 
   void main() {
-    float down = ((1.0 - vUv.y) * uRect.w - uStage.x) / uStage.y;
-    float shown = clamp((down - uFade.x) / (uFade.y - uFade.x), 0.0, 1.0)
-      * clamp((1.0 - down) / (1.0 - uFade.z), 0.0, 1.0);
+    float y = (1.0 - vUv.y) * uRect.w;
+    float down = (y - uStage.x) / uStage.y;
+    float fromTop = (y - max(uStage.x, 0.0)) / uStage.y;
+    float shown = clamp((fromTop - uFade.x) / (uFade.y - uFade.x), 0.0, 1.0)
+      * clamp((uFade.w - down) / (uFade.w - uFade.z), 0.0, 1.0);
     gl_FragColor = vec4(texture(uFrame, vUv).rgb * shown, shown);
   }
 `;
@@ -65,7 +69,7 @@ export class Projection implements Picture {
   private readonly box: HTMLElement;
   private readonly rect = new Vector4();
   private readonly stageAt = new Vector2(0, 1);
-  private readonly fade = new Vector3(0.06, 0.42, 0.86);
+  private readonly fade = new Vector4(0, 0.24, 1, 1.21);
   private readonly viewport = new Vector2(1, 1);
   private readonly frame: IUniform<Texture | null> = { value: null };
   private section: Place = { left: 0, top: 0, width: 1, height: 1 };
@@ -128,7 +132,7 @@ export class Projection implements Picture {
       this.height = Math.max(this.stage.offsetHeight, 1);
       const style = getComputedStyle(this.box);
       const stop = (name: string) => parseFloat(style.getPropertyValue(name)) / 100;
-      this.fade.set(stop("--fade-clear"), stop("--fade-solid"), stop("--fade-foot"));
+      this.fade.set(stop("--fade-clear"), stop("--fade-solid"), stop("--fade-foot"), stop("--fade-end"));
       this.size();
     };
     measure();
@@ -157,7 +161,7 @@ export class Projection implements Picture {
     // section's foot comes up to its own.
     const y = Math.min(Math.max(top, 0), top + this.section.height - this.height);
     const was = this.object.visible;
-    if (film == null || y >= view.height || y + this.height <= 0) {
+    if (film == null || y >= view.height || y + this.height * this.fade.w <= 0) {
       this.object.visible = false;
       return was;
     }

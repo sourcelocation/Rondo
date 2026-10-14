@@ -1,5 +1,8 @@
 import { defineConfig, envField } from "astro/config";
 
+// `--tweak` (pnpm dev --tweak) shows the panels for tuning the page's motion.
+if (process.argv.includes("--tweak")) process.env.PUBLIC_RONDO_TWEAK = "true";
+
 /**
  * rondo.matthewsource.com's own pages, built as static files that the site image serves at / (site/Caddyfile): the
  * landing page, the download page, the press kit and its files, the legal pages and the files that let the apps open
@@ -32,6 +35,8 @@ export default defineConfig({
         values: ["auto", "pre", "live"],
         default: "auto",
       }),
+      // Whether the panels for tuning the page's motion show (--tweak).
+      PUBLIC_RONDO_TWEAK: envField.boolean({ context: "client", access: "public", default: false }),
     },
   },
 });

@@ -17,7 +17,7 @@ export const about = {
     "Rondo is a free, open-source flashcard app with native apps on every platform, sync that works offline, and everything people rely on in Anki, review history included.",
   paragraph: [
     "Rondo is a free, open-source flashcard app for iPhone, iPad, Android, Mac, Windows, Linux and the web.",
-    "It schedules reviews with FSRS-6, fitted to each learner, draws cloze, image occlusion, maths, furigana and pinyin natively, and imports Anki decks with their media and full review history.",
+    "It schedules reviews to fit how each learner remembers, draws cloze, image occlusion, maths, furigana and pinyin natively, and imports Anki decks with their media and full review history.",
     "Every device keeps the whole collection and works offline; changes sync in the background, and answers from devices that were offline at the same time all count.",
     "AI assistants such as Claude and ChatGPT can enrich a learner’s cards or make new ones, and anyone can run a Rondo server of their own.",
   ].join(" "),

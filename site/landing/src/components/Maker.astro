@@ -22,7 +22,7 @@ import portrait from "../assets/maker/sourcelocation.webp";
             src={portrait}
             alt="sourcelocation from behind, looking out at a lit cable-stayed bridge at sunset"
             widths={[400, 720, 1080]}
-            sizes="(width < 960px) min(100vw - 32px, 360px), 420px"
+            sizes="(width < 960px) 220px, 420px"
             loading="lazy"
             data-portrait-image
           />
@@ -350,14 +350,20 @@ import portrait from "../assets/maker/sourcelocation.webp";
       grid-template-columns: 1fr;
       grid-template-rows: none;
       grid-template-areas:
-        "intro"
         "portrait"
+        "intro"
         "work";
     }
 
+    /* A small round photo above the words, the way a profile picture sits. */
     .portrait {
-      width: min(100%, 360px);
-      margin-top: clamp(40px, 1.5rem + 3vw, 64px);
+      width: clamp(140px, 40vw, 220px);
+      margin-bottom: clamp(32px, 1.25rem + 2.5vw, 56px);
+    }
+
+    .portrait__frame {
+      aspect-ratio: 1;
+      border-radius: 50%;
     }
   }
 

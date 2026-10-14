@@ -1,3 +1,4 @@
+import { PUBLIC_RONDO_TWEAK } from "astro:env/client";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { requests } from "../content/assistants";
@@ -70,9 +71,10 @@ export class Assistant {
     gsap.set(arriving, { x: () => -window.innerWidth * ARRIVING, force3D: true });
     this.typed.textContent = "";
     this.line.classList.add("is-waiting");
-    // In development, with ?tune in the address, a panel for tuning the sea and the shockwave.
-    if (import.meta.env.DEV && new URLSearchParams(location.search).has("tune"))
+    // With --tweak, a panel for tuning the sea and the shockwave.
+    if (PUBLIC_RONDO_TWEAK) {
       void import("./assistant/tuning").then(({ Tuning }) => new Tuning());
+    }
     // Not before the page is on screen, so nothing's typed under the intro.
     void stage.arrived.then(async () => {
       ScrollTrigger.create({

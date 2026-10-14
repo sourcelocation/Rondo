@@ -12,7 +12,7 @@ export const faq: readonly Question[] = [
   {
     question: "Why would I switch from Anki?",
     answer: [
-      "Because you keep everything and lose the friction. One import brings your decks, media and every past review, and FSRS-6, fitted to you, schedules them from there.",
+      "Because you keep everything and lose the friction. One import brings your decks, media and every past review, and Rondo schedules them from there, fitted to how you remember.",
       "Then it gets better: native apps on every device that open tens of thousands of cards without a wait, sync that never asks you to upload or download, and AI assistants that make the cards you already have richer. All of it free.",
     ],
     more: { label: "Importing from Anki", href: `${links.docs}importing` },

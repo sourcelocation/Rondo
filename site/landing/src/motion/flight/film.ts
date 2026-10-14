@@ -18,6 +18,7 @@ import { Airliner, layout } from "./airliner";
 import { Cabin } from "./cabin";
 import { bakeClouds, CloudVolume } from "./clouds";
 import { Focus } from "./focus";
+import { Guides, guides } from "./guides";
 import { Model } from "./model";
 import { Nudge } from "./nudge";
 import { SUN, shared } from "./shading";
@@ -112,6 +113,8 @@ export class Film {
     deck: true,
   };
   private readonly casters: { readonly draw: () => void };
+  /** The move drawn into the film, to tune it by: made the first time it's shown. */
+  private guide: Guides | null = null;
   private readonly ray = new Vector3();
   private width = 1;
   private height = 1;
@@ -298,6 +301,14 @@ export class Film {
     shared.uScroll.value = (this.clock * SPEED) % 100000;
     this.shots.at(this.progress, this.clock, this.nudge.offset, this.frame);
     this.pose();
+    if (guides.shown && this.guide == null) {
+      this.guide = new Guides();
+      this.scene.add(this.guide.group);
+    }
+    if (this.guide != null) {
+      this.guide.group.visible = guides.shown;
+      this.guide.update(this.shots, this.frame);
+    }
     this.airliner.clear = this.frame.clear;
     this.cabin.group.visible = this.frame.inside;
     this.clouds.render(this.renderer, this.camera, this.frame.deck && !this.covered());

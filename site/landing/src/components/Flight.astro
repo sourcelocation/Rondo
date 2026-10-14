@@ -9,7 +9,7 @@ import { links } from "../content/links";
 /**
  * Offline, and in sync: a film of an airliner skimming the cloud tops, white in the page's pastel light, drawn by the
  * scenery behind the page and played by the scroll (motion/flight.ts). The section is the film's timeline, laid out:
- * a stage a screen tall, which holds the screen while the track under it scrolls past, and a still end. It opens on
+ * a stage a screen tall, which holds the screen while the track under it scrolls past. It opens on
  * the plane's business cabin, seen from a little ahead, with the words above the clouds over the sky; as the page
  * scrolls the camera swings in through a window, turns to the laptop on the empty seat's table, and settles there,
  * Rondo in airplane mode, under the words of landing, which come up over the cabin. The film fades into the page
@@ -92,20 +92,16 @@ import { links } from "../content/links";
 <style>
   /*
    * The film's timeline, laid out in screens: the stage, then the track the camera flies along while the stage holds
-   * the screen, and a still end (::after), to read by.
+   * the screen, the section going on as soon as the camera's at rest. Short enough that the flight is seen through, not
+   * left halfway: the track is --track screens long (motion/flight/tuning.ts tunes it, with --tweak).
    */
   .flight {
+    --track: 1.28;
     position: relative;
   }
 
   .flight__track {
-    height: calc(var(--screen) * 3.86);
-  }
-
-  .flight::after {
-    content: "";
-    display: block;
-    height: calc(var(--screen) * 0.36);
+    height: calc(var(--screen) * var(--track));
   }
 
   /*
@@ -121,7 +117,9 @@ import { links } from "../content/links";
 
   /*
    * The words, over the film's top: its sky at the opening, the cabin above the laptop at rest, both faded into the
-   * page there. The camera looks a little above the laptop, so it sits under them (motion/flight/shots.ts).
+   * page there. The camera looks a little above the laptop, so it sits under them (motion/flight/shots.ts). Once the
+   * film plays (.is-live), they're held on the screen, still while the page scrolls, and come and go in their own time
+   * as the scroll passes their cues (motion/flight.ts): the browser holds them, so they never fall behind the scroll.
    */
   .flight__copy {
     position: absolute;
@@ -132,6 +130,10 @@ import { links } from "../content/links";
     justify-items: center;
     gap: clamp(16px, 0.75rem + 0.8vw, 28px);
     text-align: center;
+  }
+
+  .flight.is-live .flight__copy {
+    position: fixed;
   }
 
   .flight__copy .heading {
@@ -149,13 +151,15 @@ import { links } from "../content/links";
 
   /*
    * The film: the whole stage, its top fading into the page under the words, and its foot into the page below: clear
-   * down to --fade-clear, solid from --fade-solid to --fade-foot, then clear again by the foot. The scenery fades the
-   * film it draws here by the same (motion/scenery/projection.ts reads them).
+   * down to --fade-clear, solid from --fade-solid to --fade-foot, then clear again by --fade-end, past the stage's foot,
+   * so the screen's foot is still all film when the flight ends, and the page below comes clear only as the section
+   * goes on. The scenery fades the film it draws here by the same (motion/scenery/projection.ts reads them).
    */
   .flight__film {
-    --fade-clear: 6%;
-    --fade-solid: 42%;
-    --fade-foot: 86%;
+    --fade-clear: 0%;
+    --fade-solid: 24%;
+    --fade-foot: 100%;
+    --fade-end: 121%;
     position: absolute;
     inset: 0;
     -webkit-mask-image: linear-gradient(
@@ -163,14 +167,14 @@ import { links } from "../content/links";
       transparent var(--fade-clear),
       #000 var(--fade-solid),
       #000 var(--fade-foot),
-      transparent
+      transparent var(--fade-end)
     );
     mask-image: linear-gradient(
       to bottom,
       transparent var(--fade-clear),
       #000 var(--fade-solid),
       #000 var(--fade-foot),
-      transparent
+      transparent var(--fade-end)
     );
   }
 
@@ -217,8 +221,7 @@ import { links } from "../content/links";
       padding-top: var(--section);
     }
 
-    .flight__track,
-    .flight::after {
+    .flight__track {
       display: none;
     }
 
@@ -237,6 +240,7 @@ import { links } from "../content/links";
       --fade-clear: 0%;
       --fade-solid: 18%;
       --fade-foot: 84%;
+      --fade-end: 100%;
       position: relative;
       height: clamp(440px, 50vw, var(--screen-safe) * 0.88);
     }

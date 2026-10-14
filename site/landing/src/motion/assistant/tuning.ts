@@ -2,7 +2,7 @@ import { type FolderApi, Pane } from "tweakpane";
 import { sea, wave } from "./field";
 
 /**
- * A panel for tuning the AI section's sea and the shockwave that crosses it, in development only
+ * A panel for tuning the AI section's sea and the shockwave that crosses it, shown with --tweak
  * (motion/assistant.ts loads it). Each change shows at once. Copy puts the values on the clipboard as
  * motion/assistant/field.ts writes its `sea` and `wave`.
  */
