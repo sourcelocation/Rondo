@@ -18,8 +18,8 @@ importers:
         specifier: 3.2.0
         version: 3.2.0
       '@js-joda/timezone':
-        specifier: 2.23.0
-        version: 2.23.0(@js-joda/core@3.2.0)
+        specifier: 2.26.0
+        version: 2.26.0(@js-joda/core@3.2.0)
       '@sentry/react':
         specifier: 11.7.0
         version: 11.7.0(react-router@8.4.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
@@ -760,10 +760,10 @@ packages:
   '@js-joda/core@3.2.0':
     resolution: {integrity: sha512-PMqgJ0sw5B7FKb2d5bWYIoxjri+QlW/Pys7+Rw82jSH0QN3rB05jZ/VrrsUdh1w4+i2kw9JOejXGq/KhDOX7Kg==}
 
-  '@js-joda/timezone@2.23.0':
-    resolution: {integrity: sha512-33rPV8ORT66Httd/IHQaymTZ//MbjF0WRB58JOUT0G04/a9cB5Q0RFTV1+T4XjIjHr+nY5QkO6KppqgogsJs+Q==}
+  '@js-joda/timezone@2.26.0':
+    resolution: {integrity: sha512-pX3snc+twbNmXtsfcnT+nGuGQSa80pnsf/yUoTJSuqohV/2JRTsdvfysG17/cI+lQ+jgFCSnW6Kl7RmwGseS0g==}
     peerDependencies:
-      '@js-joda/core': '>=1.11.0'
+      '@js-joda/core': '>=5.7.0'
 
   '@modelcontextprotocol/sdk@1.32.1':
     resolution: {integrity: sha512-2DdE+SJDtzLEEWzY1ZjY7Q+VcPhcV1KisD3zI4u0XZyktsjHum1mwbMI+JaulUBi2OZk+KJAi2uPXzxichPkdw==}
@@ -5329,7 +5329,7 @@ snapshots:
 
   '@js-joda/core@3.2.0': {}
 
-  '@js-joda/timezone@2.23.0(@js-joda/core@3.2.0)':
+  '@js-joda/timezone@2.26.0(@js-joda/core@3.2.0)':
     dependencies:
       '@js-joda/core': 3.2.0
 
