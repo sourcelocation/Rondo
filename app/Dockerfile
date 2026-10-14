@@ -1,13 +1,13 @@
 # The sync server (target sync) and the web app (target web), built from the repository root:
 # Gradle generates models from server/api, and the web app reads brand/.
-FROM eclipse-temurin:25.0.4_7-jdk AS gradle
+FROM eclipse-temurin:27_35-jdk AS gradle
 WORKDIR /src
 COPY server/api server/api
 COPY app app
 WORKDIR /src/app
 RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon --quiet :sync:installDist :client:jsBrowserProductionLibraryDistribution
 
-FROM eclipse-temurin:25.0.4_7-jre-alpine AS sync
+FROM eclipse-temurin:27_35-jre-alpine AS sync
 COPY --from=gradle /src/app/sync/build/install/sync /opt/sync
 ENV JAVA_TOOL_OPTIONS="-Xmx192m -XX:+UseSerialGC" RONDO_SYNC_PORT=8081
 EXPOSE 8081
