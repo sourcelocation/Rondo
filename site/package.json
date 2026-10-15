@@ -2,10 +2,9 @@
   "name": "rondo-site",
   "version": "1.0.0",
   "private": true,
-  "description": "Rondo's public site at rondo.matthewsource.com: the landing (landing/) at / and the docs (docs/) under /docs, served by one image (Dockerfile, Caddyfile). Each is a package of this workspace; they share only lint and format settings.",
+  "description": "Rondo's public site at rondo.matthewsource.com: the landing (landing/) at / and the docs (docs/) under /docs, each served by an image of its own (its Dockerfile and Caddyfile). Each is a package of the repository's workspace; they share only lint and format settings.",
   "license": "AGPL-3.0-only",
   "type": "module",
-  "packageManager": "pnpm@11.22.0",
   "engines": {
     "node": ">=24"
   },
@@ -13,8 +12,8 @@
     "dev": "pnpm --filter @rondo/landing dev",
     "dev:docs": "pnpm --filter @rondo/docs dev",
     "lint": "eslint --max-warnings 0 .",
-    "typecheck": "pnpm -r --if-present run typecheck",
-    "build": "pnpm -r --if-present run build",
+    "typecheck": "pnpm --filter @rondo/landing --filter @rondo/docs --if-present run typecheck",
+    "build": "pnpm --filter @rondo/landing --filter @rondo/docs --if-present run build",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

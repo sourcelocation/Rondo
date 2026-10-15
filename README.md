@@ -101,8 +101,9 @@ docker compose up -d --wait
 ```
 
 ```bash
-cd app/platforms/web && pnpm install
-# From the repository root: the Go server (:23901), the sync server (:23902) and the web app, http://localhost:23900/app/
+# From the repository root: the JavaScript workspace (the brand, the web app and the site)
+pnpm install
+# The Go server (:23901), the sync server (:23902) and the web app, http://localhost:23900/app/
 overmind start
 ```
 
@@ -126,16 +127,18 @@ Four standalone projects, joined only by contract files.
 
 ```bash
 # Go server: lint, tests (with the compose Postgres)
-cd server && golangci-lint run && go test ./...
+cd server && go tool -modfile=tools/go.mod golangci-lint run && go test ./...
 
-# Kotlin: format, the rules on JVM and JS, the client, the sync server against Postgres and real clients
+# Kotlin: format, the rules on JVM and JS, the client, the sync server against Postgres and real clients,
+# on a test database migrated as production's is
+cd server && RONDO_DATABASE_URL=postgres://rondo:rondo@localhost:23903/rondo_test?sslmode=disable go run ./cmd/rondo migrate
 cd app && ./gradlew spotlessCheck :core:allTests :client:jvmTest :sync:test
 
 # Web app
 cd app/platforms/web && pnpm format:check && pnpm typecheck && pnpm build
 
 # Sites: landing on :23911, docs on :23912
-cd site && pnpm install && pnpm dev
+cd site && pnpm dev
 cd site && pnpm dev:docs
 ```
 

@@ -76,9 +76,4 @@ class Sql internal constructor(private val c: Connection, internal val postgres:
     }
 
     fun exec(sql: String, vararg args: Any?): Int = bind(sql, args).use { it.executeUpdate() }
-
-    /** Runs [script], statements and all, at once: a schema's. */
-    fun script(script: String) {
-        c.createStatement().use { it.execute(script) }
-    }
 }

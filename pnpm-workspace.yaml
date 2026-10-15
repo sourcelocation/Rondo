@@ -1,0 +1,12 @@
+packages:
+  - brand
+  - app/platforms/web
+  - site
+  - site/landing
+  - site/docs
+
+allowBuilds:
+  esbuild: false
+  "@sourcelocation/shasp@https://codeload.github.com/sourcelocation/shasp/tar.gz/379f3b9efe985831c34b93a09e64a77845946069": true
+
+savePrefix: ""

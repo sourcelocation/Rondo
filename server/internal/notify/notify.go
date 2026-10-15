@@ -5,6 +5,7 @@ package notify
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -41,9 +42,9 @@ type Message struct {
 	Kind         string
 	Presentation Presentation
 	Title, Body  string
-	// A link to open from it: a path on Rondo's origin (/app/…, /docs/…).
-	LinkLabel, LinkPath string
-	Email               bool
+	// A link to open from it: a path into the app on this server (/app/…), or a page of the docs.
+	LinkLabel, Link string
+	Email           bool
 	// Push: also to the devices that receive pushes.
 	Push bool
 }
@@ -56,7 +57,7 @@ type Sender struct {
 func (s *Sender) Send(ctx context.Context, tx pgx.Tx, user uuid.UUID, m Message) error {
 	err := store.New(tx).InsertNotification(ctx, store.InsertNotificationParams{
 		ID: uuid.Must(uuid.NewV7()), UserID: user, Kind: m.Kind, Presentation: int16(m.Presentation),
-		Title: m.Title, Body: m.Body, LinkLabel: optional(m.LinkLabel), LinkUrl: optional(m.LinkPath),
+		Title: m.Title, Body: m.Body, LinkLabel: optional(m.LinkLabel), LinkUrl: optional(m.Link),
 	})
 	if err != nil {
 		return err
@@ -67,7 +68,7 @@ func (s *Sender) Send(ctx context.Context, tx pgx.Tx, user uuid.UUID, m Message)
 		}
 	}
 	if m.Push {
-		path := m.LinkPath
+		path := m.Link
 		if path == "" {
 			path = "/app/"
 		}
@@ -108,8 +109,11 @@ func (w *EmailWorker) Work(ctx context.Context, job *river.Job[Email]) error {
 	}
 	m := job.Args.Message
 	out := mail.Message{To: who.Email, Subject: m.Title, Heading: m.Title, Text: m.Body}
-	if m.LinkPath != "" {
-		out.Link, out.LinkLabel = w.PublicURL+m.LinkPath, m.LinkLabel
+	if m.Link != "" {
+		out.Link, out.LinkLabel = m.Link, m.LinkLabel
+		if strings.HasPrefix(m.Link, "/") {
+			out.Link = w.PublicURL + m.Link
+		}
 	}
 	return w.Mailer.Send(ctx, out)
 }

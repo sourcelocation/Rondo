@@ -4,7 +4,7 @@ import { defineConfig, envField } from "astro/config";
 if (process.argv.includes("--tweak")) process.env.PUBLIC_RONDO_TWEAK = "true";
 
 /**
- * rondo.matthewsource.com's own pages, built as static files that the site image serves at / (site/Caddyfile): the
+ * rondo.matthewsource.com's own pages, built as static files that the landing image serves at / (Caddyfile): the
  * landing page, the download page, the press kit and its files, the legal pages and the files that let the apps open
  * Rondo's links.
  */

@@ -6,7 +6,11 @@ import (
 
 // The notifications Rondo sends, each in its own words. Links point at the docs or into the app.
 
-const rules = "/docs/rules"
+// The docs live on Rondo's site alone, self-hosted servers included.
+const (
+	docs  = "https://rondo.matthewsource.com/docs/"
+	rules = docs + "rules"
+)
 
 func date(t time.Time) string { return t.Format("2 January 2006") }
 
@@ -15,7 +19,7 @@ func ProStarted(until *time.Time) Message {
 	if until != nil && until.Before(time.Now().AddDate(50, 0, 0)) {
 		body = "Until " + date(*until) + ": editors on your shared decks and more room for media."
 	}
-	return Message{Kind: "pro_started", Presentation: Modal, Title: "Welcome to Pro", Body: body, LinkLabel: "What's in Pro", LinkPath: "/docs/plans"}
+	return Message{Kind: "pro_started", Presentation: Modal, Title: "Welcome to Pro", Body: body, LinkLabel: "What's in Pro", Link: docs + "plans"}
 }
 
 var roleNames = map[string]string{"admin": "an admin", "moderator": "a moderator", "support": "on support", "curator": "a curator"}
@@ -24,7 +28,7 @@ func RoleGranted(role string) Message {
 	return Message{
 		Kind: "role_granted", Presentation: Modal, Title: "You're " + roleNames[role] + " now",
 		Body:      "Staff tools work once you sign in with a passkey. They're in the sidebar, and on public pages.",
-		LinkLabel: "Community rules", LinkPath: rules,
+		LinkLabel: "Community rules", Link: rules,
 	}
 }
 
@@ -37,7 +41,7 @@ func Frozen(who, kind string) Message {
 	return Message{
 		Kind: "staff_frozen", Presentation: Modal, Title: "Staff powers frozen",
 		Body:      who + " went over the hourly limit for " + kind + ". Their staff powers are off until you undo the freeze in the log.",
-		LinkLabel: "Open the log", LinkPath: "/app/staff/log", Email: true,
+		LinkLabel: "Open the log", Link: "/app/staff/log", Email: true,
 	}
 }
 
@@ -71,7 +75,7 @@ func Warned(reason string, note *string) Message {
 	return Message{
 		Kind: "warning", Presentation: Modal, Title: "A warning from Rondo's moderators",
 		Body:      because(reason, note) + " Another one may restrict your account.",
-		LinkLabel: "Community rules", LinkPath: rules,
+		LinkLabel: "Community rules", Link: rules,
 	}
 }
 
@@ -83,7 +87,7 @@ func Restricted(end *time.Time, reason string, note *string) Message {
 	return Message{
 		Kind: "restricted", Presentation: Modal, Title: "Your account is restricted",
 		Body:      until(end, "You can't publish, share, invite or change your name") + " Studying and syncing work as always. " + because(reason, note),
-		LinkLabel: "Community rules", LinkPath: rules,
+		LinkLabel: "Community rules", Link: rules,
 	}
 }
 
@@ -92,7 +96,7 @@ func Banned(end *time.Time, reason string, note *string) Message {
 		Kind: "banned", Presentation: Elsewhere, Email: true, Title: "Your Rondo account is suspended",
 		Body: until(end, "You can't sign in") + " " + because(reason, note) +
 			" A Stripe subscription won't renew; one from the App Store or Google Play has to be cancelled there.",
-		LinkLabel: "Community rules", LinkPath: rules,
+		LinkLabel: "Community rules", Link: rules,
 	}
 }
 
@@ -104,7 +108,7 @@ func Lifted() Message {
 func Renamed() Message {
 	return Message{
 		Kind: "renamed", Presentation: Toast, Title: "A moderator reset your name",
-		Body: "Pick a new one whenever you like.", LinkLabel: "Edit profile", LinkPath: "/app/settings/account",
+		Body: "Pick a new one whenever you like.", LinkLabel: "Edit profile", Link: "/app/settings/account",
 	}
 }
 
@@ -115,7 +119,7 @@ func NameBack() Message {
 func DeckRemoved(deck, reason string, note *string) Message {
 	return Message{
 		Kind: "deck_removed", Presentation: Modal, Title: "“" + deck + "” was taken off Discover",
-		Body: because(reason, note) + " It stays yours, and you can still share it privately.", LinkLabel: "Community rules", LinkPath: rules,
+		Body: because(reason, note) + " It stays yours, and you can still share it privately.", LinkLabel: "Community rules", Link: rules,
 	}
 }
 
@@ -126,7 +130,7 @@ func DeckBack(deck string) Message {
 func TakenDown(deck string) Message {
 	return Message{
 		Kind: "followed_taken_down", Presentation: Toast, Title: "“" + deck + "” was removed",
-		Body: "A deck you followed broke the community rules, so it's no longer shared.", LinkLabel: "Community rules", LinkPath: rules,
+		Body: "A deck you followed broke the community rules, so it's no longer shared.", LinkLabel: "Community rules", Link: rules,
 	}
 }
 
@@ -137,6 +141,6 @@ func Reviewed() Message {
 func RemindersPaused() Message {
 	return Message{
 		Kind: "reminders_paused", Presentation: Toast, Title: "Reminders are paused",
-		Body: "You haven't studied after the last few, so they stop until you do.", LinkLabel: "Reminders", LinkPath: "/app/settings/reminders",
+		Body: "You haven't studied after the last few, so they stop until you do.", LinkLabel: "Reminders", Link: "/app/settings/reminders",
 	}
 }

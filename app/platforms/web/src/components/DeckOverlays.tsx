@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { ColorSwatches, EmojiPicker, LanguagePicker } from "@/components/decks";
-import { confirm, Empty, Loading, Row, Rows, Spinner, WholeInput } from "@/components/kit";
+import { confirm, docs, Empty, Loading, Row, Rows, Spinner, WholeInput } from "@/components/kit";
 import { Locked } from "@/components/Pro";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -324,7 +324,7 @@ function ShareSheet({ deckId, onClose }: { deckId: string; onClose: () => void }
                         new Date(st.restrictedUntil).getFullYear() < 9000 ? date(st.restrictedUntil) : null,
                       )
                     : s.removedFromDiscover}{" "}
-                  <a className="underline" href="/docs/rules" target="_blank" rel="noopener noreferrer">
+                  <a className="underline" href={docs("rules")} target="_blank" rel="noopener noreferrer">
                     {s.rules}
                   </a>
                 </p>

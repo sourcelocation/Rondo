@@ -163,7 +163,7 @@ func (s *Server) CreateInvite(ctx context.Context, r api.CreateInviteRequestObje
 	if err := s.Q.CreateInvite(ctx, invite); err != nil {
 		return nil, err
 	}
-	link := s.S.PublicURL + "/i/" + token // the site sends it on to the web app
+	link := s.S.PublicURL + "/app/i/" + token
 	out := api.Invite{Id: invite.ID, Role: r.Body.Role, Email: email, ExpiresAt: invite.ExpiresAt}
 	if email != nil {
 		if err := s.enqueue(ctx, jobs.Mail{Message: mail.Invite(*email, *display(owner), deck.Name, link)}); err != nil {

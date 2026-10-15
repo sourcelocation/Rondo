@@ -1,0 +1,10 @@
+{
+  "name": "rondo",
+  "private": true,
+  "description": "Rondo's JavaScript workspace (pnpm-workspace.yaml): the brand, the web app and the site, on one lockfile.",
+  "license": "AGPL-3.0-only",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24"
+  }
+}

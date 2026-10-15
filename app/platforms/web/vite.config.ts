@@ -29,10 +29,7 @@ function nodeOnly(): Plugin {
   return { name: "node-only", enforce: "pre", resolveId: (id) => (id === "ws" ? { id, external: true } : null) };
 }
 
-/**
- * The app is served under /app, as in production, where the site answers / and sends share links
- * (`/d/…`, `/i/…`) into the app; here the dev server does both.
- */
+/** The app is served under /app, as in production, where the site answers /; here / leads into the app. */
 function underApp(): Plugin {
   return {
     name: "under-app",
@@ -40,7 +37,7 @@ function underApp(): Plugin {
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
         const url = request.url ?? "/";
-        const to = url === "/app" ? "/app/" : /^\/(?:$|\?|[diu]\/|redeem(?:\/|$))/.test(url) ? `/app${url}` : null;
+        const to = url === "/app" ? "/app/" : /^\/(?:$|\?)/.test(url) ? `/app${url}` : null;
         if (to === null) return next();
         response.writeHead(302, { Location: to }).end();
       });

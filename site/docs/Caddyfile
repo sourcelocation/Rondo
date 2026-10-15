@@ -1,0 +1,18 @@
+# Rondo's docs at rondo.matthewsource.com/docs, the path the ingress sends here: they're exported with
+# that base path (next.config.ts), so the files sit under /srv/docs.
+:8080 {
+	encode zstd gzip
+	header X-Content-Type-Options nosniff
+	header Referrer-Policy strict-origin-when-cross-origin
+
+	redir /docs /docs/ 308
+	root * /srv
+	try_files {path} {path}.html {path}/index.html
+	file_server
+
+	handle_errors 404 {
+		root * /srv
+		rewrite * /docs/404.html
+		file_server
+	}
+}

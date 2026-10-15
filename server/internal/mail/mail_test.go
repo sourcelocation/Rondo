@@ -14,7 +14,7 @@ import (
 
 func TestAnEmailIsNamedOnTheSendersDomainAndSaysWhereItsFrom(t *testing.T) {
 	m := New(Config{From: "Rondo <rondo@matthewsource.com>", PublicURL: "https://rondo.matthewsource.com"})
-	e, err := m.compose(Invite("bob@example.com", "Alice", "<b>HSK</b> 1", "https://rondo.matthewsource.com/i/abc"))
+	e, err := m.compose(Invite("bob@example.com", "Alice", "<b>HSK</b> 1", "https://rondo.matthewsource.com/app/i/abc"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestAnEmailIsNamedOnTheSendersDomainAndSaysWhereItsFrom(t *testing.T) {
 	for in, wants := range map[string][]string{
 		headers.String(): {"Message-ID: <", "@matthewsource.com>\r\n", "Auto-Submitted: auto-generated"},
 		bodies: {
-			"Open the deck: https://rondo.matthewsource.com/i/abc", // the plain text, its link labelled
+			"Open the deck: https://rondo.matthewsource.com/app/i/abc", // the plain text, its link labelled
 			"Rondo · https://rondo.matthewsource.com",
 			`>rondo.matthewsource.com</a>`, // the HTML's footer
 			"&lt;b&gt;HSK&lt;/b&gt; 1",

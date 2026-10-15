@@ -28,7 +28,7 @@ class Report(
 
 /**
  * A notification the server wrote, to show once: as a dialog that waits for the person ([modal]),
- * or briefly. [link] is a path on Rondo's origin (`/docs/…`, `/app/…`).
+ * or briefly. [link] is a path into the app on this server (`/app/…`), or a page of the docs.
  */
 @JsExport
 class NotificationItem internal constructor(

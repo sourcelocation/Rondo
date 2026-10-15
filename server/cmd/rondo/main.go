@@ -17,7 +17,8 @@ import (
 	"github.com/sourcelocation/rondo/server/internal/app"
 )
 
-var version = "dev"
+// version is the release this source is: release-please keeps it (release-please-config.json).
+const version = "v0.1.8" // x-release-please-version
 
 func main() {
 	if len(os.Args) != 2 {

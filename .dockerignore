@@ -9,3 +9,4 @@ app/platforms/web/src/kotlin
 **/.next
 **/.astro
 site/docs/out
+server/tools

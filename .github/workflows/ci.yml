@@ -12,75 +12,126 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # The Go server/Dockerfile's image builds with: a change to one is a change to both.
+  GO_VERSION: "1.27.2"
+
 jobs:
-  # What a change touches decides what runs. A skipped job passes as a required check; if this job
-  # fails, the checks run anyway.
+  # What a pull request touches decides what runs, by the repository's layout: each project's own
+  # directory, and the few files another reads (brand/dist and fonts/, server/db, server/api, the
+  # workspace's lockfile). master runs everything, so an edge missing here breaks master, not a
+  # release. A skipped job passes as a required check; if this job fails, the checks run anyway.
   changes:
     name: Changes
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       pull-requests: read
     outputs:
-      server: ${{ steps.checks.outputs.server }}
-      app: ${{ steps.checks.outputs.app }}
-      # The release pull request is what's about to ship, so it builds every image.
+      brand: ${{ steps.filter.outputs.brand }}
+      server: ${{ steps.filter.outputs.server }}
+      app: ${{ steps.filter.outputs.app }}
+      web: ${{ steps.filter.outputs.web }}
+      # The images to build, as docker-bake.hcl names them. The release pull request is what's about
+      # to ship, so it builds them all (bake's default group).
       images: >-
-        ${{ startsWith(github.head_ref, 'release-please--') && '["api","sync","web","site"]'
-        || steps.images.outputs.changes }}
+        ${{ (startsWith(github.head_ref, 'release-please--') || steps.filter.outputs.docker == 'true')
+        && 'default' || format('{0}{1}{2}{3}{4}',
+        steps.filter.outputs.server == 'true' && ' api' || '',
+        steps.filter.outputs.app == 'true' && ' sync' || '',
+        steps.filter.outputs.web == 'true' && ' web' || '',
+        steps.filter.outputs.landing == 'true' && ' landing' || '',
+        steps.filter.outputs.docs == 'true' && ' docs' || '') }}
     steps:
-      - uses: actions/checkout@v7.0.1
-      - id: checks
-        uses: dorny/paths-filter@v4.0.3
+      - id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
-          # The brand reaches the app only through dist/ and fonts/, which the Brand workflow keeps
-          # current with its sources.
           filters: |
-            server:
+            ci: &ci
               - .github/workflows/ci.yml
-              - server/**
-            app:
-              - .github/workflows/ci.yml
-              - app/**
-              - server/api/**
+            workspace: &workspace
+              - package.json
+              - pnpm-workspace.yaml
+              - pnpm-lock.yaml
+              - .node-version
+            # What the brand publishes: others read nothing else of it.
+            published: &published
               - brand/dist/**
               - brand/fonts/**
-      # What an image is built with that the checks don't compile: its Dockerfile, the lockfile and
-      # toolchain inside it, its server's config.
-      - id: images
-        uses: dorny/paths-filter@v4.0.3
-        with:
-          filters: |
-            api:
-              - .github/workflows/ci.yml
-              - .dockerignore
-              - server/Dockerfile
-              - server/go.mod
-              - server/go.sum
-            sync:
-              - .github/workflows/ci.yml
-              - .dockerignore
+            gradle: &gradle
+              - app/*.gradle.kts
+              - app/gradle.properties
+              - app/gradle/**
+              - app/gradlew
+              - app/.java-version
+              - app/kotlin-js-store/**
+            brand:
+              - *ci
+              - *workspace
+              - brand/**
+            # Mail reads the brand's dist/.
+            server:
+              - *ci
+              - *published
+              - server/**
+            # The sync server's tests run against a database `rondo migrate` migrated (server/db).
+            app:
+              - *ci
+              - *gradle
+              - app/*/src/**
+              - app/*/*.gradle.kts
               - app/Dockerfile
-              - app/gradle/libs.versions.toml
-              - app/gradle/wrapper/gradle-wrapper.properties
+              - .editorconfig
+              - server/db/**
+            # The web app compiles the client (core and client) and draws with the brand.
             web:
-              - .github/workflows/ci.yml
-              - .dockerignore
+              - *ci
+              - *workspace
+              - *gradle
+              - *published
+              - app/core/**
+              - app/client/**
               - app/Dockerfile
-              - app/gradle/libs.versions.toml
-              - app/gradle/wrapper/gradle-wrapper.properties
-              - app/platforms/web/Caddyfile
-              - app/platforms/web/package.json
-              - app/platforms/web/pnpm-lock.yaml
-              - app/platforms/web/pnpm-workspace.yaml
-            site:
-              - .github/workflows/ci.yml
+              - app/platforms/web/**
+            landing:
+              - *workspace
+              - *published
+              - site/tsconfig.base.json
+              - site/landing/**
+            # The API reference reads the contract.
+            docs:
+              - *workspace
+              - *published
+              - site/tsconfig.base.json
+              - site/docs/**
+              - server/api/**
+            docker:
+              - *ci
+              - docker-bake.hcl
               - .dockerignore
-              - site/Dockerfile
-              - site/Caddyfile
-              - site/package.json
-              - site/pnpm-lock.yaml
-              - site/pnpm-workspace.yaml
+
+  brand:
+    name: Brand
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.brand == 'true') }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: brand
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter rondo-brand
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+      # dist/ is what every other project reads: it must be what the sources produce.
+      - name: Published output is current
+        run: pnpm check
 
   server:
     name: Go server
@@ -98,31 +149,26 @@ jobs:
         options: --health-cmd "pg_isready -U rondo" --health-interval 2s --health-timeout 3s --health-retries 30
     steps:
       - uses: actions/checkout@v7.0.1
-      # The latest Go, as the server's image builds with (server/Dockerfile), and a linter that knows it.
       - uses: actions/setup-go@v7.0.0
         with:
-          go-version: stable
-          check-latest: true
-          cache-dependency-path: server/go.sum
-      - uses: golangci/golangci-lint-action@v9.3.0
-        with:
-          version: latest
-          working-directory: server
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            server/go.sum
+            server/tools/go.sum
+      # The linters are tools of tools/go.mod, apart from the server's own dependencies.
+      - name: Lint
+        run: go tool -modfile tools/go.mod golangci-lint run
       - name: Generated API code is current
         run: |
           go generate ./...
           git diff --exit-code -- .
-      - uses: sqlc-dev/setup-sqlc@v5.0.0
-        with:
-          sqlc-version: "1.30.0"
       - name: Generated queries are current
-        working-directory: server/db
-        run: sqlc diff
+        run: go tool -modfile tools/go.mod sqlc diff --file db/sqlc.yaml
       - name: Tests
         run: go test -race ./...
 
   app:
-    name: Kotlin and web
+    name: Kotlin
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.app == 'true') }}
     runs-on: ubuntu-latest
@@ -140,64 +186,74 @@ jobs:
       - uses: actions/setup-java@v6.0.1
         with:
           distribution: temurin
-          java-version: "25"
+          java-version-file: app/.java-version
       - uses: gradle/actions/setup-gradle@v6.4.0
-      # Rules and models (JVM and JS), the client against SQLite, the sync server against Postgres and
-      # real clients, then the web app's copy of the client.
-      - name: Format, tests, builds
-        run: >-
-          ./gradlew spotlessCheck :core:allTests :client:jvmTest :sync:test :cli:installDist
-          :client:jsBrowserProductionLibraryDistribution
-      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-go@v7.0.0
         with:
-          package_json_file: app/platforms/web/package.json
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: server/go.sum
+      # The sync server's tests use a database migrated as production's is.
+      - name: Migrate the test database
+        working-directory: server
+        env:
+          RONDO_DATABASE_URL: postgres://rondo:rondo@localhost:23903/rondo_test?sslmode=disable
+        run: go run ./cmd/rondo migrate
+      # Rules and models (JVM and JS), the client against SQLite, the sync server against Postgres and
+      # real clients.
+      - name: Format, tests, builds
+        run: ./gradlew spotlessCheck :core:allTests :client:jvmTest :sync:test :cli:installDist
+
+  web:
+    name: Web app
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.web == 'true') }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/platforms/web
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version-file: app/.java-version
+      - uses: gradle/actions/setup-gradle@v6.4.0
+      # The web app's copy of the client (src/kotlin).
+      - name: Client
+        working-directory: app
+        run: ./gradlew :client:jsBrowserProductionLibraryDistribution
+      - uses: pnpm/action-setup@v6.1.0
       - uses: actions/setup-node@v7.1.0
         with:
-          node-version-file: app/platforms/web/.node-version
+          node-version-file: .node-version
           cache: pnpm
-          cache-dependency-path: app/platforms/web/pnpm-lock.yaml
-      - name: Web app
-        working-directory: app/platforms/web
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm format:check
-          pnpm typecheck
-          pnpm build
+      - run: pnpm install --frozen-lockfile --filter rondo-web
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm build
 
-  # Builds the images without pushing them, so a broken build shows up before a release. Pull requests
-  # only: master is what a pull request already built, and releases build the real images.
+  # Builds the images a change reaches without pushing them, so a broken build shows up before a
+  # release. Pull requests only: master is what a pull request already built, and releases build the
+  # real images. Built together, the sync server and the web app share app/Dockerfile's Gradle stage.
   images:
-    name: Image ${{ matrix.image }}
+    name: Images
     needs: changes
-    if: ${{ github.event_name == 'pull_request' && needs.changes.outputs.images != '[]' }}
+    if: github.event_name == 'pull_request' && needs.changes.outputs.images != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        image: ${{ fromJSON(needs.changes.outputs.images) }}
+      packages: read
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: docker/setup-buildx-action@v4.4.1
+      # Reads the cache release builds write (docker-bake.hcl).
       - uses: docker/login-action@v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # The same images release.yml lists. Reads the cache release builds write; the release pull
-      # request writes it too, so the release build after it reuses everything but the version.
-      - uses: docker/build-push-action@v7.4.0
-        with:
-          context: .
-          file: >-
-            ${{ matrix.image == 'api' && 'server/Dockerfile' || matrix.image == 'site' && 'site/Dockerfile'
-            || 'app/Dockerfile' }}
-          target: ${{ (matrix.image == 'sync' || matrix.image == 'web') && matrix.image || '' }}
-          push: false
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/rondo-${{ matrix.image }}:buildcache
-          cache-to: >-
-            ${{ startsWith(github.head_ref, 'release-please--') && format(
-            'type=registry,ref=ghcr.io/{0}/rondo-{1}:buildcache,mode=max', github.repository_owner, matrix.image)
-            || '' }}
+      - env:
+          IMAGES: ${{ needs.changes.outputs.images }}
+        run: |
+          read -ra targets <<< "$IMAGES"
+          docker buildx bake "${targets[@]}"

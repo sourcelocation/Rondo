@@ -1,12 +1,12 @@
 # The Go server (`rondo serve`, `rondo migrate`), built from the repository root: mail reads brand/dist.
-# Always the latest Go, as CI and development use; go.mod's `go` is only the oldest it builds with.
-FROM golang:1 AS build
+# The Go CI tests with (.github/workflows/ci.yml): a change to one is a change to both. go.mod's `go`
+# is only the oldest it builds with.
+FROM golang:1.27.2 AS build
 WORKDIR /src/server
 COPY server/go.mod server/go.sum ./
 RUN go mod download
 COPY server/ ./
-ARG VERSION=dev
-RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /rondo ./cmd/rondo
+RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /rondo ./cmd/rondo
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /rondo /rondo

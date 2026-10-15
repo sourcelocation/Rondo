@@ -7,9 +7,10 @@ import { registerSW } from "virtual:pwa-register";
 import { App } from "./App";
 import { OtherTab, Splash } from "./components/kit";
 import { boot } from "./rondo";
+import { version } from "../package.json";
 
-if (import.meta.env.VITE_SENTRY_DSN)
-  Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN, release: import.meta.env.VITE_RELEASE });
+// Errors go under the release they came from: package.json's version, which release-please keeps.
+if (import.meta.env.VITE_SENTRY_DSN) Sentry.init({ dsn: import.meta.env.VITE_SENTRY_DSN, release: `v${version}` });
 
 // The service worker (src/sw.ts): the app offline, and pushes. A new version takes over on its own.
 registerSW({ immediate: true });

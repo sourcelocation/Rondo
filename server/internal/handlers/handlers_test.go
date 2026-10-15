@@ -165,7 +165,7 @@ func TestInvitationsLendDecks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token := strings.TrimPrefix(*res.(api.CreateInvite201JSONResponse).Url, "http://app/i/")
+	token := strings.TrimPrefix(*res.(api.CreateInvite201JSONResponse).Url, "http://app/app/i/")
 	preview, err := s.PreviewInvitation(context.Background(), api.PreviewInvitationRequestObject{Token: token})
 	if err != nil || preview.(api.PreviewInvitation200JSONResponse).Deck.Item.Name != "Spanish" {
 		t.Fatalf("preview: %v %v", preview, err)

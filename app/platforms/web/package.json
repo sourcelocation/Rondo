@@ -1,9 +1,9 @@
 {
   "name": "rondo-web",
+  "version": "0.1.8",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
-  "packageManager": "pnpm@11.22.0",
   "engines": {
     "node": ">=24"
   },

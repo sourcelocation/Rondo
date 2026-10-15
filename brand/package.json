@@ -5,7 +5,6 @@
   "description": "Rondo's brand: the design tokens (tokens/), fonts and artwork. shasp (brand.config.ts) compiles them into CSS, TypeScript, Swift, Kotlin, JSON and every platform's icons under dist/. Other projects read dist/; nothing here knows who does.",
   "license": "AGPL-3.0-only",
   "type": "module",
-  "packageManager": "pnpm@11.22.0",
   "engines": {
     "node": ">=24"
   },

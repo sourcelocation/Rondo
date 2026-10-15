@@ -107,8 +107,8 @@ export function Avatar({ name, className }: { name: string; className?: string }
   );
 }
 
-/** A page of the docs, which open beside the app. */
-export const docs = (page = "") => `${location.origin}/docs/${page}`;
+/** A page of the docs, which open beside the app. They live on Rondo's site alone, self-hosted servers included. */
+export const docs = (page = "") => `https://rondo.matthewsource.com/docs/${page}`;
 
 /** A link to the docs [page] about what's shown: beside a section's title. */
 export const LearnMore = ({ page }: { page: string }) => (

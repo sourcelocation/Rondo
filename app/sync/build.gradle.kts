@@ -39,11 +39,11 @@ tasks.named<JavaExec>("run") {
     development.forEach { (key, value) -> environment(key, System.getenv(key) ?: value) }
 }
 
+// The tests use a database `rondo migrate` has migrated (README, CI), compose's unless the environment
+// says otherwise.
 tasks.test {
     environment(
         "RONDO_TEST_DATABASE_URL",
-        System.getenv("RONDO_TEST_DATABASE_URL")
-            ?: "jdbc:postgresql://localhost:23903/rondo_test?user=rondo&password=rondo",
+        System.getenv("RONDO_TEST_DATABASE_URL") ?: "postgres://rondo:rondo@localhost:23903/rondo_test?sslmode=disable",
     )
-    systemProperty("migrations", rootDir.resolve("../server/db/migrations").path)
 }

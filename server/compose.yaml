@@ -9,7 +9,7 @@
 # proxy's job, in front of port 23900 (the docs' "Run your own server").
 #
 # Rondo's ports are 23900-23912, so it runs beside other projects' stacks:
-#   23900 the front door (`web`, or Vite in development)   23901 Go server   23902 sync server
+#   23900 the front door (`proxy`, or Vite in development)   23901 Go server   23902 sync server
 #   23903 Postgres   23904 Kratos (admin 23905)   23906 Hydra (admin 23907)   23908 Mailpit (SMTP 23909)
 #   23910 S3   23911 landing   23912 docs
 # Inside the network every service keeps its usual port.
@@ -121,15 +121,22 @@ services:
     ports: ["127.0.0.1:23902:8081"]
     depends_on: { migrate: { condition: service_completed_successfully } }
 
-  # The front door: the web app under /app, and every other path to its service
-  # (app/platforms/web/Caddyfile).
+  # The web app's files, under /app (app/platforms/web/Caddyfile).
   web:
     profiles: [app]
     image: *web-image
     build: { context: .., dockerfile: app/Dockerfile, target: web }
     restart: unless-stopped
+
+  # The front door, routing by path as production's ingress does (and Vite in development): the web
+  # app, the Go server, the sync server, Kratos and Hydra.
+  proxy:
+    profiles: [app]
+    image: caddy:2.11.7-alpine
+    restart: unless-stopped
+    configs: [{ source: proxy, target: /etc/caddy/Caddyfile }]
     ports: ["127.0.0.1:23900:8080"]
-    depends_on: [api, sync, kratos, hydra]
+    depends_on: [web, api, sync, kratos, hydra]
 
   # The mail profile (as in .env.example): sign-in codes land in Mailpit, at http://localhost:23908.
   mail:
@@ -151,6 +158,42 @@ volumes:
   storage: {}
 
 configs:
+  # The front door's routes (the proxy service). Kratos's paths lose their /auth prefix, and the
+  # Origin and Cookie headers browsers add: the apps' sign-in is headless.
+  proxy:
+    content: |
+      :8080 {
+        encode zstd gzip
+
+        redir / /app/
+
+        @web path /app /app/*
+        handle @web {
+          reverse_proxy web:8080
+        }
+        @api path /api/* /media/* /blobs/*
+        handle @api {
+          reverse_proxy api:8080
+        }
+        @sync path /sync/* /mcp /.well-known/oauth-protected-resource*
+        handle @sync {
+          reverse_proxy sync:8081
+        }
+        handle_path /auth/* {
+          reverse_proxy kratos:4433 {
+            header_up -Origin
+            header_up -Cookie
+          }
+        }
+        @hydra path /oauth2/* /userinfo /.well-known/openid-configuration /.well-known/oauth-authorization-server /.well-known/jwks.json
+        handle @hydra {
+          reverse_proxy hydra:4444
+        }
+        handle {
+          respond 404
+        }
+      }
+
   # Kratos and Hydra keep their own databases beside Rondo's; the tests (`go test`, Gradle's
   # :sync:test) theirs.
   databases:

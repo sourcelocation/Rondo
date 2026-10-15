@@ -17,7 +17,6 @@ import app.rondo.core.sync.Pulled
 import app.rondo.core.sync.Push
 import app.rondo.core.sync.Pushed
 import app.rondo.core.sync.Stream
-import java.io.File
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -28,7 +27,7 @@ import kotlin.uuid.Uuid
  * connections until the run ends, past Postgres's limit. Tests run one at a time. */
 private val shared by lazy { Postgres(System.getenv("RONDO_TEST_DATABASE_URL")) }
 
-/** A clean schema from server/db/migrations, two people and helpers to push and pull as them. */
+/** Empty tables in a migrated database (`rondo migrate`), two people and helpers to push and pull as them. */
 open class Harness {
     val postgres = shared
     val sync = SyncService(postgres)
@@ -42,14 +41,11 @@ open class Harness {
 
     init {
         postgres.transaction { sql ->
-            sql.exec("DROP SCHEMA public CASCADE")
-            sql.exec("CREATE SCHEMA public")
-            val up = File(System.getProperty("migrations")).listFiles()!!.sorted().joinToString("\n") {
-                it.readText().substringAfter("-- +goose Up").substringBefore("-- +goose Down")
-            }
-            sql.script(up)
-            sql.exec("CREATE TABLE goose_db_version (version_id bigint)")
-            sql.exec("INSERT INTO goose_db_version VALUES (1)")
+            val tables = sql.query(
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public' " +
+                    "AND tablename NOT IN ('goose_db_version', 'river_migration')",
+            ) { it.getString(1) }
+            sql.exec("TRUNCATE ${tables.joinToString()} RESTART IDENTITY CASCADE")
         }
     }
 

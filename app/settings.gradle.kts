@@ -1,5 +1,5 @@
 // The app's Gradle build: the shared Kotlin (core, client, mcp), the sync server, the command-line
-// MCP client and, later, the Android app. It reads ../server/api (the API spec) and ../brand.
+// MCP client and, later, the Android app. It reads nothing outside app/.
 pluginManagement {
     repositories {
         gradlePluginPortal()
