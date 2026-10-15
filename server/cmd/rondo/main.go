@@ -18,7 +18,7 @@ import (
 )
 
 // version is the release this source is: release-please keeps it (release-please-config.json).
-const version = "v0.1.8" // x-release-please-version
+const version = "v0.1.9" // x-release-please-version
 
 func main() {
 	if len(os.Args) != 2 {
