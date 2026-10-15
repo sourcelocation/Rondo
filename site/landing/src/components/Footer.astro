@@ -2,7 +2,7 @@
 import { links } from "../content/links";
 import Logo from "./Logo.astro";
 
-/** The foot of every page: where else to go, the licence, and the logo set large, rising into view. */
+/** The foot of every page: where else to go, the licence, whose the other names on it are, and the logo set large, rising into view. */
 const year = new Date().getFullYear();
 ---
 
@@ -45,6 +45,9 @@ const year = new Date().getFullYear();
         </a>
       </p>
     </div>
+    <p class="footer__notice">
+      Anki is a trademark of Ankitects Pty Ltd. Rondo isn’t affiliated with or endorsed by Ankitects.
+    </p>
     <div class="footer__logo" data-footer-logo>
       <Logo />
     </div>
@@ -76,6 +79,12 @@ const year = new Date().getFullYear();
   }
 
   .footer__legal {
+    color: var(--ink-3);
+  }
+
+  .footer__notice {
+    margin-top: 12px;
+    font-size: var(--size-micro);
     color: var(--ink-3);
   }
 
