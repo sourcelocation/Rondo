@@ -23,9 +23,10 @@ import type { Stage } from "./stage";
  * When the words come and go, as shares of the flight (motion/flight/tuning.ts tunes it, with --tweak): those above
  * the clouds come as the section's top nears the screen's, and change over to those of landing just before the camera's
  * through the window, which it is about seven eighths of the way in (as motion/flight/shots.ts's move has it), which
- * go a little after the flight, as the section goes on.
+ * stay as the section goes on, over the film scrolling away, until it's half gone and the next section's words come
+ * up to them, half a screen after the flight.
  */
-export const words = { arrive: 0.15, change: 0.86, go: 1.08 };
+export const words = { arrive: 0.15, change: 0.86, go: 1.22 };
 
 export class FlightFilm {
   private projection: Projection | null = null;
