@@ -2,9 +2,8 @@
 #   docker compose up -d --wait     what Rondo depends on: Postgres, Kratos, Hydra (and Mailpit, by
 #                                   .env.example's profiles). In development Rondo's own servers run
 #                                   on this machine, each reloading itself (Procfile).
-#   COMPOSE_PROFILES=app            Rondo itself as well, from the release this file comes with (or
-#                                   RONDO_VERSION's), as self-hosting runs it; `--build` builds this
-#                                   checkout instead.
+#   COMPOSE_PROFILES=app            Rondo itself as well, from the release this file comes with, as
+#                                   self-hosting runs it; `--build` builds this checkout instead.
 # Rondo is at RONDO_PUBLIC_URL, http://localhost:23900/app/ unless you change it. HTTPS is a reverse
 # proxy's job, in front of port 23900 (the docs' "Run your own server").
 #
@@ -20,10 +19,10 @@ x-postgres: &postgres
 x-database: &database "postgres://rondo:${POSTGRES_PASSWORD:?set it in .env}@postgres:5432/rondo?sslmode=disable"
 x-kratos-database: &kratos-database "postgres://rondo:${POSTGRES_PASSWORD}@postgres:5432/kratos?sslmode=disable"
 x-hydra-database: &hydra-database "postgres://rondo:${POSTGRES_PASSWORD}@postgres:5432/hydra?sslmode=disable"
-# The release every image comes from, unless RONDO_VERSION names another; release-please keeps it.
-x-api-image: &api-image ghcr.io/sourcelocation/rondo-api:${RONDO_VERSION:-v0.1.9} # x-release-please-version
-x-sync-image: &sync-image ghcr.io/sourcelocation/rondo-sync:${RONDO_VERSION:-v0.1.9} # x-release-please-version
-x-web-image: &web-image ghcr.io/sourcelocation/rondo-web:${RONDO_VERSION:-v0.1.9} # x-release-please-version
+# The release every image comes from; release-please keeps it.
+x-api-image: &api-image ghcr.io/sourcelocation/rondo-api:v0.1.9 # x-release-please-version
+x-sync-image: &sync-image ghcr.io/sourcelocation/rondo-sync:v0.1.9 # x-release-please-version
+x-web-image: &web-image ghcr.io/sourcelocation/rondo-web:v0.1.9 # x-release-please-version
 
 services:
   postgres:
@@ -42,13 +41,15 @@ services:
     command: migrate sql -e --yes
     environment: { DSN: *kratos-database }
 
-  # ORY_DEV (--dev) lets Kratos and Hydra run over plain HTTP, as on this machine.
+  # RONDO_PLAIN_HTTP (as on this machine) puts Kratos and Hydra in Ory's dev mode: Hydra refuses an
+  # http:// issuer without it, and both mark their cookies Secure.
   kratos:
     image: oryd/kratos:v26.2.0
     restart: unless-stopped
-    command: serve -c /etc/kratos/kratos.yml --watch-courier --sqa-opt-out ${ORY_DEV:-}
+    command: serve -c /etc/kratos/kratos.yml --watch-courier --sqa-opt-out
     environment:
       DSN: *kratos-database
+      DEV: ${RONDO_PLAIN_HTTP:-false}
       SECRETS_COOKIE: "${KRATOS_COOKIE_SECRET:?set it in .env}"
       SECRETS_CIPHER: "${KRATOS_CIPHER_SECRET:?set it in .env}"
     configs:
@@ -56,7 +57,7 @@ services:
       - { source: kratos-schema, target: /etc/kratos/identity.schema.json }
       - { source: kratos-courier, target: /etc/kratos/courier.jsonnet }
     ports: ["127.0.0.1:23904:4433", "127.0.0.1:23905:4434"]
-    # In development its hooks reach the Go server on this machine there (RONDO_HOOKS_URL).
+    # In development its hooks reach the Go server on this machine there (RONDO_API_URL).
     extra_hosts: ["host.docker.internal:host-gateway"]
     healthcheck: { test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:4433/health/ready"], interval: 2s, retries: 30 }
     depends_on: { kratos-migrate: { condition: service_completed_successfully } }
@@ -70,9 +71,10 @@ services:
   hydra:
     image: oryd/hydra:v26.2.0
     restart: unless-stopped
-    command: serve all -c /etc/hydra/hydra.yml --sqa-opt-out ${ORY_DEV:-}
+    command: serve all -c /etc/hydra/hydra.yml --sqa-opt-out
     environment:
       DSN: *hydra-database
+      DEV: ${RONDO_PLAIN_HTTP:-false}
       SECRETS_SYSTEM: "${HYDRA_SYSTEM_SECRET:?set it in .env}"
     configs: [{ source: hydra, target: /etc/hydra/hydra.yml }]
     ports: ["127.0.0.1:23906:4444", "127.0.0.1:23907:4445"]
@@ -231,7 +233,7 @@ configs:
             ui_url: "${RONDO_PUBLIC_URL}/app/sign-in"
             lifespan: 30m
             after:
-              code: { hooks: [{ hook: web_hook, config: &registered { url: "${RONDO_HOOKS_URL:-http://api:8080}/api/hooks/kratos/registration", method: POST, body: "base64://ZnVuY3Rpb24oY3R4KSB7IGlkZW50aXR5X2lkOiBjdHguaWRlbnRpdHkuaWQgfQ==", response: { ignore: true }, auth: &auth { type: api_key, config: { name: Authorization, value: "${RONDO_HOOK_SECRET:?set it in .env}", in: header } } } }, { hook: session }] }
+              code: { hooks: [{ hook: web_hook, config: &registered { url: "${RONDO_API_URL:-http://api:8080}/api/hooks/kratos/registration", method: POST, body: "base64://ZnVuY3Rpb24oY3R4KSB7IGlkZW50aXR5X2lkOiBjdHguaWRlbnRpdHkuaWQgfQ==", response: { ignore: true }, auth: &auth { type: api_key, config: { name: Authorization, value: "${RONDO_HOOK_SECRET:?set it in .env}", in: header } } } }, { hook: session }] }
               passkey: { hooks: [{ hook: web_hook, config: *registered }, { hook: session }] }
               oidc: { hooks: [{ hook: web_hook, config: *registered }, { hook: session }] }
           settings: { ui_url: "${RONDO_PUBLIC_URL}/app/settings", privileged_session_max_age: 10m, required_aal: highest_available }
@@ -248,7 +250,7 @@ configs:
         delivery_strategy: http
         http:
           request_config:
-            url: "${RONDO_HOOKS_URL:-http://api:8080}/api/hooks/kratos/courier"
+            url: "${RONDO_API_URL:-http://api:8080}/api/hooks/kratos/courier"
             method: POST
             body: "file:///etc/kratos/courier.jsonnet"
             auth: *auth

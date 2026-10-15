@@ -35,7 +35,7 @@ curl -fL -o .env https://raw.githubusercontent.com/sourcelocation/Rondo/v0.1.9/s
 The settings run Rondo on your own computer as they are. Change every one marked "Self-hosting":
 
 - `RONDO_PUBLIC_URL` to `https://<your hostname>`, `RONDO_HOST` to the hostname, and `COMPOSE_PROFILES` to `app`, so Rondo's own servers start.
-- `RONDO_VERSION` to nothing, so the images match `compose.yaml`'s release. Remove `RONDO_HOOKS_URL`, and set `ORY_DEV` to nothing.
+- Remove `RONDO_API_URL` and `RONDO_PLAIN_HTTP`.
 - The five secrets: make each with `openssl rand -hex 32`, except `KRATOS_CIPHER_SECRET`, which must be 32 characters: `openssl rand -hex 16`.
 - Your SMTP login (uncomment those lines), and your own email address in `RONDO_OWNER_EMAIL`.
 - Remove `RONDO_STAFF_PASSKEY` and the development Web Push keys.
