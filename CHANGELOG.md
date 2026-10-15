@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.9](https://github.com/sourcelocation/Rondo/compare/v0.1.8...v0.1.9) (2026-10-15)
+
+
+### Features
+
+* change ci, combine pnpm, path-based tests ([f35a650](https://github.com/sourcelocation/Rondo/commit/f35a650c1ed81510219693b04af604be08c1418e))
+* final site ([1b762ef](https://github.com/sourcelocation/Rondo/commit/1b762efb2140bec63cbeddcccb8431efeecc6043))
+
+
+### Bug Fixes
+
+* **landing:** say Anki is Ankitects' trademark, and don't claim everything Anki does ([#21](https://github.com/sourcelocation/Rondo/issues/21)) ([339c8e3](https://github.com/sourcelocation/Rondo/commit/339c8e30e00cac369b8675bde3b1b0b0a530f3f0))
+
 ## [0.1.8](https://github.com/sourcelocation/Rondo/compare/v0.1.7...v0.1.8) (2026-10-14)
 
 
