@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.10](https://github.com/sourcelocation/Rondo/compare/v0.1.9...v0.1.10) (2026-10-17)
+
+
+### Bug Fixes
+
+* text timing ([7f721a7](https://github.com/sourcelocation/Rondo/commit/7f721a7a077c2a6894445634df701ece7acb2c1b))
+* updates to build process and ci ([1f968cf](https://github.com/sourcelocation/Rondo/commit/1f968cf48912e647a5f06d170a8557c41344bdda))
+
 ## [0.1.9](https://github.com/sourcelocation/Rondo/compare/v0.1.8...v0.1.9) (2026-10-15)
 
 
