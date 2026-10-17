@@ -5,8 +5,8 @@ import app.rondo.client.Platform
 import app.rondo.client.net.Net
 import app.rondo.client.storage.Store
 import app.rondo.client.strings
-import app.rondo.core.Days
-import app.rondo.core.DeckLoad
+import app.rondo.core.decks.domain.DeckLoad
+import app.rondo.core.study.domain.Days
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.serialization.SerialName

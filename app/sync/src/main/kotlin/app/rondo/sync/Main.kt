@@ -1,13 +1,13 @@
 package app.rondo.sync
 
-import app.rondo.core.ErrorCode
-import app.rondo.core.record.Record
-import app.rondo.core.sync.Fetch
-import app.rondo.core.sync.Fetched
-import app.rondo.core.sync.Pull
-import app.rondo.core.sync.Pulled
-import app.rondo.core.sync.Push
-import app.rondo.core.sync.Pushed
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.sync.infrastructure.Fetch
+import app.rondo.core.sync.infrastructure.Fetched
+import app.rondo.core.sync.infrastructure.Message
+import app.rondo.core.sync.infrastructure.Pull
+import app.rondo.core.sync.infrastructure.Pulled
+import app.rondo.core.sync.infrastructure.Push
+import app.rondo.core.sync.infrastructure.Pushed
 import app.rondo.mcp.RondoTools
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -115,9 +115,9 @@ class SyncServer(
             }
             val token = this.request.header("Authorization")?.removePrefix("Bearer ")?.trim()
             val who = token?.let { auth.session(it) } ?: throw Problem(401, ErrorCode.UNAUTHORIZED, "Sign in again.")
-            val body = Record.json.decodeFromString(request, receiveText())
+            val body = Message.json.decodeFromString(request, receiveText())
             val result = withContext(Dispatchers.IO) { work(who, body) }
-            respondText(Record.json.encodeToString(answer, result), ContentType.Application.Json)
+            respondText(Message.json.encodeToString(answer, result), ContentType.Application.Json)
         } catch (p: Problem) {
             respond(HttpStatusCode.fromValue(p.status), ProblemBody(p.code.value, p.message.orEmpty()))
         } catch (e: Exception) {
@@ -163,6 +163,6 @@ class SyncServer(
         const val SCHEMA_VERSION = 1L
 
         /** The sync protocol this server speaks; apps on an older one are asked to update. */
-        const val PROTOCOL = "1"
+        const val PROTOCOL = Message.VERSION
     }
 }

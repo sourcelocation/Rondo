@@ -3,11 +3,11 @@ package app.rondo.client.storage
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.rondo.client.db.Decks
-import app.rondo.core.Deck
-import app.rondo.core.ErrorCode
-import app.rondo.core.Tree
-import app.rondo.core.record.DeckRecord
-import app.rondo.core.record.Record
+import app.rondo.core.decks.domain.Deck
+import app.rondo.core.decks.domain.Tree
+import app.rondo.core.decks.infrastructure.DeckRecord
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.kernel.infrastructure.Record
 
 /** The decks on this device: yours, and the ones lent to you. */
 class DeckShelf internal constructor(private val store: Store) : Shelf {

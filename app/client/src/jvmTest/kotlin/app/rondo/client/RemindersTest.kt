@@ -1,7 +1,7 @@
 package app.rondo.client
 
-import app.rondo.core.Event
-import app.rondo.core.Template
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.study.domain.Event
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Instant

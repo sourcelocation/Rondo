@@ -3,11 +3,11 @@ package app.rondo.client.anki
 import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlCursor
 import app.cash.sqldelight.db.SqlDriver
-import app.rondo.core.DatedIds
-import app.rondo.core.Days
-import app.rondo.core.Event
-import app.rondo.core.Memory
-import app.rondo.core.Tags
+import app.rondo.core.kernel.domain.DatedIds
+import app.rondo.core.notes.domain.Tags
+import app.rondo.core.study.domain.Days
+import app.rondo.core.study.domain.Event
+import app.rondo.core.study.domain.Memory
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromByteArray

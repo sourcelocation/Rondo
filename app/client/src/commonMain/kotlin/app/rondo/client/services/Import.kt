@@ -3,13 +3,14 @@ package app.rondo.client.services
 import app.rondo.client.Platform
 import app.rondo.client.anki.AnkiHtml
 import app.rondo.client.anki.AnkiPackage
-import app.rondo.core.Deck
-import app.rondo.core.Event
-import app.rondo.core.Template
-import app.rondo.core.file.Contents
-import app.rondo.core.file.DeckFile
-import app.rondo.core.file.RondoFile
-import app.rondo.core.file.Spreadsheet
+import app.rondo.core.decks.domain.Deck
+import app.rondo.core.files.application.DeckFile
+import app.rondo.core.files.application.Rows
+import app.rondo.core.files.domain.Contents
+import app.rondo.core.files.infrastructure.RondoFile
+import app.rondo.core.files.infrastructure.Spreadsheet
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.study.domain.Event
 
 /**
  * What an import added: [deck] is its first top-level deck; [notes] and [media] were added,
@@ -80,12 +81,12 @@ class Import(private val platform: Platform, private val library: Library, priva
 
     /**
      * Notes of [template] in [deck] from [sheet]'s rows, each column where [columns] sends it
-     * ([Spreadsheet.columns]); HTML cells become markup. Rows whose first field is in the deck's
+     * ([Rows.columns]); HTML cells become markup. Rows whose first field is in the deck's
      * notes already are left out, and so are the rows that break a rule; both come back counted.
      */
     suspend fun spreadsheet(sheet: Spreadsheet, template: Template, columns: List<String?>, deck: Deck): CsvImported {
         val existing = library.repeats(template, deck.id).mapNotNull { template.key(it.fields) }.toSet()
-        val made = sheet.notes(sheet.body, columns, template, deck.id, deck.ownerId, {
+        val made = sheet.rows.notes(sheet.rows.body, columns, template, deck.id, deck.ownerId, {
             0
         }, existing, cell = cell(sheet))
         val refused = library.save(emptyList(), made.notes).size

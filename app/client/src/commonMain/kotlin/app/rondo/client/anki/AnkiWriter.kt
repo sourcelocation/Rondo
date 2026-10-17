@@ -2,22 +2,23 @@ package app.rondo.client.anki
 
 import app.cash.sqldelight.db.SqlDriver
 import app.rondo.client.Platform
-import app.rondo.core.AnkiTemplate
-import app.rondo.core.Block
-import app.rondo.core.CardState
-import app.rondo.core.Days
-import app.rondo.core.Event
-import app.rondo.core.FieldDef
-import app.rondo.core.Fsrs
-import app.rondo.core.History
-import app.rondo.core.Markup
-import app.rondo.core.Memory
-import app.rondo.core.Note
-import app.rondo.core.Occlusion
-import app.rondo.core.RondoTemplate
-import app.rondo.core.Template
-import app.rondo.core.file.Contents
-import app.rondo.core.file.MediaFile
+import app.rondo.core.files.domain.Contents
+import app.rondo.core.files.domain.MediaFile
+import app.rondo.core.markup.domain.Markup
+import app.rondo.core.markup.infrastructure.FieldHtml
+import app.rondo.core.notes.domain.AnkiTemplate
+import app.rondo.core.notes.domain.Block
+import app.rondo.core.notes.domain.FieldDef
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.Occlusion
+import app.rondo.core.notes.domain.RondoTemplate
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.study.domain.CardState
+import app.rondo.core.study.domain.Days
+import app.rondo.core.study.domain.Event
+import app.rondo.core.study.domain.Fsrs
+import app.rondo.core.study.domain.History
+import app.rondo.core.study.domain.Memory
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 import kotlin.time.Clock
@@ -184,7 +185,7 @@ internal class AnkiWriter(
             }
             return html
         }
-        if (f.kind == FieldDef.Kind.TEXT) return Markup(v).html
+        if (f.kind == FieldDef.Kind.TEXT) return FieldHtml(Markup(v)).html
         val name = (if (f.kind == FieldDef.Kind.OCCLUSION) Occlusion(v).image else v).takeIf { it.isNotEmpty() }
             ?.let { file(it) } ?: return ""
         return if (f.kind == FieldDef.Kind.AUDIO) "[sound:$name]" else "<img src=\"$name\">"

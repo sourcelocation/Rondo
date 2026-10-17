@@ -4,9 +4,9 @@ import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.rondo.client.db.Templates
-import app.rondo.core.Template
-import app.rondo.core.record.Record
-import app.rondo.core.record.TemplateRecord
+import app.rondo.core.kernel.infrastructure.Record
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.notes.infrastructure.TemplateRecord
 
 /** Note types: Rondo's own, never stored, and those on this device (yours, and those lent decks use). */
 class TemplateShelf internal constructor(private val store: Store) : Shelf {

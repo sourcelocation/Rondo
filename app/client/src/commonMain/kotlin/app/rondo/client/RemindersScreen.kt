@@ -1,6 +1,6 @@
 package app.rondo.client
 
-import app.rondo.core.Settings
+import app.rondo.core.study.domain.Settings
 import kotlin.js.JsExport
 
 /**

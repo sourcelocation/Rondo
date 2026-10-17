@@ -1,12 +1,12 @@
 package app.rondo.client
 
-import app.rondo.core.CardSide
-import app.rondo.core.Deck
-import app.rondo.core.FieldDef
-import app.rondo.core.Note
-import app.rondo.core.RondoTemplate
-import app.rondo.core.Template
-import app.rondo.core.Tree
+import app.rondo.core.decks.domain.Deck
+import app.rondo.core.decks.domain.Tree
+import app.rondo.core.notes.domain.CardSide
+import app.rondo.core.notes.domain.FieldDef
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.RondoTemplate
+import app.rondo.core.notes.domain.Template
 import kotlin.js.JsExport
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

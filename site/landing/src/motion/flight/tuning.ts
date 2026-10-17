@@ -58,7 +58,8 @@ export class Tuning {
     this.timing(target, move.target.timing, (ease) => (move.target.timing = ease));
 
     const said = pane.addFolder({ title: "Words" });
-    said.addBinding(words, "arrive", { min: 0, max: 1, step: 0.001, label: "above in" });
+    said.addBinding(words, "arrive", { min: 0, max: 1, step: 0.001, label: "above fading in" });
+    said.addBinding(words, "arrived", { min: 0, max: 1, step: 0.001, label: "above in" });
     said.addBinding(words, "change", { min: 0, max: 1, step: 0.001, label: "above → landing" });
     said.addBinding(words, "go", { min: 0, max: 1.5, step: 0.001, label: "landing out" });
 
@@ -103,7 +104,7 @@ export class Tuning {
       `camera: ${ease(camera)},`,
       `target: { from: ${n(target.from)}, to: ${n(target.to)}, start: ${n(target.start)}, end: ${n(target.end)}, timing: ${ease(target.timing)} },`,
       "// motion/flight.ts",
-      `export const words = { arrive: ${n(words.arrive)}, change: ${n(words.change)}, go: ${n(words.go)} };`,
+      `export const words = { arrive: ${n(words.arrive)}, arrived: ${n(words.arrived)}, change: ${n(words.change)}, go: ${n(words.go)} };`,
     ].join("\n");
     try {
       await navigator.clipboard.writeText(text);

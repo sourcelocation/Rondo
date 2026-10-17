@@ -222,7 +222,7 @@ export function RichText({
         onClick: (n, pos) => editMath(n.attrs.latex, pos, false),
       }),
     ],
-    content: JSON.parse(new Markup(value).document),
+    content: JSON.parse(EditorDocument.of(new Markup(value)).json),
     editorProps: {
       attributes: {
         class: cn(
@@ -242,7 +242,7 @@ export function RichText({
   useEffect(() => {
     if (editor && value !== last.current) {
       last.current = value;
-      editor.commands.setContent(JSON.parse(new Markup(value).document));
+      editor.commands.setContent(JSON.parse(EditorDocument.of(new Markup(value)).json));
     }
   }, [editor, value]);
   const on = useEditorState({

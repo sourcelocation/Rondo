@@ -5,7 +5,7 @@ import app.rondo.client.net.ApiError
 import app.rondo.client.net.Net
 import app.rondo.client.net.SignInError
 import app.rondo.client.storage.Store
-import app.rondo.core.ErrorCode
+import app.rondo.core.kernel.domain.ErrorCode
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.header

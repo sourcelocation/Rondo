@@ -2,7 +2,8 @@ package app.rondo.client.storage
 
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.rondo.client.db.Rejects as RejectRow
-import app.rondo.core.record.Record
+import app.rondo.core.kernel.infrastructure.Record
+import app.rondo.core.sync.infrastructure.Message
 import kotlin.time.Clock
 
 /** A change the server refused: [label] names it, [code] says why, [record] is this device's version. */
@@ -14,7 +15,7 @@ class Rejects internal constructor(private val store: Store) {
 
     /** The latest first. A version an older app kept, which this one can't read, has no [Reject.record]. */
     suspend fun all(): List<Reject> = q.rejects().awaitAsList().map {
-        val record = runCatching { Record.json.decodeFromString(Record.serializer(), it.body) }.getOrNull()
+        val record = runCatching { Message.json.decodeFromString(Record.serializer(), it.body) }.getOrNull()
         Reject(it.id, it.entity, it.code, it.label, record, it.at)
     }
 
@@ -24,7 +25,7 @@ class Rejects internal constructor(private val store: Store) {
             entity,
             code,
             label,
-            Record.json.encodeToString(Record.serializer(), record),
+            Message.json.encodeToString(Record.serializer(), record),
             Clock.System.now().toEpochMilliseconds(),
         ),
     )

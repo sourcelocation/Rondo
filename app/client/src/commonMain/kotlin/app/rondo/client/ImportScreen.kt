@@ -7,16 +7,17 @@ import app.rondo.client.anki.Suggestions
 import app.rondo.client.services.FileFormat
 import app.rondo.client.services.Imported
 import app.rondo.client.services.Plan
-import app.rondo.core.AnkiTemplate
-import app.rondo.core.ErrorCode
-import app.rondo.core.FieldDef
-import app.rondo.core.Note
-import app.rondo.core.Refused
-import app.rondo.core.Template
-import app.rondo.core.file.Contents
-import app.rondo.core.file.DeckFile
-import app.rondo.core.file.RondoFile
-import app.rondo.core.file.Spreadsheet
+import app.rondo.core.files.application.DeckFile
+import app.rondo.core.files.application.Rows
+import app.rondo.core.files.domain.Contents
+import app.rondo.core.files.infrastructure.RondoFile
+import app.rondo.core.files.infrastructure.Spreadsheet
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.kernel.domain.Refused
+import app.rondo.core.notes.domain.AnkiTemplate
+import app.rondo.core.notes.domain.FieldDef
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.Template
 import kotlin.js.JsExport
 import kotlinx.coroutines.CancellationException
 
@@ -243,21 +244,22 @@ class ImportScreen internal constructor(override val app: App) : Screen<ImportSt
     private suspend fun csv(): CsvState? {
         val sheet = sheet ?: return null
         val t = template ?: return null
-        val templates = library.templates().values.filter(sheet::fits).sortedBy { !it.builtin }
-        val titles = List(sheet.width) { i ->
-            sheet.rows.firstOrNull()?.getOrNull(i)?.takeIf { sheet.header && it.isNotBlank() } ?: strings.column(i + 1)
+        val rows = sheet.rows
+        val templates = library.templates().values.filter(rows::fits).sortedBy { !it.builtin }
+        val titles = List(rows.width) { i ->
+            rows.cells.firstOrNull()?.getOrNull(i)?.takeIf { rows.header && it.isNotBlank() } ?: strings.column(i + 1)
         }
         val targets = t.fields.filter { it.kind != FieldDef.Kind.OCCLUSION }.map { Choice(it.id.toString(), it.name) } +
-            Choice(Spreadsheet.TAGS, strings.tags)
-        val first = sheet.body.firstOrNull()?.let {
-            sheet.notes(listOf(it), columns, t, "", null, { 0 }, cell = imports.cell(sheet)).notes.firstOrNull()
+            Choice(Rows.TAGS, strings.tags)
+        val first = rows.body.firstOrNull()?.let {
+            rows.notes(listOf(it), columns, t, "", null, { 0 }, cell = imports.cell(sheet)).notes.firstOrNull()
         }
         return CsvState(
-            sheet.separator.toString(), sheet.header, sheet.html, titles.toTypedArray(),
-            sheet.body.take(PREVIEW).map { r ->
-                List(sheet.width) { r.getOrElse(it) { "" } }.toTypedArray()
+            sheet.separator.toString(), rows.header, sheet.html, titles.toTypedArray(),
+            rows.body.take(PREVIEW).map { r ->
+                List(rows.width) { r.getOrElse(it) { "" } }.toTypedArray()
             }.toTypedArray(),
-            sheet.body.size, t.id, templates.map { Choice(it.id, it.name) }.toTypedArray(), targets.toTypedArray(),
+            rows.body.size, t.id, templates.map { Choice(it.id, it.name) }.toTypedArray(), targets.toTypedArray(),
             columns.map { it.orEmpty() }.toTypedArray(), deckId, deckName, first?.let { sample(t, it) },
         )
     }
@@ -310,19 +312,19 @@ class ImportScreen internal constructor(override val app: App) : Screen<ImportSt
     private suspend fun read(text: String, name: String) {
         this.text = text
         val sheet = runCatching { Spreadsheet(text, library.templates().values) }.getOrNull()
-        if (sheet == null || sheet.body.isEmpty()) {
+        if (sheet == null || sheet.rows.body.isEmpty()) {
             done = Done(null, strings.importFailed, null, true)
             return
         }
         kind = FileFormat.CSV
         deckName = name.take(100)
-        use(sheet, sheet.template(library.templates().values.toList()))
+        use(sheet, sheet.rows.template(library.templates().values.toList()))
     }
 
     private fun use(sheet: Spreadsheet, t: Template) {
         this.sheet = sheet
         template = t
-        columns = sheet.columns(t)
+        columns = sheet.rows.columns(t)
     }
 
     /** The CSV read again; null when it can't be read that way (a quote left open). */
@@ -332,7 +334,7 @@ class ImportScreen internal constructor(override val app: App) : Screen<ImportSt
     /** Reads the CSV again with [separator] between cells. */
     fun setSeparator(separator: String) = act {
         val sheet = sheet ?: return@act
-        use(reread(separator.single(), sheet.header) ?: return@act, template!!)
+        use(reread(separator.single(), sheet.rows.header) ?: return@act, template!!)
         show(load())
     }
 
@@ -346,7 +348,7 @@ class ImportScreen internal constructor(override val app: App) : Screen<ImportSt
     /** The note type its rows fill; columns go to its fields again. */
     fun setTemplate(id: String) = act {
         val sheet = sheet ?: return@act
-        use(sheet, library.template(id)?.takeIf(sheet::fits) ?: return@act)
+        use(sheet, library.template(id)?.takeIf(sheet.rows::fits) ?: return@act)
         show(load())
     }
 

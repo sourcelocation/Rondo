@@ -3,9 +3,9 @@ package app.rondo.client.storage
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.rondo.client.db.Events
-import app.rondo.core.Event
-import app.rondo.core.record.EventRecord
-import app.rondo.core.record.Record
+import app.rondo.core.kernel.infrastructure.Record
+import app.rondo.core.study.domain.Event
+import app.rondo.core.study.infrastructure.EventRecord
 
 /** The learner's events on this device: their own, made here or pulled, and only ever added. */
 class EventShelf internal constructor(private val store: Store) : Shelf {

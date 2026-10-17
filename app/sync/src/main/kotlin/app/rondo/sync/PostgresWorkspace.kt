@@ -1,24 +1,24 @@
 package app.rondo.sync
 
-import app.rondo.core.Access
-import app.rondo.core.Deck
-import app.rondo.core.DeckView
-import app.rondo.core.ErrorCode
-import app.rondo.core.Event
-import app.rondo.core.Hlc
-import app.rondo.core.Note
-import app.rondo.core.NoteFilter
-import app.rondo.core.Role
-import app.rondo.core.Template
-import app.rondo.core.Tree
-import app.rondo.core.Workspace
-import app.rondo.core.record.DeckRecord
-import app.rondo.core.record.EventRecord
-import app.rondo.core.record.NoteRecord
-import app.rondo.core.record.Record
-import app.rondo.core.record.TemplateRecord
-import app.rondo.core.sql.NoteQuery
-import app.rondo.core.sql.SqlFilter
+import app.rondo.core.decks.domain.Access
+import app.rondo.core.decks.domain.Deck
+import app.rondo.core.decks.domain.Role
+import app.rondo.core.decks.domain.Tree
+import app.rondo.core.decks.infrastructure.DeckRecord
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.kernel.domain.Hlc
+import app.rondo.core.kernel.infrastructure.Record
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.NoteFilter
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.notes.infrastructure.NoteQuery
+import app.rondo.core.notes.infrastructure.NoteRecord
+import app.rondo.core.notes.infrastructure.SqlFilter
+import app.rondo.core.notes.infrastructure.TemplateRecord
+import app.rondo.core.study.domain.Event
+import app.rondo.core.study.infrastructure.EventRecord
+import app.rondo.core.workspace.application.DeckView
+import app.rondo.core.workspace.application.Workspace
 import java.util.UUID
 
 /** Hosted MCP's view: the actor's own decks and the ones lent to them, read from Postgres. */

@@ -1,12 +1,12 @@
 package app.rondo.client
 
-import app.rondo.core.AnkiTemplate
-import app.rondo.core.Block
-import app.rondo.core.CardDef
-import app.rondo.core.CardSide
-import app.rondo.core.FieldDef
-import app.rondo.core.RondoTemplate
-import app.rondo.core.Template
+import app.rondo.core.notes.domain.AnkiTemplate
+import app.rondo.core.notes.domain.Block
+import app.rondo.core.notes.domain.CardDef
+import app.rondo.core.notes.domain.CardSide
+import app.rondo.core.notes.domain.FieldDef
+import app.rondo.core.notes.domain.RondoTemplate
+import app.rondo.core.notes.domain.Template
 import kotlin.js.JsExport
 import kotlin.time.Clock
 import kotlin.uuid.Uuid

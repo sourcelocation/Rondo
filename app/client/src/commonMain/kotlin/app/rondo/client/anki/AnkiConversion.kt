@@ -1,16 +1,16 @@
 package app.rondo.client.anki
 
 import app.rondo.client.storage.Derived
-import app.rondo.core.AnkiSide
-import app.rondo.core.AnkiTemplate
-import app.rondo.core.Block
-import app.rondo.core.CardDef
-import app.rondo.core.FieldDef
-import app.rondo.core.Note
-import app.rondo.core.Occlusion
-import app.rondo.core.RondoTemplate
-import app.rondo.core.Template
-import app.rondo.core.file.Contents
+import app.rondo.core.files.domain.Contents
+import app.rondo.core.notes.domain.AnkiSide
+import app.rondo.core.notes.domain.AnkiTemplate
+import app.rondo.core.notes.domain.Block
+import app.rondo.core.notes.domain.CardDef
+import app.rondo.core.notes.domain.FieldDef
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.Occlusion
+import app.rondo.core.notes.domain.RondoTemplate
+import app.rondo.core.notes.domain.Template
 
 /**
  * Anki's note types in [contents] made Rondo's own, exactly: only what Anki's format says. Fields

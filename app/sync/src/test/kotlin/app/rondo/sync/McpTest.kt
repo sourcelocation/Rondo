@@ -1,6 +1,6 @@
 package app.rondo.sync
 
-import app.rondo.core.Template
+import app.rondo.core.notes.domain.Template
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
 import io.ktor.client.request.post

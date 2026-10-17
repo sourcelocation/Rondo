@@ -1,11 +1,11 @@
 package app.rondo.client.anki
 
-import app.rondo.core.Block
-import app.rondo.core.FieldDef
-import app.rondo.core.Markup
-import app.rondo.core.RondoTemplate
-import app.rondo.core.Template
-import app.rondo.core.file.Contents
+import app.rondo.core.files.domain.Contents
+import app.rondo.core.markup.domain.Markup
+import app.rondo.core.notes.domain.Block
+import app.rondo.core.notes.domain.FieldDef
+import app.rondo.core.notes.domain.RondoTemplate
+import app.rondo.core.notes.domain.Template
 
 /**
  * A change offered on top of an exact conversion, with how likely it's wanted ([chance], 0 to 1):

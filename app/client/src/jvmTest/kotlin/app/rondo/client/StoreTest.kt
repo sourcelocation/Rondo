@@ -4,7 +4,7 @@ import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import app.rondo.client.services.Library
 import app.rondo.client.storage.Store
-import app.rondo.core.Template
+import app.rondo.core.notes.domain.Template
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

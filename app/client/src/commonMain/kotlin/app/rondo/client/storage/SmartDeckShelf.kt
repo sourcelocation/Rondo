@@ -3,10 +3,10 @@ package app.rondo.client.storage
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.rondo.client.db.Smart_decks
-import app.rondo.core.SmartDeck
-import app.rondo.core.record.FilterRecord
-import app.rondo.core.record.Record
-import app.rondo.core.record.SmartDeckRecord
+import app.rondo.core.kernel.infrastructure.Record
+import app.rondo.core.study.domain.SmartDeck
+import app.rondo.core.study.infrastructure.FilterRecord
+import app.rondo.core.study.infrastructure.SmartDeckRecord
 
 /** The learner's smart decks. */
 class SmartDeckShelf internal constructor(private val store: Store) : Shelf {

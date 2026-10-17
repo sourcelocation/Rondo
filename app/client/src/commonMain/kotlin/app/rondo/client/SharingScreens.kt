@@ -3,9 +3,9 @@ package app.rondo.client
 import app.rondo.client.net.ApiError
 import app.rondo.client.services.DiscoverItem
 import app.rondo.client.services.PublicDeck
-import app.rondo.core.ErrorCode
-import app.rondo.core.Refused
-import app.rondo.core.Tree
+import app.rondo.core.decks.domain.Tree
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.kernel.domain.Refused
 import kotlin.js.JsExport
 
 @JsExport

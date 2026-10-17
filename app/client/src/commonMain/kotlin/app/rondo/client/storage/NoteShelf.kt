@@ -3,16 +3,16 @@ package app.rondo.client.storage
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.rondo.client.db.Notes
-import app.rondo.core.Folded
-import app.rondo.core.Markup
-import app.rondo.core.Note
-import app.rondo.core.NoteFilter
-import app.rondo.core.NoteSort
-import app.rondo.core.Tags
-import app.rondo.core.Template
-import app.rondo.core.record.NoteRecord
-import app.rondo.core.record.Record
-import app.rondo.core.sql.NoteQuery
+import app.rondo.core.kernel.infrastructure.Record
+import app.rondo.core.markup.domain.Folded
+import app.rondo.core.markup.domain.Markup
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.NoteFilter
+import app.rondo.core.notes.domain.NoteSort
+import app.rondo.core.notes.domain.Tags
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.notes.infrastructure.NoteQuery
+import app.rondo.core.notes.infrastructure.NoteRecord
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 

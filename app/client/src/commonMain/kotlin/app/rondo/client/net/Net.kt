@@ -1,7 +1,8 @@
 package app.rondo.client.net
 
 import app.rondo.client.Platform
-import app.rondo.core.ErrorCode
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.sync.infrastructure.Message
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.api.createClientPlugin
@@ -157,12 +158,16 @@ class Net(private val platform: Platform, private val token: () -> String?) {
         const val SERVER = "server"
 
         /** The sync protocol this app speaks: the server refuses older ones with 426. */
-        const val PROTOCOL = "1"
+        const val PROTOCOL = Message.VERSION
 
-        /** JSON as Rondo's servers and Kratos write it: unknown fields skipped, absent ones left out. */
+        /**
+         * JSON as Rondo's servers and Kratos write it: unknown fields skipped, absent ones left out,
+         * and sync's records tagged by kind.
+         */
         val JSON = Json {
             ignoreUnknownKeys = true
             explicitNulls = false
+            serializersModule = Message.json.serializersModule
         }
     }
 }

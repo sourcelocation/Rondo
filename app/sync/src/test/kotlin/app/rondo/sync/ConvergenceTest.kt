@@ -2,7 +2,7 @@ package app.rondo.sync
 
 import app.rondo.client.JvmPlatform
 import app.rondo.client.Rondo
-import app.rondo.core.Template
+import app.rondo.core.notes.domain.Template
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.embeddedServer
 import kotlin.test.AfterTest

@@ -3,12 +3,12 @@ package app.rondo.client.services
 import app.rondo.client.Platform
 import app.rondo.client.anki.AnkiPackage
 import app.rondo.client.storage.Store
-import app.rondo.core.Days
-import app.rondo.core.Template
-import app.rondo.core.file.Contents
-import app.rondo.core.file.MediaFile
-import app.rondo.core.file.RondoFile
-import app.rondo.core.file.Spreadsheet
+import app.rondo.core.files.domain.Contents
+import app.rondo.core.files.domain.MediaFile
+import app.rondo.core.files.infrastructure.RondoFile
+import app.rondo.core.files.infrastructure.Spreadsheet
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.study.domain.Days
 import kotlin.js.JsExport
 import kotlin.time.Clock
 

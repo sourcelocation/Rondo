@@ -2,8 +2,8 @@ package app.rondo.client
 
 import app.rondo.client.anki.AnkiConversion
 import app.rondo.client.services.FileFormat
-import app.rondo.core.NoteSort
-import app.rondo.core.Template
+import app.rondo.core.notes.domain.NoteSort
+import app.rondo.core.notes.domain.Template
 import kotlin.js.JsExport
 import kotlin.math.roundToLong
 
@@ -315,12 +315,12 @@ open class Strings {
         if (n == 1) "1 note uses this type; changes apply to it." else "$n notes use this type; changes apply to all."
     fun copyOf(name: String) = "My $name"
     fun summary(template: String) = when (template) {
-        app.rondo.core.Template.BASIC.id -> "A question and its answer."
-        app.rondo.core.Template.REVERSE.id -> "Asked both ways round."
-        app.rondo.core.Template.TYPE.id -> "Type the answer before you see it."
-        app.rondo.core.Template.CLOZE.id -> "Hide words in a sentence."
-        app.rondo.core.Template.OCCLUSION.id -> "Cover parts of a picture."
-        app.rondo.core.Template.VOCABULARY.id -> "A word with its reading, meaning, sound and an example."
+        app.rondo.core.notes.domain.Template.BASIC.id -> "A question and its answer."
+        app.rondo.core.notes.domain.Template.REVERSE.id -> "Asked both ways round."
+        app.rondo.core.notes.domain.Template.TYPE.id -> "Type the answer before you see it."
+        app.rondo.core.notes.domain.Template.CLOZE.id -> "Hide words in a sentence."
+        app.rondo.core.notes.domain.Template.OCCLUSION.id -> "Cover parts of a picture."
+        app.rondo.core.notes.domain.Template.VOCABULARY.id -> "A word with its reading, meaning, sound and an example."
         else -> ""
     }
     open val fields = "Fields"

@@ -22,7 +22,7 @@ import { links } from "../content/links";
 <section class="flight" id="offline" aria-labelledby="offline-title" data-mood="sync" data-flight>
   <div class="flight__stage" data-flight-stage>
     <div class="container flight__copy flight__copy--above" data-flight-above>
-      <h2 id="offline-title" class="heading" data-reveal="words">
+      <h2 id="offline-title" class="heading">
         No Wi-Fi?
       </h2>
     </div>
@@ -118,8 +118,9 @@ import { links } from "../content/links";
   /*
    * The words, over the film's top: its sky at the opening, the cabin above the laptop at rest, both faded into the
    * page there. The camera looks a little above the laptop, so it sits under them (motion/flight/shots.ts). Once the
-   * film plays (.is-live), they're held on the screen, still while the page scrolls, and come and go in their own time
-   * as the scroll passes their cues (motion/flight.ts): the browser holds them, so they never fall behind the scroll.
+   * film plays (.is-live), they're held on the screen, still while the page scrolls: those above the clouds fade in and
+   * out with the scroll, and the words change over in their own time as the scroll passes their cue (motion/flight.ts).
+   * The browser holds them, so they never fall behind the scroll.
    */
   .flight__copy {
     position: absolute;

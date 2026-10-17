@@ -1,23 +1,23 @@
 package app.rondo.mcp
 
-import app.rondo.core.AnkiTemplate
-import app.rondo.core.Days
-import app.rondo.core.Deck
-import app.rondo.core.DeckLoad
-import app.rondo.core.ErrorCode
-import app.rondo.core.Event
-import app.rondo.core.Fsrs
-import app.rondo.core.History
-import app.rondo.core.Memory
-import app.rondo.core.Note
-import app.rondo.core.NoteFilter
-import app.rondo.core.Position
-import app.rondo.core.RondoTemplate
-import app.rondo.core.Tags
-import app.rondo.core.Template
-import app.rondo.core.Tree
-import app.rondo.core.Workspace
-import app.rondo.core.file.Spreadsheet
+import app.rondo.core.decks.domain.Deck
+import app.rondo.core.decks.domain.DeckLoad
+import app.rondo.core.decks.domain.Tree
+import app.rondo.core.files.infrastructure.Spreadsheet
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.kernel.domain.Position
+import app.rondo.core.notes.domain.AnkiTemplate
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.NoteFilter
+import app.rondo.core.notes.domain.RondoTemplate
+import app.rondo.core.notes.domain.Tags
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.study.domain.Days
+import app.rondo.core.study.domain.Event
+import app.rondo.core.study.domain.Fsrs
+import app.rondo.core.study.domain.History
+import app.rondo.core.study.domain.Memory
+import app.rondo.core.workspace.application.Workspace
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
@@ -309,7 +309,7 @@ class RondoTools(
             }
             val cell: (String) -> String = if (table?.html == true) html!! else { v -> v }
             val (header, rows) = when {
-                table != null -> table.rows.first() to table.body
+                table != null -> table.rows.cells.first() to table.rows.body
 
                 else -> a.list("columns").ifEmpty { template.fields.map { it.name } } to
                     a?.get("rows")?.jsonArray.orEmpty().map { r -> r.jsonArray.map { it.jsonPrimitive.content } }

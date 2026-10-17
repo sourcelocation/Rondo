@@ -5,13 +5,13 @@ import app.rondo.client.anki.AnkiPackage
 import app.rondo.client.anki.Suggestions
 import app.rondo.client.services.Imported
 import app.rondo.client.services.Plan
-import app.rondo.core.Event
-import app.rondo.core.FieldDef
-import app.rondo.core.Markup
-import app.rondo.core.Memory
-import app.rondo.core.Note
-import app.rondo.core.Occlusion
-import app.rondo.core.Template
+import app.rondo.core.markup.domain.Markup
+import app.rondo.core.notes.domain.FieldDef
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.Occlusion
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.study.domain.Event
+import app.rondo.core.study.domain.Memory
 import com.squareup.zstd.okio.zstdCompress
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -228,7 +228,7 @@ class AnkiImportTest {
         val r = rondo()
         r.anki(legacy(), translate = false, history = false)
         val notes = r.notes()
-        assertTrue(notes.all { r.store.templates.get(it.templateId) is app.rondo.core.AnkiTemplate })
+        assertTrue(notes.all { r.store.templates.get(it.templateId) is app.rondo.core.notes.domain.AnkiTemplate })
         val japanese = notes.single { it.fields["1"] == "日本" }
         assertEquals("<img src=\"rondo-media:${hash(png)}\">", japanese.fields["3"])
         assertEquals("[sound:rondo-media:${hash(mp3)}]", japanese.fields["4"])

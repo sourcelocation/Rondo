@@ -3,8 +3,8 @@ package app.rondo.client.storage
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.rondo.client.db.Lends as LendRow
 import app.rondo.client.db.Streams as StreamRow
-import app.rondo.core.sync.Lend
-import app.rondo.core.sync.Stream
+import app.rondo.core.sync.infrastructure.Lend
+import app.rondo.core.sync.infrastructure.Stream
 
 /** Where this device is in each stream it pulls: its account's (`me`) and each lent deck's. */
 class Streams internal constructor(private val store: Store) {

@@ -3,9 +3,9 @@ package app.rondo.client
 import app.rondo.client.net.ApiError
 import app.rondo.client.net.SignInError
 import app.rondo.client.services.Subscription
-import app.rondo.core.ErrorCode
-import app.rondo.core.Filter
-import app.rondo.core.Refused
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.kernel.domain.Refused
+import app.rondo.core.notes.infrastructure.FilterLink
 import io.ktor.http.parseQueryString
 import io.ktor.util.toMap
 import kotlin.js.JsExport
@@ -290,7 +290,7 @@ class App internal constructor(internal val rondo: Rondo) : Screen<AppState>() {
 
     /** Studying what a filter finds ("Study these"): [address] as [FilterState.address] writes it. */
     fun studyThese(address: String) =
-        StudyScreen(this, rondo.study.filter(Filter(parseQueryString(address.removePrefix("?")).toMap())))
+        StudyScreen(this, rondo.study.filter(FilterLink(parseQueryString(address.removePrefix("?")).toMap()).filter))
 
     /**
      * Redeems a promo code: the Pro it gives starts when the Pro there is ends. The account is read

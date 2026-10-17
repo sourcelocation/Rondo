@@ -1,10 +1,11 @@
 package app.rondo.client
 
-import app.rondo.core.AnkiTemplate
-import app.rondo.core.Filter
-import app.rondo.core.Memory
-import app.rondo.core.NoteSort
-import app.rondo.core.Tags
+import app.rondo.core.notes.domain.AnkiTemplate
+import app.rondo.core.notes.domain.Filter
+import app.rondo.core.notes.domain.NoteSort
+import app.rondo.core.notes.domain.Tags
+import app.rondo.core.notes.infrastructure.FilterLink
+import app.rondo.core.study.domain.Memory
 import io.ktor.http.formUrlEncode
 import io.ktor.http.parametersOf
 import io.ktor.http.parseQueryString
@@ -72,7 +73,7 @@ class FilterScreen internal constructor(
         return FilterState(
             f.text.orEmpty(), deckId, f.templateIds?.firstOrNull(), f.tags.orEmpty().toTypedArray(), f.state,
             f.marked == true, (listOfNotNull(gone) + choices(tree, live)).toTypedArray(), types.toTypedArray(),
-            parametersOf(f.params).formUrlEncode(),
+            parametersOf(FilterLink(f).params).formUrlEncode(),
         )
     }
 
@@ -134,7 +135,7 @@ class BrowseScreen internal constructor(
 
     /** Opened on an [address] (see [BrowseState.address]); its filter is kept there alone. */
     internal constructor(app: App, address: String) :
-        this(app, { Filter(parseQueryString(address.removePrefix("?")).toMap()) }, sortIn(address), {})
+        this(app, { FilterLink(parseQueryString(address.removePrefix("?")).toMap()).filter }, sortIn(address), {})
 
     /** What it finds, as pickers. */
     val filter: FilterScreen = part(
@@ -180,7 +181,8 @@ class BrowseScreen internal constructor(
         val decks = choices(tree, tree.byId.values.filter { !tree.dead(it.id) })
         val offer = study.counts(f, day)
         val address =
-            f.params + listOfNotNull(("sort" to listOf(sort.name.lowercase())).takeIf { sort != NoteSort.ADDED })
+            FilterLink(f).params +
+                listOfNotNull(("sort" to listOf(sort.name.lowercase())).takeIf { sort != NoteSort.ADDED })
         return BrowseState(
             items.toTypedArray(),
             found.size > limit,
@@ -204,7 +206,7 @@ class BrowseScreen internal constructor(
     fun open(address: String) = act {
         val sort = sortIn(address)
         if (sort != this.sort) sortBy(sort)
-        filter.set(Filter(parseQueryString(address.removePrefix("?")).toMap()))
+        filter.set(FilterLink(parseQueryString(address.removePrefix("?")).toMap()).filter)
     }
 
     fun more() = act {

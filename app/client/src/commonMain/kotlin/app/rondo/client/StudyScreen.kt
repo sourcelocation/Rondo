@@ -1,8 +1,8 @@
 package app.rondo.client
 
 import app.rondo.client.services.Scope
-import app.rondo.core.CardSide
-import app.rondo.core.Tree
+import app.rondo.core.decks.domain.Tree
+import app.rondo.core.notes.domain.CardSide
 import kotlin.js.JsExport
 import kotlin.time.Clock
 

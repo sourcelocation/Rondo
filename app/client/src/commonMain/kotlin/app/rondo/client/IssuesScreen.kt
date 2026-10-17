@@ -1,10 +1,10 @@
 package app.rondo.client
 
-import app.rondo.core.ErrorCode
-import app.rondo.core.Refused
-import app.rondo.core.Tags
-import app.rondo.core.record.DeckRecord
-import app.rondo.core.record.NoteRecord
+import app.rondo.core.decks.infrastructure.DeckRecord
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.kernel.domain.Refused
+import app.rondo.core.notes.domain.Tags
+import app.rondo.core.notes.infrastructure.NoteRecord
 import kotlin.js.JsExport
 import kotlin.uuid.Uuid
 

@@ -1,14 +1,14 @@
 package app.rondo.client
 
-import app.rondo.core.AnkiTemplate
-import app.rondo.core.Block
-import app.rondo.core.FieldDef
-import app.rondo.core.Note
-import app.rondo.core.Occlusion
-import app.rondo.core.RondoTemplate
-import app.rondo.core.Tags
-import app.rondo.core.Template
-import app.rondo.core.Tree
+import app.rondo.core.decks.domain.Tree
+import app.rondo.core.notes.domain.AnkiTemplate
+import app.rondo.core.notes.domain.Block
+import app.rondo.core.notes.domain.FieldDef
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.Occlusion
+import app.rondo.core.notes.domain.RondoTemplate
+import app.rondo.core.notes.domain.Tags
+import app.rondo.core.notes.domain.Template
 import kotlin.js.JsExport
 
 /** An occlusion mask, in fractions of the image. */

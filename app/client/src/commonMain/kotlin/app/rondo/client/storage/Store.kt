@@ -17,8 +17,8 @@ import app.rondo.client.db.Notes
 import app.rondo.client.db.Rejects
 import app.rondo.client.db.Smart_decks
 import app.rondo.client.db.Templates
-import app.rondo.core.Hlc
-import app.rondo.core.sql.SqlFilter
+import app.rondo.core.kernel.domain.Hlc
+import app.rondo.core.notes.infrastructure.SqlFilter
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

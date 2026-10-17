@@ -3,7 +3,7 @@ package app.rondo.client.storage
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.rondo.client.db.Media
-import app.rondo.core.file.MediaFile
+import app.rondo.core.files.domain.MediaFile
 
 /** Pictures and sounds on this device, by hash, and which of them the server has. */
 class MediaShelf internal constructor(private val store: Store) {

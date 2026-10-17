@@ -5,7 +5,7 @@ import app.rondo.client.net.SignInError
 import app.rondo.client.services.CodeFlow
 import app.rondo.client.services.RecoveryCodes
 import app.rondo.client.services.TotpSetup
-import app.rondo.core.ErrorCode
+import app.rondo.core.kernel.domain.ErrorCode
 import kotlin.js.JsExport
 import kotlinx.coroutines.CancellationException
 

@@ -3,14 +3,14 @@ package app.rondo.client
 import app.rondo.client.anki.AnkiConversion
 import app.rondo.client.services.FileFormat
 import app.rondo.client.services.Imported
-import app.rondo.core.CardState
-import app.rondo.core.Days
-import app.rondo.core.Event
-import app.rondo.core.Memory
-import app.rondo.core.Note
-import app.rondo.core.Tags
-import app.rondo.core.Template
-import app.rondo.core.file.Spreadsheet
+import app.rondo.core.files.infrastructure.Spreadsheet
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.Tags
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.study.domain.CardState
+import app.rondo.core.study.domain.Days
+import app.rondo.core.study.domain.Event
+import app.rondo.core.study.domain.Memory
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -111,13 +111,13 @@ class FilesTest {
         val target = to.library.createDeck("Imported")
         val sheet = Spreadsheet(files.getValue("Basic.csv").decodeToString())
         val basic = Template.BASIC
-        val result = to.imports.spreadsheet(sheet, basic, sheet.columns(basic), target)
+        val result = to.imports.spreadsheet(sheet, basic, sheet.rows.columns(basic), target)
         assertEquals(2, result.notes)
         val note = to.notes().single { it.fields["1"] == "**hola**" }
         assertEquals(mapOf("1" to "**hola**", "2" to "hello"), note.fields)
         assertEquals("greeting", note.tags)
         // A second time, it's all there already.
-        assertEquals(0, to.imports.spreadsheet(sheet, basic, sheet.columns(basic), target).notes)
+        assertEquals(0, to.imports.spreadsheet(sheet, basic, sheet.rows.columns(basic), target).notes)
     }
 
     @Test
@@ -125,7 +125,7 @@ class FilesTest {
         val to = rondo()
         val target = to.library.createDeck("From Anki")
         val sheet = Spreadsheet("#separator:tab\n#html:true\n<b>der Hund</b><br>the dog\tnoun")
-        to.imports.spreadsheet(sheet, Template.BASIC, sheet.columns(Template.BASIC), target)
+        to.imports.spreadsheet(sheet, Template.BASIC, sheet.rows.columns(Template.BASIC), target)
         assertEquals("**der Hund**\nthe dog", to.notes().single().fields["1"])
     }
 

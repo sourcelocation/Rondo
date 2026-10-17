@@ -6,8 +6,8 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.db.SqlPreparedStatement
 import app.cash.sqldelight.driver.worker.WebWorkerDriver
 import app.rondo.client.net.SignInError
-import app.rondo.core.ErrorCode
-import app.rondo.core.Refused
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.kernel.domain.Refused
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine

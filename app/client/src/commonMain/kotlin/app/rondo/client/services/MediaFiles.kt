@@ -2,7 +2,7 @@ package app.rondo.client.services
 
 import app.rondo.client.net.Net
 import app.rondo.client.storage.Store
-import app.rondo.core.file.MediaFile
+import app.rondo.core.files.domain.MediaFile
 import io.ktor.client.request.get
 import io.ktor.client.request.headers
 import io.ktor.client.request.put

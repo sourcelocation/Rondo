@@ -3,14 +3,14 @@ package app.rondo.client
 import app.rondo.client.services.Download
 import app.rondo.client.services.FileFormat
 import app.rondo.client.services.Overview
-import app.rondo.core.Access
-import app.rondo.core.Counts
-import app.rondo.core.Deck
-import app.rondo.core.Filter
-import app.rondo.core.NoteSort
-import app.rondo.core.Role
-import app.rondo.core.SmartDeck
-import app.rondo.core.Tree
+import app.rondo.core.decks.domain.Access
+import app.rondo.core.decks.domain.Counts
+import app.rondo.core.decks.domain.Deck
+import app.rondo.core.decks.domain.Role
+import app.rondo.core.decks.domain.Tree
+import app.rondo.core.notes.domain.Filter
+import app.rondo.core.notes.domain.NoteSort
+import app.rondo.core.study.domain.SmartDeck
 import kotlin.js.JsExport
 
 /** What can be done to a deck, as its menus offer it: see [DeckItem.actions]. */

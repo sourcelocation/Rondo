@@ -2,11 +2,11 @@ package app.rondo.client.storage
 
 import app.cash.sqldelight.async.coroutines.awaitAsOneOrNull
 import app.rondo.client.db.Settings as SettingsRow
-import app.rondo.core.Days
-import app.rondo.core.Fsrs
-import app.rondo.core.Settings
-import app.rondo.core.record.Record
-import app.rondo.core.record.SettingsRecord
+import app.rondo.core.kernel.infrastructure.Record
+import app.rondo.core.study.domain.Days
+import app.rondo.core.study.domain.Fsrs
+import app.rondo.core.study.domain.Settings
+import app.rondo.core.study.infrastructure.SettingsRecord
 
 /** The learner's settings: one row, theirs alone. */
 class SettingsShelf internal constructor(private val store: Store) : Shelf {

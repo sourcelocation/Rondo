@@ -10,8 +10,8 @@ import type { Stage } from "./stage";
  * laid out (components/Flight.astro): the flight runs from the section coming into view, the camera setting off from
  * the opening shot as soon as the plane shows, to the end of the track, the stage holding the screen meanwhile, the
  * words above the clouds over it at first, through the window to the laptop, the words of landing over the cabin as
- * the camera comes in. The words are held on the screen (components/Flight.astro), and come and go in their own time:
- * the scroll only says when.
+ * the camera comes in. The words are held on the screen (components/Flight.astro): those above the clouds fade in and
+ * out with the scroll, and the words change over in their own time, the scroll only saying when.
  *
  * The film is made on the scenery's GPU and shown by it (motion/scenery/projection.ts), as the page loads, a step at a
  * time on frames when the page is still: the page's opening waits for it (under the intro, or the curtain), so nothing
@@ -21,12 +21,13 @@ import type { Stage } from "./stage";
 
 /**
  * When the words come and go, as shares of the flight (motion/flight/tuning.ts tunes it, with --tweak): those above
- * the clouds come as the section's top nears the screen's, and change over to those of landing just before the camera's
- * through the window, which it is about seven eighths of the way in (as motion/flight/shots.ts's move has it), which
- * stay as the section goes on, over the film scrolling away, until it's half gone and the next section's words come
- * up to them, half a screen after the flight.
+ * the clouds fade in with the scroll, from when the page above is about half scrolled away, the section's top a little
+ * over a third of the way down the screen, to when it's clear of them, the section's top up at theirs; and change over
+ * to those of landing just before the camera's through the window, which it is about seven eighths of the way in (as
+ * motion/flight/shots.ts's move has it), which stay as the section goes on, over the film scrolling away, until it's
+ * half gone and the next section's words come up to them, half a screen after the flight.
  */
-export const words = { arrive: 0.15, change: 0.86, go: 1.22 };
+export const words = { arrive: 0.28, arrived: 0.38, change: 0.86, go: 1.22 };
 
 export class FlightFilm {
   private projection: Projection | null = null;
@@ -34,6 +35,8 @@ export class FlightFilm {
   private scrolled = 0;
   /** The flight, from the section coming into view to the end of the track. */
   private flight: ScrollTrigger | null = null;
+  /** The words above the clouds, faded in and out by the scroll. */
+  private fade: ScrollTrigger | null = null;
   /** The words, each shown while the scroll's within its stretch of the flight. */
   private readonly cues: Cue[] = [];
   /** Whether the words are to be changed over once the scroll's triggers have all had their say. */
@@ -56,13 +59,33 @@ export class FlightFilm {
         this.projection?.play(progress);
       },
     });
+    const above = one(host, "[data-flight-above]");
+    this.fade =
+      gsap.fromTo(
+        above,
+        { autoAlpha: 0, y: 32 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          ease: "none",
+          scrollTrigger: {
+            trigger: host,
+            start: () => this.at(words.arrive),
+            end: () => this.at(words.arrived),
+            scrub: 0.6,
+            // After the flight's own, which it's measured along.
+            refreshPriority: -1,
+          },
+        },
+      ).scrollTrigger ?? null;
+    // Shown from the flight's start, well before the scroll fades them in: only the change-over is in their own time.
     this.cue(
       gsap.fromTo(
-        one(host, "[data-flight-above]"),
+        all(above, ":scope > *"),
         { autoAlpha: 0, y: 32 },
         { autoAlpha: 1, y: 0, ease: "power3.out", duration: 0.9, paused: true },
       ),
-      () => words.arrive,
+      () => 0,
       () => words.change,
     );
     this.cue(
@@ -86,6 +109,7 @@ export class FlightFilm {
   /** Shows the flight again where the scroll is, as it's tuned: the words where `words` says, and the film. */
   retune(): void {
     for (const { trigger } of this.cues) trigger.refresh();
+    this.fade?.refresh();
     this.sync();
     this.projection?.jump(this.scrolled);
   }
@@ -95,19 +119,21 @@ export class FlightFilm {
    * time, whatever the scroll's pace.
    */
   private cue(words: gsap.core.Tween, from: () => number, to: () => number): void {
-    const at = (share: number) => {
-      const { start, end } = this.flight ?? { start: 0, end: 0 };
-      return start + (end - start) * share;
-    };
     const trigger = ScrollTrigger.create({
       trigger: this.host,
-      start: () => at(from()),
-      end: () => at(to()),
+      start: () => this.at(from()),
+      end: () => this.at(to()),
       // After the flight's own, which these are measured along.
       refreshPriority: -1,
       onToggle: () => this.resync(),
     });
     this.cues.push(new Cue(trigger, words));
+  }
+
+  /** Where the scroll is once it's `share` of the way through the flight. */
+  private at(share: number): number {
+    const { start, end } = this.flight ?? { start: 0, end: 0 };
+    return start + (end - start) * share;
   }
 
   /**

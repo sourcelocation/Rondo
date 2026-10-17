@@ -17,9 +17,9 @@ import app.rondo.client.services.Staff
 import app.rondo.client.services.Study
 import app.rondo.client.services.Syncer
 import app.rondo.client.storage.Store
-import app.rondo.core.Days
-import app.rondo.core.ErrorCode
-import app.rondo.core.Fsrs
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.study.domain.Days
+import app.rondo.core.study.domain.Fsrs
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job

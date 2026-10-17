@@ -1,8 +1,8 @@
 package app.rondo.client.anki
 
-import app.rondo.core.Markup
-import app.rondo.core.Run
-import app.rondo.core.TextBlock
+import app.rondo.core.markup.domain.Markup
+import app.rondo.core.markup.domain.Run
+import app.rondo.core.markup.domain.TextBlock
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.Node

@@ -2,12 +2,12 @@ package app.rondo.client.services
 
 import app.rondo.client.net.ApiError
 import app.rondo.client.net.Net
-import app.rondo.core.Deck
-import app.rondo.core.Template
-import app.rondo.core.file.Contents
-import app.rondo.core.record.DeckRecord
-import app.rondo.core.record.NoteRecord
-import app.rondo.core.record.TemplateRecord
+import app.rondo.core.decks.domain.Deck
+import app.rondo.core.decks.infrastructure.DeckRecord
+import app.rondo.core.files.domain.Contents
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.notes.infrastructure.NoteRecord
+import app.rondo.core.notes.infrastructure.TemplateRecord
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

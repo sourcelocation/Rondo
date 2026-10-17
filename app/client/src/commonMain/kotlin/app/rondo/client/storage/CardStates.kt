@@ -3,13 +3,13 @@ package app.rondo.client.storage
 import app.cash.sqldelight.async.coroutines.awaitAsList
 import app.cash.sqldelight.async.coroutines.awaitAsOne
 import app.rondo.client.db.Card_state
-import app.rondo.core.CardState
-import app.rondo.core.DeckLoad
-import app.rondo.core.History
-import app.rondo.core.Memory
-import app.rondo.core.Note
-import app.rondo.core.NoteFilter
-import app.rondo.core.sql.NoteQuery
+import app.rondo.core.decks.domain.DeckLoad
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.NoteFilter
+import app.rondo.core.notes.infrastructure.NoteQuery
+import app.rondo.core.study.domain.CardState
+import app.rondo.core.study.domain.History
+import app.rondo.core.study.domain.Memory
 
 /** A card where it stands, in its note's deck. */
 class DeckCard(val noteId: String, val card: Int, val deckId: String, val state: CardState)

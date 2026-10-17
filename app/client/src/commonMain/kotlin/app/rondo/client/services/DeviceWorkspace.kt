@@ -1,15 +1,15 @@
 package app.rondo.client.services
 
 import app.rondo.client.storage.Store
-import app.rondo.core.Deck
-import app.rondo.core.DeckView
-import app.rondo.core.ErrorCode
-import app.rondo.core.Event
-import app.rondo.core.Note
-import app.rondo.core.NoteFilter
-import app.rondo.core.NoteSort
-import app.rondo.core.Template
-import app.rondo.core.Workspace
+import app.rondo.core.decks.domain.Deck
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.NoteFilter
+import app.rondo.core.notes.domain.NoteSort
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.study.domain.Event
+import app.rondo.core.workspace.application.DeckView
+import app.rondo.core.workspace.application.Workspace
 
 /** The command-line MCP client's view: this device's copy, synced like any other device. */
 class DeviceWorkspace(private val store: Store, private val library: Library, private val synced: () -> Unit) :

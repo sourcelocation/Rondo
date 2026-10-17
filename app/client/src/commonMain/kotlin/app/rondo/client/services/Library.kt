@@ -4,26 +4,26 @@ import app.rondo.client.anki.AnkiConversion
 import app.rondo.client.storage.DeckCard
 import app.rondo.client.storage.Derived
 import app.rondo.client.storage.Store
-import app.rondo.core.Access
-import app.rondo.core.Days
-import app.rondo.core.Deck
-import app.rondo.core.DeckLoad
-import app.rondo.core.ErrorCode
-import app.rondo.core.Event
-import app.rondo.core.Filter
-import app.rondo.core.History
-import app.rondo.core.Level
-import app.rondo.core.Note
-import app.rondo.core.NoteFilter
-import app.rondo.core.NoteSort
-import app.rondo.core.Position
-import app.rondo.core.Refused
-import app.rondo.core.Settings
-import app.rondo.core.SmartDeck
-import app.rondo.core.Tags
-import app.rondo.core.Template
-import app.rondo.core.Tree
-import app.rondo.core.file.Contents
+import app.rondo.core.decks.domain.Access
+import app.rondo.core.decks.domain.Deck
+import app.rondo.core.decks.domain.DeckLoad
+import app.rondo.core.decks.domain.Level
+import app.rondo.core.decks.domain.Tree
+import app.rondo.core.files.domain.Contents
+import app.rondo.core.kernel.domain.ErrorCode
+import app.rondo.core.kernel.domain.Position
+import app.rondo.core.kernel.domain.Refused
+import app.rondo.core.notes.domain.Filter
+import app.rondo.core.notes.domain.Note
+import app.rondo.core.notes.domain.NoteFilter
+import app.rondo.core.notes.domain.NoteSort
+import app.rondo.core.notes.domain.Tags
+import app.rondo.core.notes.domain.Template
+import app.rondo.core.study.domain.Days
+import app.rondo.core.study.domain.Event
+import app.rondo.core.study.domain.History
+import app.rondo.core.study.domain.Settings
+import app.rondo.core.study.domain.SmartDeck
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.sync.Mutex
@@ -197,16 +197,7 @@ class Library(private val store: Store) {
         val notes = store.notes.inDecks(decks.map { it.id })
         val templates = store.templates.all()
         val history = History(if (events) store.events.of(notes.map { it.id } + decks.map { it.id }) else emptyList())
-        val byDeck = notes.groupBy { it.deckId }
-        fun contents(d: Deck): Contents = Contents(
-            d,
-            byDeck[d.id].orEmpty().mapNotNull { n ->
-                templates[n.templateId]?.let { Contents.Entry(n, it, history.of(n.id)) }
-            },
-            tree.children(d.id).map(::contents),
-            history.of(d.id),
-        )
-        return contents(root)
+        return Contents(root, tree, notes.groupBy { it.deckId }, templates, history)
     }
 
     /**
@@ -363,7 +354,7 @@ class Library(private val store: Store) {
         add(plan(contents, parent, fresh))
 
     /** Where each card of [e] stands, from its events: progress without the answers that led there. */
-    private fun snapshots(e: Contents.Entry, fsrs: app.rondo.core.Fsrs, now: Long): List<Event> {
+    private fun snapshots(e: Contents.Entry, fsrs: app.rondo.core.study.domain.Fsrs, now: Long): List<Event> {
         val history = History(e.events)
         return e.events.map { it.card }.filter { it > 0 }.distinct().mapNotNull { card ->
             history.card(e.note.id, card).state(fsrs).snapshot(e.note.id, card, store.me, now)

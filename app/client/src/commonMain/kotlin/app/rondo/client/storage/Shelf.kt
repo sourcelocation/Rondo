@@ -1,6 +1,6 @@
 package app.rondo.client.storage
 
-import app.rondo.core.record.Record
+import app.rondo.core.kernel.infrastructure.Record
 
 /**
  * One kind of thing this device keeps and syncs, as the syncer sees it: what's unsent, what was

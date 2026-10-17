@@ -31,14 +31,14 @@ spotless {
     kotlin {
         target(
             fileTree(".") {
-                include("*/src/**/*.kt")
+                include("*/src/**/*.kt", "core/*/src/**/*.kt")
                 exclude("**/build/**")
             },
         )
         ktlint(libs.versions.ktlint.get())
     }
     kotlinGradle {
-        target(fileTree(".") { include("*.gradle.kts", "*/*.gradle.kts") })
+        target(fileTree(".") { include("*.gradle.kts", "*/*.gradle.kts", "core/*/*.gradle.kts") })
         ktlint(libs.versions.ktlint.get())
     }
 }

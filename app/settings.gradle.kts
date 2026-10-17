@@ -23,4 +23,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "rondo"
-include(":core", ":client", ":mcp", ":cli", ":sync")
+// The core's slices (core/build.gradle.kts), then what's built on them.
+include(":core", ":core:kernel", ":core:markup", ":core:decks", ":core:notes", ":core:study", ":core:files")
+include(":core:sync", ":core:workspace")
+include(":client", ":mcp", ":cli", ":sync")
