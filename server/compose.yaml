@@ -20,9 +20,9 @@ x-database: &database "postgres://rondo:${POSTGRES_PASSWORD:?set it in .env}@pos
 x-kratos-database: &kratos-database "postgres://rondo:${POSTGRES_PASSWORD}@postgres:5432/kratos?sslmode=disable"
 x-hydra-database: &hydra-database "postgres://rondo:${POSTGRES_PASSWORD}@postgres:5432/hydra?sslmode=disable"
 # The release every image comes from; release-please keeps it.
-x-api-image: &api-image ghcr.io/sourcelocation/rondo-api:v0.1.9 # x-release-please-version
-x-sync-image: &sync-image ghcr.io/sourcelocation/rondo-sync:v0.1.9 # x-release-please-version
-x-web-image: &web-image ghcr.io/sourcelocation/rondo-web:v0.1.9 # x-release-please-version
+x-api-image: &api-image ghcr.io/sourcelocation/rondo-api:v0.1.10 # x-release-please-version
+x-sync-image: &sync-image ghcr.io/sourcelocation/rondo-sync:v0.1.10 # x-release-please-version
+x-web-image: &web-image ghcr.io/sourcelocation/rondo-web:v0.1.10 # x-release-please-version
 
 services:
   postgres:
