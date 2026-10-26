@@ -49,7 +49,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/bake-action@v7.4.0
+      - uses: docker/bake-action@v7.5.0
         env:
           TAG: ${{ needs.release-please.outputs.tag }}
           REVISION: ${{ needs.release-please.outputs.sha }}
