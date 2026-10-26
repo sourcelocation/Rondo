@@ -1,6 +1,6 @@
 # The sync server (target sync) and the web app (target web), built from the repository root: the
 # web app reads brand/.
-FROM eclipse-temurin:25.0.4_7-jdk AS gradle
+FROM eclipse-temurin:25.0.4.1_1-jdk AS gradle
 WORKDIR /src
 COPY app app
 WORKDIR /src/app
