@@ -12,9 +12,9 @@
     "typecheck": "astro check"
   },
   "dependencies": {
-    "@lucide/astro": "1.55.0",
+    "@lucide/astro": "1.59.0",
     "@mdi/js": "7.4.47",
-    "astro": "7.3.8",
+    "astro": "7.4.1",
     "fflate": "0.8.3",
     "gsap": "3.15.0",
     "prismjs": "1.30.0",
@@ -24,7 +24,7 @@
     "three": "0.186.1"
   },
   "devDependencies": {
-    "@astrojs/check": "0.9.10",
+    "@astrojs/check": "0.9.11",
     "@tweakpane/core": "2.0.5",
     "@tweakpane/plugin-essentials": "0.2.1",
     "@types/prismjs": "1.26.6",
