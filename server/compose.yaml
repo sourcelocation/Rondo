@@ -143,13 +143,13 @@ services:
   # The mail profile (as in .env.example): sign-in codes land in Mailpit, at http://localhost:23908.
   mail:
     profiles: [mail]
-    image: axllent/mailpit:v1.31.5
+    image: axllent/mailpit:v1.31.6
     ports: ["127.0.0.1:23908:8025", "127.0.0.1:23909:1025"]
 
   # The s3 profile: S3-compatible storage in place of the media volume.
   storage:
     profiles: [s3]
-    image: rustfs/rustfs:1.0.1
+    image: rustfs/rustfs:1.0.3
     environment: { RUSTFS_ACCESS_KEY: rondo, RUSTFS_SECRET_KEY: rondo-dev-secret }
     volumes: ["storage:/data"]
     ports: ["127.0.0.1:23910:9000"]
