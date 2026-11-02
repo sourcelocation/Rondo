@@ -7,7 +7,7 @@ WORKDIR /src/app
 # One Gradle run for both targets: built together (docker-bake.hcl), they build it once.
 RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon --quiet :sync:installDist :client:jsBrowserProductionLibraryDistribution
 
-FROM eclipse-temurin:25.0.4_7-jre-alpine AS sync
+FROM eclipse-temurin:25.0.4.1_1-jre-alpine AS sync
 COPY --from=gradle /src/app/sync/build/install/sync /opt/sync
 ENV JAVA_TOOL_OPTIONS="-Xmx192m -XX:+UseSerialGC" RONDO_SYNC_PORT=8081
 EXPOSE 8081
