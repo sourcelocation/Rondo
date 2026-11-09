@@ -4,10 +4,10 @@ coroutines = "1.11.0"
 serialization = "1.12.0"
 datetime = "0.8.0"
 okio = "3.18.2"
-ktor = "3.6.0"
+ktor = "3.6.1"
 sqldelight = "2.4.1"
 ksoup = "0.2.6"
-mcp = "0.15.0"
+mcp = "0.16.0"
 ktlint = "1.8.0"
 
 [libraries]
@@ -36,8 +36,8 @@ sqldelight-jvm = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "
 sqldelight-web = { module = "app.cash.sqldelight:web-worker-driver", version.ref = "sqldelight" }
 hikari = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
 postgres = { module = "org.postgresql:postgresql", version = "42.7.14" }
-logback = { module = "ch.qos.logback:logback-classic", version = "1.6.5" }
-sentry = { module = "io.sentry:sentry", version = "8.61.0" }
+logback = { module = "ch.qos.logback:logback-classic", version = "1.6.6" }
+sentry = { module = "io.sentry:sentry", version = "8.62.0" }
 mcp = { module = "io.modelcontextprotocol:kotlin-sdk-server", version.ref = "mcp" }
 
 [plugins]
