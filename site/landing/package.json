@@ -14,7 +14,7 @@
   "dependencies": {
     "@lucide/astro": "1.59.0",
     "@mdi/js": "7.4.47",
-    "astro": "7.4.1",
+    "astro": "7.4.7",
     "fflate": "0.8.3",
     "gsap": "3.15.0",
     "prismjs": "1.30.0",
