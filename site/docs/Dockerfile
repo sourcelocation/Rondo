@@ -16,7 +16,7 @@ COPY site/tsconfig.base.json site/
 COPY site/docs site/docs
 RUN pnpm --dir site/docs build
 
-FROM caddy:2.11.7-alpine
+FROM caddy:2.11.8-alpine
 COPY site/docs/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /src/site/docs/out /srv/docs
 EXPOSE 8080
