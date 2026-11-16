@@ -7,7 +7,7 @@ WORKDIR /src/app
 # One Gradle run for both targets: built together (docker-bake.hcl), they build it once.
 RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon --quiet :sync:installDist :client:jsBrowserProductionLibraryDistribution
 
-FROM eclipse-temurin:25.0.4_7-jre-alpine AS sync
+FROM eclipse-temurin:25.0.5_8-jre-alpine AS sync
 COPY --from=gradle /src/app/sync/build/install/sync /opt/sync
 ENV JAVA_TOOL_OPTIONS="-Xmx192m -XX:+UseSerialGC" RONDO_SYNC_PORT=8081
 EXPOSE 8081
@@ -28,7 +28,7 @@ COPY --from=gradle /src/app/platforms/web/src/kotlin app/platforms/web/src/kotli
 ARG SENTRY_DSN=""
 RUN VITE_SENTRY_DSN=$SENTRY_DSN pnpm --dir app/platforms/web build
 
-FROM caddy:2.11.7-alpine AS web
+FROM caddy:2.11.8-alpine AS web
 COPY app/platforms/web/Caddyfile /etc/caddy/Caddyfile
 COPY --from=web-build /src/app/platforms/web/dist /srv
 EXPOSE 8080

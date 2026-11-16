@@ -15,7 +15,7 @@ COPY site/tsconfig.base.json site/
 COPY site/landing site/landing
 RUN pnpm --dir site/landing build
 
-FROM caddy:2.11.7-alpine
+FROM caddy:2.11.8-alpine
 COPY site/landing/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /src/site/landing/dist /srv
 EXPOSE 8080
