@@ -1,13 +1,13 @@
 [versions]
 kotlin = "2.4.21"
 coroutines = "1.11.0"
-serialization = "1.12.0"
+serialization = "1.13.0"
 datetime = "0.8.0"
 okio = "3.18.2"
-ktor = "3.6.0"
+ktor = "3.6.1"
 sqldelight = "2.4.1"
 ksoup = "0.2.6"
-mcp = "0.15.0"
+mcp = "0.16.0"
 ktlint = "1.8.0"
 
 [libraries]
@@ -19,7 +19,7 @@ datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "d
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 zstd = { module = "com.squareup.zstd:zstd-kmp-okio", version = "0.4.0" }
 ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
-csv = { module = "com.jsoizo:kotlin-csv", version = "2.0.0" }
+csv = { module = "com.jsoizo:kotlin-csv", version = "2.1.0" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
@@ -36,8 +36,8 @@ sqldelight-jvm = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "
 sqldelight-web = { module = "app.cash.sqldelight:web-worker-driver", version.ref = "sqldelight" }
 hikari = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
 postgres = { module = "org.postgresql:postgresql", version = "42.7.14" }
-logback = { module = "ch.qos.logback:logback-classic", version = "1.6.5" }
-sentry = { module = "io.sentry:sentry", version = "8.61.0" }
+logback = { module = "ch.qos.logback:logback-classic", version = "1.6.7" }
+sentry = { module = "io.sentry:sentry", version = "8.64.0" }
 mcp = { module = "io.modelcontextprotocol:kotlin-sdk-server", version.ref = "mcp" }
 
 [plugins]
@@ -45,4 +45,4 @@ multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotl
 jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
-spotless = { id = "com.diffplug.spotless", version = "8.10.4" }
+spotless = { id = "com.diffplug.spotless", version = "8.11.0" }
